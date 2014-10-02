@@ -1,0 +1,25 @@
+From e3cbeb67677462b7d8a60625f15c4b3a7ef2c4ef Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Fri, 3 Oct 2014 00:05:00 +0200
+Subject: [PATCH] Set DeskClock app persistent
+
+Change-Id: Ib0ba9802dd05dce6a691ee196b31ef3e68ef97d5
+---
+ AndroidManifest.xml |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 962befd..f9e89d1 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -21,6 +21,7 @@
+     <application android:label="@string/app_label"
+                  android:icon="@mipmap/ic_launcher_alarmclock"
+                  android:requiredForAllUsers="true"
++                 android:persistent="true"
+                  android:supportsRtl="true">
+ 
+         <provider android:name=".provider.ClockProvider"
+-- 
+1.7.9.5
+
