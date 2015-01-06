@@ -1,0 +1,56 @@
+From 81ba28588dc4c71f47a9e820e26285c65d0d69e9 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Fri, 26 Dec 2014 21:45:47 +0100
+Subject: [PATCH 7/7] Revert: STE: volume index can't be changed for each
+ audio device
+
+Change-Id: Icc837fa7c3a74bb0570b5218bb45ab395f597096
+---
+ .../audiopolicy/AudioPolicyInterfaceImplLegacy.cpp |   12 ++----------
+ 1 file changed, 2 insertions(+), 10 deletions(-)
+
+diff --git a/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp b/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
+index 385829e..eb39128 100644
+--- a/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
++++ b/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
+@@ -335,17 +335,13 @@ status_t AudioPolicyService::setStreamVolumeIndex(audio_stream_type_t stream,
+         return BAD_VALUE;
+     }
+     Mutex::Autolock _l(mLock);
+-#ifndef STE_HARDWARE
+     if (mpAudioPolicy->set_stream_volume_index_for_device) {
+         return mpAudioPolicy->set_stream_volume_index_for_device(mpAudioPolicy,
+                                                                 stream,
+                                                                 index,
+                                                                 device);
+-    } else 
+-#endif
+-    {
+-        return mpAudioPolicy->set_stream_volume_index(mpAudioPolicy, stream, index);
+     }
++    return mpAudioPolicy->set_stream_volume_index(mpAudioPolicy, stream, index);
+ }
+ 
+ status_t AudioPolicyService::getStreamVolumeIndex(audio_stream_type_t stream,
+@@ -359,17 +355,13 @@ status_t AudioPolicyService::getStreamVolumeIndex(audio_stream_type_t stream,
+         return BAD_VALUE;
+     }
+     Mutex::Autolock _l(mLock);
+-#ifndef STE_HARDWARE
+     if (mpAudioPolicy->get_stream_volume_index_for_device) {
+         return mpAudioPolicy->get_stream_volume_index_for_device(mpAudioPolicy,
+                                                                 stream,
+                                                                 index,
+                                                                 device);
+-    } else 
+-#endif
+-    {
+-        return mpAudioPolicy->get_stream_volume_index(mpAudioPolicy, stream, index);
+     }
++    return mpAudioPolicy->get_stream_volume_index(mpAudioPolicy, stream, index);
+ }
+ 
+ uint32_t AudioPolicyService::getStrategyForStream(audio_stream_type_t stream)
+-- 
+1.7.9.5
+

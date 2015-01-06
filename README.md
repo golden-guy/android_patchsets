@@ -16,7 +16,7 @@ limitations under the License.
 Patch files for Samsung Galaxy S III Mini
 
 How to apply:
-- Change into the relevant directory as indicated by the patch file name
-- Run 'git am patch_file.patch'
+- Change into the relevant directory in your sources, as indicated by the patch file location
+- Run 'git am /path/to/patch_file.patch'
 
 Enjoy!

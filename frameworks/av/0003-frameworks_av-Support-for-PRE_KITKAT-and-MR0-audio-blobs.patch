@@ -1,0 +1,192 @@
+From 904ee70ab2d639f81e0c7a56895dd1cd2279a342 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Tue, 16 Dec 2014 22:47:36 +0100
+Subject: [PATCH 3/7] frameworks_av: Support for PRE_KITKAT and MR0 audio
+ blobs
+
+Change-Id: Ifb4143ce440fda11213aabd3669ff598a21cb7cd
+---
+ media/libmedia/AudioSystem.cpp                     |    4 ++++
+ services/audioflinger/Android.mk                   |    4 ++++
+ services/audioflinger/AudioFlinger.cpp             |    6 ++++++
+ services/audioflinger/PlaybackTracks.h             |    4 ++++
+ .../audiopolicy/AudioPolicyClientImplLegacy.cpp    |    5 +++++
+ .../audiopolicy/AudioPolicyInterfaceImplLegacy.cpp |   13 +++++++++++--
+ 6 files changed, 34 insertions(+), 2 deletions(-)
+
+diff --git a/media/libmedia/AudioSystem.cpp b/media/libmedia/AudioSystem.cpp
+index dda3657..0474dee 100644
+--- a/media/libmedia/AudioSystem.cpp
++++ b/media/libmedia/AudioSystem.cpp
+@@ -654,7 +654,11 @@ audio_io_handle_t AudioSystem::getOutput(audio_stream_type_t stream,
+ {
+     const sp<IAudioPolicyService>& aps = AudioSystem::get_audio_policy_service();
+     if (aps == 0) return 0;
++#ifdef STE_HARDWARE
++    return aps->getOutput(stream, samplingRate, format, channelMask, flags, NULL);
++#else
+     return aps->getOutput(stream, samplingRate, format, channelMask, flags, offloadInfo);
++#endif
+ }
+ 
+ audio_io_handle_t AudioSystem::getOutputForAttr(const audio_attributes_t *attr,
+diff --git a/services/audioflinger/Android.mk b/services/audioflinger/Android.mk
+index 697fb37..f90e576 100644
+--- a/services/audioflinger/Android.mk
++++ b/services/audioflinger/Android.mk
+@@ -75,6 +75,10 @@ else
+     LOCAL_CFLAGS += -DANDROID_SMP=0
+ endif
+ 
++ifeq ($(BOARD_HAVE_PRE_KITKAT_AUDIO_BLOB),true)
++    LOCAL_CFLAGS += -DHAVE_PRE_KITKAT_AUDIO_BLOB
++endif
++
+ LOCAL_CFLAGS += -fvisibility=hidden
+ 
+ include $(BUILD_SHARED_LIBRARY)
+diff --git a/services/audioflinger/AudioFlinger.cpp b/services/audioflinger/AudioFlinger.cpp
+index e48af20..22c4669 100644
+--- a/services/audioflinger/AudioFlinger.cpp
++++ b/services/audioflinger/AudioFlinger.cpp
+@@ -152,11 +152,13 @@ static int load_audio_interface(const char *if_name, audio_hw_device_t **dev)
+     if (rc) {
+         goto out;
+     }
++#if !defined(ICS_AUDIO_BLOB) && !defined(MR0_AUDIO_BLOB)
+     if ((*dev)->common.version < AUDIO_DEVICE_API_VERSION_MIN) {
+         ALOGE("%s wrong audio hw device version %04x", __func__, (*dev)->common.version);
+         rc = BAD_VALUE;
+         goto out;
+     }
++#endif
+     return 0;
+ 
+ out:
+@@ -1523,6 +1525,7 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
+     {  // scope for auto-lock pattern
+         AutoMutex lock(mHardwareLock);
+ 
++#if !defined(ICS_AUDIO_BLOB) && !defined(MR0_AUDIO_BLOB)
+         if (0 == mAudioHwDevs.size()) {
+             mHardwareStatus = AUDIO_HW_GET_MASTER_VOLUME;
+             if (NULL != dev->get_master_volume) {
+@@ -1540,6 +1543,7 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
+                 }
+             }
+         }
++#endif
+ 
+         mHardwareStatus = AUDIO_HW_SET_MASTER_VOLUME;
+         if ((NULL != dev->set_master_volume) &&
+@@ -1548,12 +1552,14 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
+                     AudioHwDevice::AHWD_CAN_SET_MASTER_VOLUME);
+         }
+ 
++#if !defined(ICS_AUDIO_BLOB) && !defined(MR0_AUDIO_BLOB)
+         mHardwareStatus = AUDIO_HW_SET_MASTER_MUTE;
+         if ((NULL != dev->set_master_mute) &&
+             (OK == dev->set_master_mute(dev, mMasterMute))) {
+             flags = static_cast<AudioHwDevice::Flags>(flags |
+                     AudioHwDevice::AHWD_CAN_SET_MASTER_MUTE);
+         }
++#endif
+ 
+         mHardwareStatus = AUDIO_HW_IDLE;
+     }
+diff --git a/services/audioflinger/PlaybackTracks.h b/services/audioflinger/PlaybackTracks.h
+index ee48276..a5f833c 100644
+--- a/services/audioflinger/PlaybackTracks.h
++++ b/services/audioflinger/PlaybackTracks.h
+@@ -55,7 +55,11 @@ public:
+             audio_stream_type_t streamType() const {
+                 return mStreamType;
+             }
++#ifdef STE_HARDWARE
++            bool        isOffloaded() const { return 0; }
++#else
+             bool        isOffloaded() const { return (mFlags & IAudioFlinger::TRACK_OFFLOAD) != 0; }
++#endif
+             bool        isDirect() const { return (mFlags & IAudioFlinger::TRACK_DIRECT) != 0; }
+             status_t    setParameters(const String8& keyValuePairs);
+             status_t    attachAuxEffect(int EffectId);
+diff --git a/services/audiopolicy/AudioPolicyClientImplLegacy.cpp b/services/audiopolicy/AudioPolicyClientImplLegacy.cpp
+index 14b1df9..5ed4bb0 100644
+--- a/services/audiopolicy/AudioPolicyClientImplLegacy.cpp
++++ b/services/audiopolicy/AudioPolicyClientImplLegacy.cpp
+@@ -85,9 +85,12 @@ static audio_io_handle_t open_output(audio_module_handle_t module,
+     config.sample_rate = *pSamplingRate;
+     config.format = *pFormat;
+     config.channel_mask = *pChannelMask;
++#ifndef HAVE_PRE_KITKAT_AUDIO_BLOB
+     if (offloadInfo != NULL) {
+         config.offload_info = *offloadInfo;
+     }
++#endif
++
+     audio_io_handle_t output = AUDIO_IO_HANDLE_NONE;
+     status_t status = af->openOutput(module, &output, &config, pDevices,
+                                      String8(""), pLatencyMs, flags);
+@@ -95,9 +98,11 @@ static audio_io_handle_t open_output(audio_module_handle_t module,
+         *pSamplingRate = config.sample_rate;
+         *pFormat = config.format;
+         *pChannelMask = config.channel_mask;
++#ifndef HAVE_PRE_KITKAT_AUDIO_BLOB
+         if (offloadInfo != NULL) {
+             *((audio_offload_info_t *)offloadInfo) = config.offload_info;
+         }
++#endif
+     }
+     return output;
+ }
+diff --git a/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp b/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
+index fd47256..385829e 100644
+--- a/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
++++ b/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
+@@ -335,12 +335,15 @@ status_t AudioPolicyService::setStreamVolumeIndex(audio_stream_type_t stream,
+         return BAD_VALUE;
+     }
+     Mutex::Autolock _l(mLock);
++#ifndef STE_HARDWARE
+     if (mpAudioPolicy->set_stream_volume_index_for_device) {
+         return mpAudioPolicy->set_stream_volume_index_for_device(mpAudioPolicy,
+                                                                 stream,
+                                                                 index,
+                                                                 device);
+-    } else {
++    } else 
++#endif
++    {
+         return mpAudioPolicy->set_stream_volume_index(mpAudioPolicy, stream, index);
+     }
+ }
+@@ -356,12 +359,15 @@ status_t AudioPolicyService::getStreamVolumeIndex(audio_stream_type_t stream,
+         return BAD_VALUE;
+     }
+     Mutex::Autolock _l(mLock);
++#ifndef STE_HARDWARE
+     if (mpAudioPolicy->get_stream_volume_index_for_device) {
+         return mpAudioPolicy->get_stream_volume_index_for_device(mpAudioPolicy,
+                                                                 stream,
+                                                                 index,
+                                                                 device);
+-    } else {
++    } else 
++#endif
++    {
+         return mpAudioPolicy->get_stream_volume_index(mpAudioPolicy, stream, index);
+     }
+ }
+@@ -433,6 +439,9 @@ bool AudioPolicyService::isStreamActive(audio_stream_type_t stream, uint32_t inP
+ 
+ bool AudioPolicyService::isStreamActiveRemotely(audio_stream_type_t stream, uint32_t inPastMs) const
+ {
++#if HAVE_PRE_KITKAT_AUDIO_BLOB
++    return false;
++#endif
+     if (mpAudioPolicy == NULL) {
+         return 0;
+     }
+-- 
+1.7.9.5
+

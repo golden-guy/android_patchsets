@@ -1,0 +1,62 @@
+From a8cf0bd4a055202434af822f0638fd1b584f474a Mon Sep 17 00:00:00 2001
+From: chrmhoffmann <chrmhoffmann@gmail.com>
+Date: Sun, 23 Nov 2014 18:22:35 +0100
+Subject: [PATCH 1/7] pre-kitkat audio blobs re-activated.
+
+Change-Id: Idfcb03d0a4aa0a099bf5a17b7bf592ab402e3255
+---
+ services/audiopolicy/Android.mk                    |    4 ++++
+ .../audiopolicy/AudioPolicyClientImplLegacy.cpp    |    5 +++++
+ .../audiopolicy/AudioPolicyInterfaceImplLegacy.cpp |    3 +++
+ 3 files changed, 12 insertions(+)
+
+diff --git a/services/audiopolicy/Android.mk b/services/audiopolicy/Android.mk
+index 6512c38..b6d06b6 100644
+--- a/services/audiopolicy/Android.mk
++++ b/services/audiopolicy/Android.mk
+@@ -37,6 +37,10 @@ LOCAL_SHARED_LIBRARIES += \
+     libaudiopolicymanager
+ endif
+ 
++ifeq ($(BOARD_HAVE_PRE_KITKAT_AUDIO_BLOB),true)
++    LOCAL_CFLAGS += -DHAVE_PRE_KITKAT_AUDIO_BLOB
++endif
++
+ LOCAL_STATIC_LIBRARIES := \
+     libmedia_helper \
+     libserviceutility
+diff --git a/services/audiopolicy/AudioPolicyClientImplLegacy.cpp b/services/audiopolicy/AudioPolicyClientImplLegacy.cpp
+index 97719da..14b1df9 100644
+--- a/services/audiopolicy/AudioPolicyClientImplLegacy.cpp
++++ b/services/audiopolicy/AudioPolicyClientImplLegacy.cpp
+@@ -125,8 +125,13 @@ audio_io_handle_t aps_open_output_on_module(void *service __unused,
+                                                    audio_output_flags_t flags,
+                                                    const audio_offload_info_t *offloadInfo)
+ {
++#ifdef HAVE_PRE_KITKAT_AUDIO_BLOB
++    return open_output(module, pDevices, pSamplingRate, pFormat, pChannelMask,
++                          pLatencyMs, flags, NULL);
++#else
+     return open_output(module, pDevices, pSamplingRate, pFormat, pChannelMask,
+                           pLatencyMs, flags, offloadInfo);
++#endif
+ }
+ 
+ audio_io_handle_t aps_open_dup_output(void *service __unused,
+diff --git a/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp b/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
+index e1e81e1..fd47256 100644
+--- a/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
++++ b/services/audiopolicy/AudioPolicyInterfaceImplLegacy.cpp
+@@ -474,6 +474,9 @@ status_t AudioPolicyService::queryDefaultPreProcessing(int audioSession,
+ 
+ bool AudioPolicyService::isOffloadSupported(const audio_offload_info_t& info)
+ {
++#if HAVE_PRE_KITKAT_AUDIO_BLOB
++    return false;
++#endif
+     if (mpAudioPolicy == NULL) {
+         ALOGV("mpAudioPolicy == NULL");
+         return false;
+-- 
+1.7.9.5
+

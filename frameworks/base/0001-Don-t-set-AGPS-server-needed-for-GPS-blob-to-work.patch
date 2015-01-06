@@ -1,0 +1,31 @@
+From b945f1cafb015de52ff7d1219ea0c6bf39ab796c Mon Sep 17 00:00:00 2001
+From: Meticulus <theonejohnnyd@gmail.com>
+Date: Sat, 3 Jan 2015 14:12:26 +0100
+Subject: [PATCH] Don't set AGPS server (needed for GPS blob to work)
+
+Change-Id: I46c0bb1330990dbd844f60d008a989043ef4cb03
+---
+ .../server/location/GpsLocationProvider.java       |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/services/core/java/com/android/server/location/GpsLocationProvider.java b/services/core/java/com/android/server/location/GpsLocationProvider.java
+index 0198e46..43d23ce 100644
+--- a/services/core/java/com/android/server/location/GpsLocationProvider.java
++++ b/services/core/java/com/android/server/location/GpsLocationProvider.java
+@@ -936,11 +936,11 @@ public class GpsLocationProvider implements LocationProviderInterface {
+                 Log.e(TAG, "unable to parse SUPL_PORT: " + portString);
+             }
+         }
+-        if (mSuplServerHost != null
++        /* if (mSuplServerHost != null
+                 && mSuplServerPort > TCP_MIN_PORT
+                 && mSuplServerPort <= TCP_MAX_PORT) {
+             native_set_agps_server(AGPS_TYPE_SUPL, mSuplServerHost, mSuplServerPort);
+-        }
++        }*/
+     }
+ 
+     /**
+-- 
+1.7.9.5
+

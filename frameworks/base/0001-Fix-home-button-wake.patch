@@ -1,0 +1,26 @@
+From cf597ae994d446be4351450b3b7dca806370dc48 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Sun, 4 Jan 2015 12:06:52 +0100
+Subject: [PATCH] Fix home button wake
+
+Change-Id: I86160193ed7263efbea23fe6aea190acd4d78234
+---
+ .../internal/policy/impl/PhoneWindowManager.java   |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java b/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
+index c3692d7..33bf2d1 100644
+--- a/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
++++ b/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
+@@ -1623,7 +1623,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                     UserHandle.USER_CURRENT) != 0;
+             mHomeWakeSupport = Settings.System.getIntForUser(resolver,
+                     Settings.System.HOME_BUTTON_WAKE,
+-                    0,
++                    1,
+                     UserHandle.USER_CURRENT) != 0;
+         }
+         if (updateRotation) {
+-- 
+1.7.9.5
+
