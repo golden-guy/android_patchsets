@@ -1,7 +1,7 @@
-From 9d1e672c361c40ab07f8f22d0fe4ba7334a2d33f Mon Sep 17 00:00:00 2001
+From 73bd2a53874bcf1741cf6a3bbdf56708a88d9c03 Mon Sep 17 00:00:00 2001
 From: Pawit Pornkitprasan <p.pawit@gmail.com>
 Date: Sat, 17 Dec 2011 17:26:54 -0500
-Subject: [PATCH] init: add detection of charging mode
+Subject: [PATCH 3/4] init: add detection of charging mode
 
 Based on Prashant Somashekar's patch which is in turn based on techomancer's
 patch http://goo.gl/I19GG.
@@ -28,7 +28,7 @@ Conflicts:
  2 files changed, 28 insertions(+), 1 deletion(-)
 
 diff --git a/init/Android.mk b/init/Android.mk
-index 7873045..b8d41e9 100644
+index 0b906e9..f9cf1c0 100755
 --- a/init/Android.mk
 +++ b/init/Android.mk
 @@ -32,6 +32,14 @@ endif

@@ -1,7 +1,7 @@
-From f82a92a29ae56d392491234173f2c273164344f5 Mon Sep 17 00:00:00 2001
+From 726255001f9da13264bfaec1838d46c8da551f63 Mon Sep 17 00:00:00 2001
 From: c457 <android.c357@gmail.com>
 Date: Sat, 3 Jan 2015 13:04:51 +0100
-Subject: [PATCH] Add support for MR0 audio blobs
+Subject: [PATCH 2/4] Add support for MR0 audio blobs
 
 Change-Id: Ibde57af67cafd550cc9d076580b02137df817739
 ---
@@ -9,10 +9,10 @@ Change-Id: Ibde57af67cafd550cc9d076580b02137df817739
  1 file changed, 34 insertions(+), 1 deletion(-)
 
 diff --git a/include/system/audio.h b/include/system/audio.h
-index 848fabb..8887080 100644
+index 223d14f..bcbab97 100644
 --- a/include/system/audio.h
 +++ b/include/system/audio.h
-@@ -638,7 +638,11 @@ typedef enum {
+@@ -648,7 +648,11 @@ typedef enum {
  enum {
      AUDIO_DEVICE_NONE                          = 0x0,
      /* reserved bits */
@@ -24,7 +24,7 @@ index 848fabb..8887080 100644
      AUDIO_DEVICE_BIT_DEFAULT                   = 0x40000000,
      /* output devices */
      AUDIO_DEVICE_OUT_EARPIECE                  = 0x1,
-@@ -722,6 +726,35 @@ enum {
+@@ -732,6 +736,35 @@ enum {
                                   AUDIO_DEVICE_OUT_USB_DEVICE),
  
      /* input devices */
@@ -60,7 +60,7 @@ index 848fabb..8887080 100644
      AUDIO_DEVICE_IN_COMMUNICATION         = AUDIO_DEVICE_BIT_IN | 0x1,
      AUDIO_DEVICE_IN_AMBIENT               = AUDIO_DEVICE_BIT_IN | 0x2,
      AUDIO_DEVICE_IN_BUILTIN_MIC           = AUDIO_DEVICE_BIT_IN | 0x4,
-@@ -755,7 +788,7 @@ enum {
+@@ -765,7 +798,7 @@ enum {
      AUDIO_DEVICE_IN_ANC_HEADSET           = AUDIO_DEVICE_BIT_IN | 0x800000,
  #endif
      AUDIO_DEVICE_IN_DEFAULT               = AUDIO_DEVICE_BIT_IN | AUDIO_DEVICE_BIT_DEFAULT,

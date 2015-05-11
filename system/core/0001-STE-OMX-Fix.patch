@@ -1,13 +1,13 @@
-From bc318261dbe478fcbc01a507caea1ec9b2f190c6 Mon Sep 17 00:00:00 2001
+From c24048429f6cf4efec34629463eba9a76f747451 Mon Sep 17 00:00:00 2001
 From: Meticulus <theonejohnnyd@gmail.com>
 Date: Mon, 1 Dec 2014 09:50:49 -0600
-Subject: [PATCH] STE OMX Fix
+Subject: [PATCH 1/4] STE OMX Fix
 
 Change-Id: I04ef4ec08038909dddfa17ea9c9655850f54ed21
 ---
- include/utils/Flattenable.h | 22 ++++++++++++++++++++++
- libutils/Android.mk         |  6 ++++++
- libutils/Flattenable.cpp    | 24 ++++++++++++++++++++++++
+ include/utils/Flattenable.h |   22 ++++++++++++++++++++++
+ libutils/Android.mk         |    6 ++++++
+ libutils/Flattenable.cpp    |   24 ++++++++++++++++++++++++
  3 files changed, 52 insertions(+)
  create mode 100644 libutils/Flattenable.cpp
 
@@ -121,5 +121,5 @@ index 0000000..1f2ffaa
 +
 +}; // namespace android
 -- 
-1.9.1
+1.7.9.5
 

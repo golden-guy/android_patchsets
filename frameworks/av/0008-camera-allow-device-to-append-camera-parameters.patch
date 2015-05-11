@@ -1,7 +1,7 @@
-From e74f4e473b71a790303f180af1139e593a5dde2b Mon Sep 17 00:00:00 2001
+From 3bf9142709be7a17d61fdbc49bb32a1a577fcb59 Mon Sep 17 00:00:00 2001
 From: Konsta <konsta09@gmail.com>
 Date: Sun, 4 Jan 2015 10:26:46 +0100
-Subject: [PATCH] camera: allow device to append camera parameters
+Subject: [PATCH 08/12] camera: allow device to append camera parameters
 
 Overload using include/camera/CameraParametersExtra.h in device
 tree to add device specific camera parameters.
@@ -16,7 +16,7 @@ Change-Id: Ibd8fcfda3480c917d8fa448afac5583306fc58dc
  create mode 100644 include/camera/CameraParametersExtra.h
 
 diff --git a/camera/CameraParameters.cpp b/camera/CameraParameters.cpp
-index d114b94..a7bf353 100644
+index c577466..1064743 100644
 --- a/camera/CameraParameters.cpp
 +++ b/camera/CameraParameters.cpp
 @@ -148,26 +148,11 @@ const char CameraParameters::SCENE_MODE_FIREWORKS[] = "fireworks";

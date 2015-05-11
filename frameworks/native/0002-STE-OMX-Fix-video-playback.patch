@@ -1,7 +1,7 @@
-From 8efc2fba6305e32f08b460795972148fd2c4d7a7 Mon Sep 17 00:00:00 2001
+From 2167734f51ca5160d84424c1d39cfbcd7a7fec5e Mon Sep 17 00:00:00 2001
 From: Agontuk <rifat662@gmail.com>
 Date: Sun, 4 Jan 2015 11:37:45 +0100
-Subject: [PATCH] STE OMX Fix video playback
+Subject: [PATCH 2/6] STE OMX Fix video playback
 
 Change-Id: I9e02f38fe6d8f76eeb0c0ff76c11ead16954edfb
 ---
@@ -26,7 +26,7 @@ index 474d286..a48c549 100644
      private:
          // Only allow instantiation using ref counting.
 diff --git a/libs/gui/GLConsumer.cpp b/libs/gui/GLConsumer.cpp
-index c19dd3c..1aff195 100644
+index 6711362..e9af9da 100644
 --- a/libs/gui/GLConsumer.cpp
 +++ b/libs/gui/GLConsumer.cpp
 @@ -430,21 +430,10 @@ status_t GLConsumer::updateAndReleaseLocked(const BufferQueue::BufferItem& item)

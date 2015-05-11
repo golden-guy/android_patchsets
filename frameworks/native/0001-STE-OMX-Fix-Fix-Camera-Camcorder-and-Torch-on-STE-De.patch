@@ -1,7 +1,7 @@
-From 7a838df644871f60df1950a07ce48499f3decc37 Mon Sep 17 00:00:00 2001
+From 2bc368aea71ca2091a1d03c1dae636a29f73521e Mon Sep 17 00:00:00 2001
 From: Meticulus <theonejohnnyd@gmail.com>
 Date: Thu, 6 Nov 2014 00:58:05 +0100
-Subject: [PATCH 1/3] STE OMX Fix Fix Camera, Camcorder and Torch on STE
+Subject: [PATCH 1/6] STE OMX Fix Fix Camera, Camcorder and Torch on STE
  Devices
 
 Change-Id: I46d1a04a8fcc63546b319d31d9299517406e783a
@@ -49,7 +49,7 @@ index 463e26d..5bf104b 100644
  private:
      size_t          mSize;
 diff --git a/include/binder/Parcel.h b/include/binder/Parcel.h
-index 2ee99f8..5e38e90 100644
+index 6a69761..68c2083 100644
 --- a/include/binder/Parcel.h
 +++ b/include/binder/Parcel.h
 @@ -28,8 +28,12 @@
@@ -94,7 +94,7 @@ index 2ee99f8..5e38e90 100644
      template<typename T>
      status_t            read(LightFlattenable<T>& val) const;
  
-@@ -284,19 +294,25 @@ private:
+@@ -288,19 +298,25 @@ private:
  
      class FlattenableHelperInterface {
      protected:
@@ -122,7 +122,7 @@ index 2ee99f8..5e38e90 100644
  
      public:
          virtual size_t getFlattenedSize() const {
-@@ -309,7 +325,11 @@ private:
+@@ -313,7 +329,11 @@ private:
              return val.flatten(buffer, size, fds, count);
          }
          virtual status_t unflatten(void const* buffer, size_t size, int const* fds, size_t count) {
@@ -134,7 +134,7 @@ index 2ee99f8..5e38e90 100644
          }
      };
      status_t write(const FlattenableHelperInterface& val);
-@@ -331,11 +351,13 @@ public:
+@@ -335,11 +355,13 @@ public:
  
  // ---------------------------------------------------------------------------
  
@@ -148,7 +148,7 @@ index 2ee99f8..5e38e90 100644
  
  template<typename T>
  status_t Parcel::write(const LightFlattenable<T>& val) {
-@@ -355,11 +377,13 @@ status_t Parcel::write(const LightFlattenable<T>& val) {
+@@ -359,11 +381,13 @@ status_t Parcel::write(const LightFlattenable<T>& val) {
      return NO_ERROR;
  }
  
@@ -163,7 +163,7 @@ index 2ee99f8..5e38e90 100644
  template<typename T>
  status_t Parcel::read(LightFlattenable<T>& val) const {
 diff --git a/include/gui/BufferItem.h b/include/gui/BufferItem.h
-index 5effd10..3a32aac 100644
+index 01b6ff4..0372112 100644
 --- a/include/gui/BufferItem.h
 +++ b/include/gui/BufferItem.h
 @@ -32,8 +32,8 @@ namespace android {
@@ -178,7 +178,7 @@ index 5effd10..3a32aac 100644
      size_t getFlattenedSize() const;
      size_t getFdCount() const;
 diff --git a/include/gui/BufferQueue.h b/include/gui/BufferQueue.h
-index 3297b10..37a786b 100644
+index 1188837..1e4f162 100644
 --- a/include/gui/BufferQueue.h
 +++ b/include/gui/BufferQueue.h
 @@ -41,6 +41,10 @@ public:
@@ -193,7 +193,7 @@ index 3297b10..37a786b 100644
      // producer and consumer can run asynchronously.
      enum { MAX_MAX_ACQUIRED_BUFFERS = NUM_BUFFER_SLOTS - 2 };
 diff --git a/include/gui/ConsumerBase.h b/include/gui/ConsumerBase.h
-index 100bb26..97cfc82 100644
+index f7ab5ac..e89d363 100644
 --- a/include/gui/ConsumerBase.h
 +++ b/include/gui/ConsumerBase.h
 @@ -167,7 +167,10 @@ protected:
@@ -327,7 +327,7 @@ index 4e9e810..5848e77 100644
          // timestamp - a monotonically increasing value in nanoseconds
          // isAutoTimestamp - if the timestamp was synthesized at queue time
 diff --git a/include/media/openmax/OMX_IVCommon.h b/include/media/openmax/OMX_IVCommon.h
-index 5f9e9b6..d794a99 100644
+index a5b9d18..8944349 100644
 --- a/include/media/openmax/OMX_IVCommon.h
 +++ b/include/media/openmax/OMX_IVCommon.h
 @@ -165,6 +165,9 @@ typedef enum OMX_COLOR_FORMATTYPE {
@@ -381,7 +381,7 @@ index 7630faa..d1361c0 100644
  
      enum {
 diff --git a/include/ui/PixelFormat.h b/include/ui/PixelFormat.h
-index 7e46945..9fde9f4 100644
+index ed7c1d8..bedec56 100644
 --- a/include/ui/PixelFormat.h
 +++ b/include/ui/PixelFormat.h
 @@ -65,6 +65,16 @@ enum {
@@ -489,10 +489,10 @@ index 033066b..eb423ac 100644
 +          "private API. Please fix your application!");
 +}
 diff --git a/libs/binder/Parcel.cpp b/libs/binder/Parcel.cpp
-index 1dbb06f..3338a65 100644
+index e7589b1..27e5614 100644
 --- a/libs/binder/Parcel.cpp
 +++ b/libs/binder/Parcel.cpp
-@@ -875,6 +875,13 @@ status_t Parcel::writeBlob(size_t len, WritableBlob* outBlob)
+@@ -873,6 +873,13 @@ status_t Parcel::writeBlob(size_t len, WritableBlob* outBlob)
      return status;
  }
  
@@ -506,7 +506,7 @@ index 1dbb06f..3338a65 100644
  status_t Parcel::write(const FlattenableHelperInterface& val)
  {
      status_t err;
-@@ -1287,6 +1294,13 @@ status_t Parcel::readBlob(size_t len, ReadableBlob* outBlob) const
+@@ -1285,6 +1292,13 @@ status_t Parcel::readBlob(size_t len, ReadableBlob* outBlob) const
      return NO_ERROR;
  }
  
@@ -521,7 +521,7 @@ index 1dbb06f..3338a65 100644
  {
      // size
 diff --git a/libs/gui/Android.mk b/libs/gui/Android.mk
-index ca94aa3..9c83a60 100644
+index e5a5eb3..bc5df54 100644
 --- a/libs/gui/Android.mk
 +++ b/libs/gui/Android.mk
 @@ -44,6 +44,7 @@ LOCAL_SHARED_LIBRARIES := \
@@ -533,7 +533,7 @@ index ca94aa3..9c83a60 100644
  
  
 diff --git a/libs/gui/ConsumerBase.cpp b/libs/gui/ConsumerBase.cpp
-index f19b6c7..6a362f1 100644
+index 210e98e..e171398 100644
 --- a/libs/gui/ConsumerBase.cpp
 +++ b/libs/gui/ConsumerBase.cpp
 @@ -146,7 +146,7 @@ void ConsumerBase::abandon() {
@@ -546,7 +546,7 @@ index f19b6c7..6a362f1 100644
          freeBufferLocked(i);
      }
 diff --git a/libs/gui/GLConsumer.cpp b/libs/gui/GLConsumer.cpp
-index ccafe81..c19dd3c 100644
+index 318c087..6711362 100644
 --- a/libs/gui/GLConsumer.cpp
 +++ b/libs/gui/GLConsumer.cpp
 @@ -133,6 +133,9 @@ GLConsumer::GLConsumer(const sp<IGraphicBufferConsumer>& bq, uint32_t tex,
@@ -741,10 +741,10 @@ index ccafe81..c19dd3c 100644
      out[0] = a[0]*b[0] + a[4]*b[1] + a[8]*b[2] + a[12]*b[3];
      out[1] = a[1]*b[0] + a[5]*b[1] + a[9]*b[2] + a[13]*b[3];
 diff --git a/libs/ui/PixelFormat.cpp b/libs/ui/PixelFormat.cpp
-index 5ce7fba..feab416 100644
+index a716949..ac964e0 100644
 --- a/libs/ui/PixelFormat.cpp
 +++ b/libs/ui/PixelFormat.cpp
-@@ -51,6 +51,11 @@ ssize_t bitsPerPixel(PixelFormat format) {
+@@ -158,6 +158,11 @@ ssize_t bitsPerPixel(PixelFormat format) {
          case PIXEL_FORMAT_RGBA_5551:
          case PIXEL_FORMAT_RGBA_4444:
              return 16;
@@ -777,7 +777,7 @@ index 3b2984a..9736c5a 100644
  #if KHRONOS_SUPPORT_INT64 /* EGLuint64KHR requires 64-bit uint support */
  #ifndef EGL_KHR_stream
 diff --git a/opengl/libs/Android.mk b/opengl/libs/Android.mk
-index cc5d544..3631e17 100644
+index 4838d6c..3437703 100644
 --- a/opengl/libs/Android.mk
 +++ b/opengl/libs/Android.mk
 @@ -47,6 +47,9 @@ LOCAL_CFLAGS += -DEGL_TRACE=1
@@ -842,7 +842,7 @@ index 70d0e52..5ae596f 100644
 \ No newline at end of file
 +EGL_ENTRY(EGLBoolean, eglAwakenProcessIMG, void)
 diff --git a/services/surfaceflinger/DisplayDevice.cpp b/services/surfaceflinger/DisplayDevice.cpp
-index 564f974..ef5be49 100644
+index ac49e84..23936cb 100644
 --- a/services/surfaceflinger/DisplayDevice.cpp
 +++ b/services/surfaceflinger/DisplayDevice.cpp
 @@ -26,6 +26,9 @@
@@ -855,7 +855,7 @@ index 564f974..ef5be49 100644
  
  #include <gui/Surface.h>
  
-@@ -76,8 +79,12 @@ DisplayDevice::DisplayDevice(
+@@ -77,8 +80,12 @@ DisplayDevice::DisplayDevice(
        mPowerMode(HWC_POWER_MODE_OFF),
        mActiveConfig(0)
  {
@@ -868,7 +868,7 @@ index 564f974..ef5be49 100644
  
      /*
       * Create our display's surface
-@@ -410,7 +417,12 @@ void DisplayDevice::setDisplaySize(const int newWidth, const int newHeight) {
+@@ -435,7 +442,12 @@ void DisplayDevice::setDisplaySize(const int newWidth, const int newHeight) {
  
      mDisplaySurface->resizeBuffers(newWidth, newHeight);
  
@@ -881,7 +881,7 @@ index 564f974..ef5be49 100644
      mSurface = eglCreateWindowSurface(mDisplay, mConfig, window, NULL);
      eglQuerySurface(mDisplay, mSurface, EGL_WIDTH,  &mDisplayWidth);
      eglQuerySurface(mDisplay, mSurface, EGL_HEIGHT, &mDisplayHeight);
-@@ -494,12 +506,19 @@ void DisplayDevice::dump(String8& result) const {
+@@ -527,12 +539,19 @@ void DisplayDevice::dump(String8& result) const {
      const Transform& tr(mGlobalTransform);
      result.appendFormat(
          "+ DisplayDevice: %s\n"
@@ -904,10 +904,10 @@ index 564f974..ef5be49 100644
          mIsSecure, mSecureLayerVisible, mPowerMode, mActiveConfig,
          mVisibleLayersSortedByZ.size(),
 diff --git a/services/surfaceflinger/DisplayDevice.h b/services/surfaceflinger/DisplayDevice.h
-index d3f784a..3a51cb2 100644
+index fec5991..169b65b 100644
 --- a/services/surfaceflinger/DisplayDevice.h
 +++ b/services/surfaceflinger/DisplayDevice.h
-@@ -180,7 +180,9 @@ private:
+@@ -181,7 +181,9 @@ private:
      wp<IBinder> mDisplayToken;
  
      // ANativeWindow this display is rendering into
@@ -918,10 +918,10 @@ index d3f784a..3a51cb2 100644
  
      EGLConfig       mConfig;
 diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
-index 8a9cd5e..b0170ef 100644
+index 9981029..9f7ae0b 100644
 --- a/services/surfaceflinger/SurfaceFlinger.cpp
 +++ b/services/surfaceflinger/SurfaceFlinger.cpp
-@@ -2876,6 +2876,7 @@ class GraphicProducerWrapper : public BBinder, public MessageHandler {
+@@ -2936,6 +2936,7 @@ class GraphicProducerWrapper : public BBinder, public MessageHandler {
      uint32_t code;
      Parcel const* data;
      Parcel* reply;
@@ -929,7 +929,7 @@ index 8a9cd5e..b0170ef 100644
  
      enum {
          MSG_API_CALL,
-@@ -2889,6 +2890,7 @@ class GraphicProducerWrapper : public BBinder, public MessageHandler {
+@@ -2949,6 +2950,7 @@ class GraphicProducerWrapper : public BBinder, public MessageHandler {
       */
      virtual status_t transact(uint32_t code,
              const Parcel& data, Parcel* reply, uint32_t /* flags */) {
@@ -937,7 +937,7 @@ index 8a9cd5e..b0170ef 100644
          this->code = code;
          this->data = &data;
          this->reply = reply;
-@@ -2906,6 +2908,7 @@ class GraphicProducerWrapper : public BBinder, public MessageHandler {
+@@ -2966,6 +2968,7 @@ class GraphicProducerWrapper : public BBinder, public MessageHandler {
              looper->sendMessage(this, Message(MSG_API_CALL));
              barrier.wait();
          }

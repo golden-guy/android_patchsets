@@ -1,7 +1,7 @@
-From 221c70bc51bc8f3f2a04cf4fad78d9d5cd0c965b Mon Sep 17 00:00:00 2001
+From 43fdccd982950205786fc871467f1c21aae95385 Mon Sep 17 00:00:00 2001
 From: Stefan Berger <s.berger81@gmail.com>
 Date: Wed, 10 Dec 2014 13:50:57 +0100
-Subject: [PATCH 2/3] PPP: Use client IP address as default gateway
+Subject: [PATCH] PPP: Use client IP address as default gateway
 
 Change-Id: Ia071b79849db4d254ad4d66478500df3c8229873
 ---
@@ -9,7 +9,7 @@ Change-Id: Ia071b79849db4d254ad4d66478500df3c8229873
  1 file changed, 2 insertions(+), 22 deletions(-)
 
 diff --git a/src/java/com/android/internal/telephony/dataconnection/DataCallResponse.java b/src/java/com/android/internal/telephony/dataconnection/DataCallResponse.java
-index 51adce3..60d02a0 100644
+index ccae8d9..9de5980 100644
 --- a/src/java/com/android/internal/telephony/dataconnection/DataCallResponse.java
 +++ b/src/java/com/android/internal/telephony/dataconnection/DataCallResponse.java
 @@ -161,6 +161,8 @@ public class DataCallResponse {
