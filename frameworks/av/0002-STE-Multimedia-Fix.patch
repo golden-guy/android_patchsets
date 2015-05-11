@@ -1,7 +1,7 @@
-From 06c857fb51bd0a345bef13c2b2c2928d79109d3e Mon Sep 17 00:00:00 2001
+From 6aff71af7f4355923c1b5bcaf26d6f55a2523814 Mon Sep 17 00:00:00 2001
 From: Meticulus <theonejohnnyd@gmail.com>
 Date: Wed, 5 Nov 2014 22:57:06 +0100
-Subject: [PATCH 2/7] STE Multimedia Fix
+Subject: [PATCH 02/12] STE Multimedia Fix
 
 Change-Id: I41b1993023dcdae651a2171208524018e2381bd8
 ---
@@ -19,7 +19,7 @@ Change-Id: I41b1993023dcdae651a2171208524018e2381bd8
  11 files changed, 283 insertions(+), 2 deletions(-)
 
 diff --git a/camera/CameraParameters.cpp b/camera/CameraParameters.cpp
-index 25d632d..66ceffc 100644
+index e5e4e90..4bb4beb 100644
 --- a/camera/CameraParameters.cpp
 +++ b/camera/CameraParameters.cpp
 @@ -147,11 +147,26 @@ const char CameraParameters::SCENE_MODE_FIREWORKS[] = "fireworks";
@@ -125,7 +125,7 @@ index 85ba920..014fc7a 100644
              const BitmapParams &src, const BitmapParams &dst);
  
 diff --git a/include/media/stagefright/MediaDefs.h b/include/media/stagefright/MediaDefs.h
-index e67d4d5..2aa978e 100644
+index 13695d5..663d64c 100644
 --- a/include/media/stagefright/MediaDefs.h
 +++ b/include/media/stagefright/MediaDefs.h
 @@ -28,8 +28,14 @@ extern const char *MEDIA_MIMETYPE_VIDEO_AVC;
@@ -169,7 +169,7 @@ index e341160..67b6b84 100644
  
      struct CodecNameAndQuirks {
 diff --git a/media/libstagefright/ACodec.cpp b/media/libstagefright/ACodec.cpp
-index 2f2f9cf..7b2c53a 100644
+index 0f9e505..7661b75 100644
 --- a/media/libstagefright/ACodec.cpp
 +++ b/media/libstagefright/ACodec.cpp
 @@ -632,7 +632,11 @@ status_t ACodec::configureOutputBuffersFromNativeWindow(
@@ -185,7 +185,7 @@ index 2f2f9cf..7b2c53a 100644
      if (err != 0) {
          ALOGE("native_window_set_buffers_geometry failed: %s (%d)",
 diff --git a/media/libstagefright/CameraSource.cpp b/media/libstagefright/CameraSource.cpp
-index f76aed6..9ea3e99 100644
+index c3a940a..8e715ce 100644
 --- a/media/libstagefright/CameraSource.cpp
 +++ b/media/libstagefright/CameraSource.cpp
 @@ -122,6 +122,12 @@ static int32_t getColorFormat(const char* colorFormat) {
@@ -201,7 +201,7 @@ index f76aed6..9ea3e99 100644
      if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_ANDROID_OPAQUE)) {
          return OMX_COLOR_FormatAndroidOpaque;
      }
-@@ -566,13 +572,22 @@ status_t CameraSource::initWithCameraAccess(
+@@ -567,13 +573,22 @@ status_t CameraSource::initWithCameraAccess(
  
      // XXX: query camera for the stride and slice height
      // when the capability becomes available.
@@ -225,7 +225,7 @@ index f76aed6..9ea3e99 100644
      return OK;
  }
 diff --git a/media/libstagefright/MediaDefs.cpp b/media/libstagefright/MediaDefs.cpp
-index d48dd84..6135f17 100644
+index c5a6939..9a26c2d 100644
 --- a/media/libstagefright/MediaDefs.cpp
 +++ b/media/libstagefright/MediaDefs.cpp
 @@ -26,8 +26,14 @@ const char *MEDIA_MIMETYPE_VIDEO_AVC = "video/avc";
@@ -244,10 +244,10 @@ index d48dd84..6135f17 100644
  const char *MEDIA_MIMETYPE_AUDIO_AMR_NB = "audio/3gpp";
  const char *MEDIA_MIMETYPE_AUDIO_AMR_WB = "audio/amr-wb";
 diff --git a/media/libstagefright/OMXCodec.cpp b/media/libstagefright/OMXCodec.cpp
-index a8806c8..317d6db 100644
+index 58372ed..a1052b9 100644
 --- a/media/libstagefright/OMXCodec.cpp
 +++ b/media/libstagefright/OMXCodec.cpp
-@@ -190,6 +190,20 @@ static int CompareSoftwareCodecsFirst(
+@@ -191,6 +191,20 @@ static int CompareSoftwareCodecsFirst(
      return 0;
  }
  
@@ -268,7 +268,7 @@ index a8806c8..317d6db 100644
  // static
  void OMXCodec::findMatchingCodecs(
          const char *mime,
-@@ -259,6 +273,11 @@ uint32_t OMXCodec::getComponentQuirks(
+@@ -260,6 +274,11 @@ uint32_t OMXCodec::getComponentQuirks(
      if (info->hasQuirk("output-buffers-are-unreadable")) {
          quirks |= kOutputBuffersAreUnreadable;
      }
@@ -280,7 +280,7 @@ index a8806c8..317d6db 100644
  
      return quirks;
  }
-@@ -802,6 +821,9 @@ static size_t getFrameSize(
+@@ -803,6 +822,9 @@ static size_t getFrameSize(
          case OMX_COLOR_FormatYUV420Planar:
          case OMX_COLOR_FormatYUV420SemiPlanar:
          case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:
@@ -290,7 +290,7 @@ index a8806c8..317d6db 100644
          /*
          * FIXME: For the Opaque color format, the frame size does not
          * need to be (w*h*3)/2. It just needs to
-@@ -1486,6 +1508,10 @@ void OMXCodec::setComponentRole(
+@@ -1488,6 +1510,10 @@ void OMXCodec::setComponentRole(
              "video_decoder.mpeg4", "video_encoder.mpeg4" },
          { MEDIA_MIMETYPE_VIDEO_H263,
              "video_decoder.h263", "video_encoder.h263" },
@@ -301,7 +301,7 @@ index a8806c8..317d6db 100644
          { MEDIA_MIMETYPE_VIDEO_VP8,
              "video_decoder.vp8", "video_encoder.vp8" },
          { MEDIA_MIMETYPE_VIDEO_VP9,
-@@ -1569,6 +1595,16 @@ status_t OMXCodec::init() {
+@@ -1571,6 +1597,16 @@ status_t OMXCodec::init() {
      CHECK_EQ((int)mState, (int)LOADED);
  
      status_t err;
@@ -318,7 +318,7 @@ index a8806c8..317d6db 100644
      if (!(mQuirks & kRequiresLoadedToIdleAfterAllocation)) {
          err = mOMX->sendCommand(mNode, OMX_CommandStateSet, OMX_StateIdle);
          CHECK_EQ(err, (status_t)OK);
-@@ -1624,7 +1660,12 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
+@@ -1626,7 +1662,12 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
      }
  
      status_t err = OK;
@@ -331,7 +331,7 @@ index a8806c8..317d6db 100644
              && portIndex == kPortIndexInput) {
          err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexInput, OMX_TRUE);
          if (err != OK) {
-@@ -1823,8 +1864,11 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
+@@ -1825,8 +1866,11 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
              mNativeWindow.get(),
              def.format.video.nFrameWidth,
              def.format.video.nFrameHeight,
@@ -515,10 +515,10 @@ index 597167f..a85ad72 100644
      static const signed kClipMin = -278;
      static const signed kClipMax = 535;
 diff --git a/media/libstagefright/omx/OMXNodeInstance.cpp b/media/libstagefright/omx/OMXNodeInstance.cpp
-index f9c84e2..fc5389e 100644
+index c04d95f..3d335cb 100644
 --- a/media/libstagefright/omx/OMXNodeInstance.cpp
 +++ b/media/libstagefright/omx/OMXNodeInstance.cpp
-@@ -627,13 +627,20 @@ status_t OMXNodeInstance::useGraphicBuffer(
+@@ -717,13 +717,20 @@ status_t OMXNodeInstance::useGraphicBuffer(
  
      // See if the newer version of the extension is present.
      OMX_INDEXTYPE index;

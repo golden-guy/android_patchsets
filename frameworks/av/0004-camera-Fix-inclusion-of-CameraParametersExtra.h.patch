@@ -1,7 +1,7 @@
-From 93872906cdc15b17fb97cac7723b4a919603dc27 Mon Sep 17 00:00:00 2001
+From b752aaa90c1bcab51b61ecd25baa68aa239dc5db Mon Sep 17 00:00:00 2001
 From: Arne Coucheron <arco68@gmail.com>
 Date: Fri, 26 Dec 2014 11:05:00 +0100
-Subject: [PATCH 4/7] camera: Fix inclusion of CameraParametersExtra.h
+Subject: [PATCH 04/12] camera: Fix inclusion of CameraParametersExtra.h
 
 Change-Id: If3a6484c7423063c984650f5170794d1bb0e20e9
 ---
@@ -10,7 +10,7 @@ Change-Id: If3a6484c7423063c984650f5170794d1bb0e20e9
  2 files changed, 2 insertions(+)
 
 diff --git a/camera/CameraParameters.cpp b/camera/CameraParameters.cpp
-index 66ceffc..d114b94 100644
+index 4bb4beb..c577466 100644
 --- a/camera/CameraParameters.cpp
 +++ b/camera/CameraParameters.cpp
 @@ -21,6 +21,7 @@
