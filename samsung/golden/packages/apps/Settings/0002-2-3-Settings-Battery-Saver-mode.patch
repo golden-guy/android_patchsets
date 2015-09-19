@@ -1,0 +1,300 @@
+From 1802e5b270de069ddb1e6b52e3425597c7281ae9 Mon Sep 17 00:00:00 2001
+From: Yanuar Harry <ai.the.smarties.physics@gmail.com>
+Date: Mon, 13 Jan 2014 23:24:15 +0700
+Subject: [PATCH 2/2] [2/3] Settings: Battery Saver mode
+
+introduce battery saver mode
+this based from what user want or what user do to saving the battery life
+this include:
+1. Automatically switch mobile network into what user choice and also disable mobile data IF wifi connected to an AP
+2. Automatically switch mobile network and disable mobile data IF battery low (battery level can configure)
+3. Reduce screen brightness based low battery (this feature will disabled if Auto brightness mode enabled)
+4. Not changing network IF on Call or Usb tether enabled or WifiAP enabled
+5. Not changing network IF there is Download/upload progress
+6. Support For Both GSM and CDMA devices (need someone to test for CDMA devices)
+7. every condition has an option :D
+8. Restore all network configuration if battery saver mode disabled
+9. Add Time Range to start battery saver mode
+10. allow device without mobile data support, to using this feature
+11. fix inconsistent battery low level
+12. rewrite to better performance
+13. modified the controller to support battery saver mode
+14. add bluetooth, gps, wifi, and mobile data (if support) to be disabled while power saving activated
+15. fix build QuickSettings because of LocationController change
+16. rewrite to better performance
+17. fix brightness value
+18. rewrite (again) to allow add more saving mode
+19. do delay changing only for POWER SAVING not NORMAL mode
+20. add Cpu power saving mode
+21. fix Cpu freq value
+22. fix call saving state for non user configuration mode
+23. fix NPE
+24. add kill all task
+25. add disable sync
+
+Conflicts:
+	res/values/custom_strings.xml
+
+Change-Id: I19502c731b74e82a3873f19f51965ee5a88c1f04
+---
+ AndroidManifest.xml                                |   18 ++++++++
+ res/values/custom_strings.xml                      |    3 ++
+ res/xml/power_usage_summary.xml                    |    5 +++
+ src/com/android/settings/DataUsageSummary.java     |   43 ++++++++++++++++++++
+ .../settings/fuelgauge/PowerUsageSummary.java      |   12 +++++-
+ 5 files changed, 80 insertions(+), 1 deletion(-)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index d9d8e7e..1b6da50 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -1925,6 +1925,24 @@
+             </intent-filter>
+         </receiver>
+ 
++        <receiver
++            android:name="org.omnirom.omnigears.batterysaver.BootReceiver">
++            <intent-filter>
++                <action android:name="android.intent.action.BOOT_COMPLETED"/>
++            </intent-filter>
++        </receiver>
++
++        <receiver
++            android:name="org.omnirom.omnigears.batterysaver.BatterySaverReceiver">
++            <intent-filter>
++                <action android:name="android.intent.action.TIMEZONE_CHANGED"></action>
++                <action android:name="android.intent.action.TIME_CHANGED"></action>
++                <action android:name="android.intent.action.DATE_CHANGED"></action>
++                <action android:name="android.intent.action.BATTERY_SERVICES"></action>
++                <action android:name="org.omnirom.omnigears.batterysaver.SCHEDULE_BATTERY_SAVER"/>
++            </intent-filter>
++        </receiver>
++
+         <provider
+             android:name="android.support.v4.content.FileProvider"
+             android:authorities="com.android.settings.files"
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 256c99e..ea6fc8a 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -286,6 +286,9 @@
+     <string name="ime_switcher_notify">Selector notification</string>
+     <string name="ime_switcher_notify_summary">Display input method selector notification</string>
+ 
++    <!-- Toggle switch title for enabling battery saver connections. [CHAR LIMIT=32] -->
++    <string name="data_usage_enable_batterysaver">Battery saver</string>
++
+     <!-- Display : Rotation -->
+     <string name="display_rotation_title">Rotation</string>
+     <string name="display_rotation_disabled">Disabled</string>
+diff --git a/res/xml/power_usage_summary.xml b/res/xml/power_usage_summary.xml
+index 997efc8..248d702 100644
+--- a/res/xml/power_usage_summary.xml
++++ b/res/xml/power_usage_summary.xml
+@@ -22,6 +22,11 @@
+         android:key="battery_prefs"
+         android:title="@string/battery_prefs_title" />
+ 
++    <PreferenceScreen
++        android:key="pref_battery_saver"
++        android:fragment="org.omnirom.omnigears.interfacesettings.BatterySaverSettings"
++        android:title="@string/battery_saver_title" />
++
+     <ListPreference
+         android:key="pref_low_battery_warning_policy"
+         android:title="@string/pref_low_battery_warning_policy_title"
+diff --git a/src/com/android/settings/DataUsageSummary.java b/src/com/android/settings/DataUsageSummary.java
+index 6539cfa..9de2514 100644
+--- a/src/com/android/settings/DataUsageSummary.java
++++ b/src/com/android/settings/DataUsageSummary.java
+@@ -142,6 +142,7 @@ import com.android.settings.net.UidDetailProvider;
+ import com.android.settings.widget.ChartDataUsageView;
+ import com.android.settings.widget.ChartDataUsageView.DataUsageChartListener;
+ import com.android.settings.widget.PieChartView;
++import org.omnirom.omnigears.batterysaver.BatterySaverHelper;
+ import com.google.android.collect.Lists;
+ 
+ import libcore.util.Objects;
+@@ -215,6 +216,8 @@ public class DataUsageSummary extends Fragment {
+     private LinearLayout mNetworkSwitches;
+     private Switch mDataEnabled;
+     private View mDataEnabledView;
++    private Switch mBatterySaverEnabled;
++    private View mBatterySaverEnabledView;
+     private CheckBox mDisableAtLimit;
+     private View mDisableAtLimitView;
+ 
+@@ -357,6 +360,11 @@ public class DataUsageSummary extends Fragment {
+             mDataEnabled.setOnCheckedChangeListener(mDataEnabledListener);
+             mNetworkSwitches.addView(mDataEnabledView);
+ 
++            mBatterySaverEnabled = new Switch(inflater.getContext());
++            mBatterySaverEnabledView = inflatePreference(inflater, mNetworkSwitches, mBatterySaverEnabled);
++            mBatterySaverEnabled.setOnCheckedChangeListener(mBatterySaverEnabledListener);
++            mNetworkSwitches.addView(mBatterySaverEnabledView);
++
+             mDisableAtLimit = new CheckBox(inflater.getContext());
+             mDisableAtLimit.setClickable(false);
+             mDisableAtLimit.setFocusable(false);
+@@ -571,6 +579,7 @@ public class DataUsageSummary extends Fragment {
+     @Override
+     public void onDestroy() {
+         mDataEnabledView = null;
++        mBatterySaverEnabledView = null;
+         mDisableAtLimitView = null;
+ 
+         mUidDetailProvider.clearCache();
+@@ -708,23 +717,27 @@ public class DataUsageSummary extends Fragment {
+         if (LOGD) Log.d(TAG, "updateBody() with currentTab=" + currentTab);
+ 
+         mDataEnabledView.setVisibility(isOwner ? View.VISIBLE : View.GONE);
++        mBatterySaverEnabledView.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+ 
+         // TODO: remove mobile tabs when SIM isn't ready
+         final TelephonyManager tele = TelephonyManager.from(context);
+ 
+         if (TAB_MOBILE.equals(currentTab)) {
+             setPreferenceTitle(mDataEnabledView, R.string.data_usage_enable_mobile);
++            setPreferenceTitle(mBatterySaverEnabledView, R.string.data_usage_enable_batterysaver);
+             setPreferenceTitle(mDisableAtLimitView, R.string.data_usage_disable_mobile_limit);
+             mTemplate = buildTemplateMobileAll(getActiveSubscriberId(context));
+ 
+         } else if (TAB_3G.equals(currentTab)) {
+             setPreferenceTitle(mDataEnabledView, R.string.data_usage_enable_3g);
++            mBatterySaverEnabledView.setVisibility(View.GONE);
+             setPreferenceTitle(mDisableAtLimitView, R.string.data_usage_disable_3g_limit);
+             // TODO: bind mDataEnabled to 3G radio state
+             mTemplate = buildTemplateMobile3gLower(getActiveSubscriberId(context));
+ 
+         } else if (TAB_4G.equals(currentTab)) {
+             setPreferenceTitle(mDataEnabledView, R.string.data_usage_enable_4g);
++            mBatterySaverEnabledView.setVisibility(View.GONE);
+             setPreferenceTitle(mDisableAtLimitView, R.string.data_usage_disable_4g_limit);
+             // TODO: bind mDataEnabled to 4G radio state
+             mTemplate = buildTemplateMobile4g(getActiveSubscriberId(context));
+@@ -732,12 +745,14 @@ public class DataUsageSummary extends Fragment {
+         } else if (TAB_WIFI.equals(currentTab)) {
+             // wifi doesn't have any controls
+             mDataEnabledView.setVisibility(View.GONE);
++            mBatterySaverEnabledView.setVisibility(View.GONE);
+             mDisableAtLimitView.setVisibility(View.GONE);
+             mTemplate = buildTemplateWifiWildcard();
+ 
+         } else if (TAB_ETHERNET.equals(currentTab)) {
+             // ethernet doesn't have any controls
+             mDataEnabledView.setVisibility(View.GONE);
++            mBatterySaverEnabledView.setVisibility(View.GONE);
+             mDisableAtLimitView.setVisibility(View.GONE);
+             mTemplate = buildTemplateEthernet();
+ 
+@@ -866,6 +881,11 @@ public class DataUsageSummary extends Fragment {
+         }
+     }
+ 
++    private boolean isBatterySaverEnabled() {
++        final ContentResolver resolver = getActivity().getContentResolver();
++        return Settings.Global.getInt(resolver, Settings.Global.BATTERY_SAVER_OPTION, 0) != 0;
++    }
++
+     private void setMobileDataEnabled(boolean enabled) {
+         if (LOGD) Log.d(TAG, "setMobileDataEnabled()");
+         mConnService.setMobileDataEnabled(enabled);
+@@ -873,6 +893,14 @@ public class DataUsageSummary extends Fragment {
+         updatePolicy(true);
+     }
+ 
++    private void setBatterySaverModeEnabled(boolean enabled) {
++        if (LOGD) Log.d(TAG, "setBatterySaverModeEnabled()");
++        final Context context = getActivity();
++        BatterySaverHelper.setBatterySaverActive(context, enabled ? 1 : 0);
++        BatterySaverHelper.scheduleService(context);
++        updatePolicy(enabled);
++    }
++
+     private boolean isNetworkPolicyModifiable(NetworkPolicy policy) {
+         return policy != null && isBandwidthControlEnabled() && mDataEnabled.isChecked()
+                 && ActivityManager.getCurrentUser() == UserHandle.USER_OWNER;
+@@ -934,6 +962,7 @@ public class DataUsageSummary extends Fragment {
+         if (TAB_MOBILE.equals(mCurrentTab)) {
+             mBinding = true;
+             mDataEnabled.setChecked(isMobileDataEnabled());
++            mBatterySaverEnabled.setChecked(isBatterySaverEnabled());
+             mBinding = false;
+         }
+ 
+@@ -1049,6 +1078,20 @@ public class DataUsageSummary extends Fragment {
+         }
+     };
+ 
++    private OnCheckedChangeListener mBatterySaverEnabledListener = new OnCheckedChangeListener() {
++        @Override
++        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
++            if (mBinding) return;
++
++            final Context context = getActivity();
++            final boolean BatterySaverEnabled = isChecked;
++            final String currentTab = mCurrentTab;
++            if (TAB_MOBILE.equals(currentTab)) {
++                setBatterySaverModeEnabled(BatterySaverEnabled);
++            }
++        }
++    };
++
+     private View.OnClickListener mDisableAtLimitListener = new View.OnClickListener() {
+         @Override
+         public void onClick(View v) {
+diff --git a/src/com/android/settings/fuelgauge/PowerUsageSummary.java b/src/com/android/settings/fuelgauge/PowerUsageSummary.java
+index 1107cc1..17d9bd7 100644
+--- a/src/com/android/settings/fuelgauge/PowerUsageSummary.java
++++ b/src/com/android/settings/fuelgauge/PowerUsageSummary.java
+@@ -64,6 +64,7 @@ public class PowerUsageSummary extends PreferenceFragment implements
+     private static final String KEY_BATTERY_INDICATOR = "pref_battery_indicator";
+     private static final String KEY_BATTERY_PREFS_CATEGORY = "battery_prefs";
+     private static final String KEY_BATTERY_STATS_CATEGORY = "battery_stats";
++    private static final String KEY_BATTERY_SAVER = "pref_battery_saver";
+ 
+     private static final int MENU_STATS_TYPE                = Menu.FIRST;
+     private static final int MENU_STATS_REFRESH             = Menu.FIRST + 1;
+@@ -76,6 +77,7 @@ public class PowerUsageSummary extends PreferenceFragment implements
+     private ListPreference mBatteryIndicator;
+     private PreferenceCategory mBatteryPrefsCat;
+     private PreferenceCategory mBatteryStatsCat;
++    private PreferenceScreen mBatterySaverPrefs;
+ 
+     private int mStatsType = BatteryStats.STATS_SINCE_CHARGED;
+ 
+@@ -122,6 +124,9 @@ public class PowerUsageSummary extends PreferenceFragment implements
+         mBatteryStatsCat =
+             (PreferenceCategory) mAppListGroup.findPreference(KEY_BATTERY_STATS_CATEGORY);
+ 
++        mBatterySaverPrefs =
++            (PreferenceScreen) mAppListGroup.findPreference(KEY_BATTERY_SAVER);
++
+         mLowBatteryWarning =
+             (ListPreference) mAppListGroup.findPreference(KEY_LOW_BATTERY_WARNING_POLICY);
+         int lowBatteryWarning = Settings.System.getInt(getActivity().getContentResolver(),
+@@ -176,6 +181,9 @@ public class PowerUsageSummary extends PreferenceFragment implements
+                     R.string.history_details_title, null, null, 0);
+             return super.onPreferenceTreeClick(preferenceScreen, preference);
+         }
++        if (preference == mBatterySaverPrefs) {
++            return super.onPreferenceTreeClick(preferenceScreen, preference);
++        }
+         if (!(preference instanceof PowerGaugePreference)) {
+             return false;
+         }
+@@ -255,8 +263,10 @@ public class PowerUsageSummary extends PreferenceFragment implements
+         mAppListGroup.removeAll();
+         mAppListGroup.setOrderingAsAdded(false);
+ 
+-        mBatteryPrefsCat.setOrder(-6);
++        mBatteryPrefsCat.setOrder(-7);
+         mAppListGroup.addPreference(mBatteryPrefsCat);
++        mBatterySaverPrefs.setOrder(-6);
++        mAppListGroup.addPreference(mBatterySaverPrefs);
+         mLowBatteryWarning.setOrder(-5);
+         mAppListGroup.addPreference(mLowBatteryWarning);
+         mBatteryIndicator.setOrder(-4);
+-- 
+1.7.9.5
+

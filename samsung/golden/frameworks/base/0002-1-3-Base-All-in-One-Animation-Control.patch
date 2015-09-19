@@ -1,0 +1,2203 @@
+From b2c5d07eb92ef45d3ee0a9a8bfdd271e391e202d Mon Sep 17 00:00:00 2001
+From: Steve Spear <stephen.k.spear@gmail.com>
+Date: Sat, 28 Dec 2013 16:29:34 +0700
+Subject: [PATCH 2/8] [1/3]Base: All in One Animation Control
+
+Allow configure System, ListView, Scroll, and Keyboard Animation
+
+base from
+AOKP Animation Control https://github.com/AOKP/frameworks_base/commit/015c9cf00a8e49aea22d70b57b0af87c9134be73
+thanks to Steve Spear <stephen.k.spear@gmail.com>
+
+ListView Animation https://gerrit.omnirom.org/#/c/2863/
+thanks to jkl5616<jkl5616@gmail.com>
+
+Keyboard Animation https://github.com/zst123/XuiMod/commit/975cd531a9a847769b2af306495643a55ec44aaa
+thanks to zst123 for patches
+
+with slight modification to OmniRom
+
+Scrolling Animation https://github.com/zst123/XuiMod/commit/48c180cfa762617f59b4ceb3da50a6c28befe24f
+thanks to zst123 for patches
+
+add toast animations
+
+PS 40: rebased due to changes in 4.4.3_r1.1,
+       conflicts: core/java/android/widget/AbsListView.java
+PS 42: Cory Collins' fix
+
+Change-Id: I878e2e845c75a5e7ccf5de69383b18478de60d65
+---
+ .../inputmethodservice/InputMethodService.java     |  138 ++++++++++-
+ core/java/android/provider/Settings.java           |  136 +++++++++++
+ core/java/android/view/ViewConfiguration.java      |   75 +++++-
+ core/java/android/widget/AbsListView.java          |  180 +++++++++++++-
+ core/java/android/widget/Toast.java                |    5 +
+ .../internal/util/aokp/AwesomeAnimationHelper.java |  253 ++++++++++++++++++++
+ .../animcontrol_grow_fade_in_center_ribbon.xml     |    6 +
+ ...animcontrol_grow_fade_in_from_bottom_ribbon.xml |    6 +
+ .../anim/animcontrol_grow_fade_in_left_ribbon.xml  |    6 +
+ .../res/anim/animcontrol_grow_fade_in_ribbon.xml   |    6 +
+ .../anim/animcontrol_grow_fade_in_right_ribbon.xml |    6 +
+ .../res/anim/animcontrol_honami_toast_enter.xml    |    7 +
+ .../res/res/anim/animcontrol_honami_toast_exit.xml |    7 +
+ .../animcontrol_shrink_fade_out_center_ribbon.xml  |    6 +
+ ...mcontrol_shrink_fade_out_from_bottom_ribbon.xml |    6 +
+ .../animcontrol_shrink_fade_out_left_ribbon.xml    |    6 +
+ .../anim/animcontrol_shrink_fade_out_ribbon.xml    |    6 +
+ .../animcontrol_shrink_fade_out_right_ribbon.xml   |    6 +
+ core/res/res/anim/animcontrol_slide_in_down.xml    |    3 +
+ .../res/anim/animcontrol_slide_in_left_no_fade.xml |    5 +
+ .../res/anim/animcontrol_slide_in_left_ribbon.xml  |    6 +
+ .../anim/animcontrol_slide_in_right_no_fade.xml    |    5 +
+ .../res/anim/animcontrol_slide_in_right_ribbon.xml |    6 +
+ .../res/anim/animcontrol_slide_in_up_ribbon.xml    |    3 +
+ .../res/anim/animcontrol_slide_out_down_ribbon.xml |    3 +
+ .../anim/animcontrol_slide_out_left_no_fade.xml    |    5 +
+ .../res/anim/animcontrol_slide_out_left_ribbon.xml |    6 +
+ .../anim/animcontrol_slide_out_right_no_fade.xml   |    5 +
+ .../anim/animcontrol_slide_out_right_ribbon.xml    |    6 +
+ core/res/res/anim/animcontrol_slide_out_up.xml     |    3 +
+ core/res/res/anim/animcontrol_slow_fade_in.xml     |    3 +
+ core/res/res/anim/animcontrol_slow_fade_out.xml    |    3 +
+ core/res/res/anim/animcontrol_tn_toast_enter.xml   |    6 +
+ core/res/res/anim/animcontrol_tn_toast_exit.xml    |    6 +
+ core/res/res/anim/animcontrol_toko_toast_enter.xml |    5 +
+ core/res/res/anim/animcontrol_toko_toast_exit.xml  |    5 +
+ .../anim/animcontrol_translucent_enter_ribbon.xml  |    6 +
+ .../anim/animcontrol_translucent_exit_ribbon.xml   |    6 +
+ .../res/res/anim/animcontrol_xylon_toast_enter.xml |    5 +
+ core/res/res/anim/animcontrol_xylon_toast_exit.xml |    4 +
+ core/res/res/values/custom_arrays.xml              |   38 +++
+ core/res/res/values/custom_strings.xml             |   17 ++
+ core/res/res/values/custom_styles.xml              |   78 ++++++
+ core/res/res/values/custom_symbols.xml             |   76 ++++++
+ .../java/com/android/server/wm/AppTransition.java  |  221 ++++++++++++++---
+ 45 files changed, 1344 insertions(+), 52 deletions(-)
+ create mode 100644 core/java/com/android/internal/util/aokp/AwesomeAnimationHelper.java
+ create mode 100644 core/res/res/anim/animcontrol_grow_fade_in_center_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_grow_fade_in_from_bottom_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_grow_fade_in_left_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_grow_fade_in_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_grow_fade_in_right_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_honami_toast_enter.xml
+ create mode 100644 core/res/res/anim/animcontrol_honami_toast_exit.xml
+ create mode 100644 core/res/res/anim/animcontrol_shrink_fade_out_center_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_shrink_fade_out_from_bottom_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_shrink_fade_out_left_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_shrink_fade_out_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_shrink_fade_out_right_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_in_down.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_in_left_no_fade.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_in_left_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_in_right_no_fade.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_in_right_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_in_up_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_out_down_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_out_left_no_fade.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_out_left_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_out_right_no_fade.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_out_right_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_slide_out_up.xml
+ create mode 100644 core/res/res/anim/animcontrol_slow_fade_in.xml
+ create mode 100644 core/res/res/anim/animcontrol_slow_fade_out.xml
+ create mode 100644 core/res/res/anim/animcontrol_tn_toast_enter.xml
+ create mode 100644 core/res/res/anim/animcontrol_tn_toast_exit.xml
+ create mode 100644 core/res/res/anim/animcontrol_toko_toast_enter.xml
+ create mode 100644 core/res/res/anim/animcontrol_toko_toast_exit.xml
+ create mode 100644 core/res/res/anim/animcontrol_translucent_enter_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_translucent_exit_ribbon.xml
+ create mode 100644 core/res/res/anim/animcontrol_xylon_toast_enter.xml
+ create mode 100644 core/res/res/anim/animcontrol_xylon_toast_exit.xml
+ create mode 100644 core/res/res/values/custom_styles.xml
+ create mode 100644 core/res/res/values/custom_symbols.xml
+
+diff --git a/core/java/android/inputmethodservice/InputMethodService.java b/core/java/android/inputmethodservice/InputMethodService.java
+index 79a92b9..75455af 100644
+--- a/core/java/android/inputmethodservice/InputMethodService.java
++++ b/core/java/android/inputmethodservice/InputMethodService.java
+@@ -19,9 +19,11 @@ package android.inputmethodservice;
+ import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
+ import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
+ 
++import android.app.Activity;
+ import android.app.ActivityManager;
+ import android.app.Dialog;
+ import android.content.Context;
++import android.database.ContentObserver;
+ import android.content.res.Configuration;
+ import android.content.res.Resources;
+ import android.content.res.TypedArray;
+@@ -43,6 +45,7 @@ import android.text.method.MovementMethod;
+ import android.util.Log;
+ import android.util.PrintWriterPrinter;
+ import android.util.Printer;
++import android.view.IWindowManager;
+ import android.view.KeyCharacterMap;
+ import android.view.KeyEvent;
+ import android.view.LayoutInflater;
+@@ -53,7 +56,10 @@ import android.view.ViewTreeObserver;
+ import android.view.Window;
+ import android.view.WindowManager;
+ import android.view.WindowManager.BadTokenException;
++import android.view.animation.Animation;
++import android.view.animation.Animation.AnimationListener;
+ import android.view.animation.AnimationUtils;
++import android.view.animation.Interpolator;
+ import android.view.inputmethod.CompletionInfo;
+ import android.view.inputmethod.EditorInfo;
+ import android.view.inputmethod.ExtractedText;
+@@ -69,6 +75,7 @@ import android.widget.LinearLayout;
+ 
+ import com.android.internal.statusbar.IStatusBarService;
+ 
++import com.android.internal.util.aokp.AwesomeAnimationHelper;
+ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
+ 
+@@ -329,6 +336,13 @@ public class InputMethodService extends AbstractInputMethodService {
+     private IStatusBarService mStatusBarService;
+     private Object mServiceAquireLock = new Object();
+ 
++    private Window mWindowIme;
++    private int mAnimationDuration;
++    private int mAnimationEnterIndex;
++    private int mAnimationExitIndex;
++    private int mInterpolatorIndex;
++
++    private SettingsObserver mSettingsObserver;
+     final Insets mTmpInsets = new Insets();
+     final int[] mTmpLocation = new int[2];
+ 
+@@ -367,7 +381,47 @@ public class InputMethodService extends AbstractInputMethodService {
+             }
+         }
+     };
+-    
++
++    private class SettingsObserver extends ContentObserver {
++
++        SettingsObserver(Handler handler) {
++            super(handler);
++        }
++
++        void observe() {
++            getContentResolver().registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ANIMATION_IME_DURATION),
++                                    false, this);
++            getContentResolver().registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ANIMATION_IME_ENTER),
++                                    false, this);
++            getContentResolver().registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ANIMATION_IME_EXIT),
++                                    false, this);
++            getContentResolver().registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ANIMATION_IME_INTERPOLATOR),
++                                    false, this);
++
++        }
++
++        @Override
++        public void onChange(boolean selfChange) {
++            updateSettings();
++        }
++    }
++
++    private void updateSettings() {
++        mAnimationEnterIndex = Settings.System.getInt(getContentResolver(),
++                      Settings.System.ANIMATION_IME_ENTER, 0);
++        mAnimationExitIndex = Settings.System.getInt(getContentResolver(),
++                      Settings.System.ANIMATION_IME_EXIT, 0);
++        mInterpolatorIndex = Settings.System.getInt(getContentResolver(),
++                      Settings.System.ANIMATION_IME_INTERPOLATOR, 0);
++        int temp = Settings.System.getInt(getContentResolver(),
++                      Settings.System.ANIMATION_CONTROLS_DURATION, 0);
++        mAnimationDuration = temp * 15;
++    }
++
+     /**
+      * Concrete implementation of
+      * {@link AbstractInputMethodService.AbstractInputMethodImpl} that provides
+@@ -669,7 +723,8 @@ public class InputMethodService extends AbstractInputMethodService {
+         return false;
+     }
+ 
+-    @Override public void onCreate() {
++    @Override
++    public void onCreate() {
+         mTheme = Resources.selectSystemTheme(mTheme,
+                 getApplicationInfo().targetSdkVersion,
+                 android.R.style.Theme_InputMethod,
+@@ -684,8 +739,13 @@ public class InputMethodService extends AbstractInputMethodService {
+         if (mHardwareAccelerated) {
+             mWindow.getWindow().addFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
+         }
++        mHandler = new Handler();
++        mSettingsObserver = new SettingsObserver(mHandler);
++        mSettingsObserver.observe();
+         initViews();
+         mWindow.getWindow().setLayout(MATCH_PARENT, WRAP_CONTENT);
++        mWindowIme = mWindow.getWindow();
++        updateSettings();
+     }
+ 
+     /**
+@@ -745,7 +805,8 @@ public class InputMethodService extends AbstractInputMethodService {
+         mHandler = new Handler();
+     }
+ 
+-    @Override public void onDestroy() {
++    @Override
++    public void onDestroy() {
+         super.onDestroy();
+         mRootView.getViewTreeObserver().removeOnComputeInternalInsetsListener(
+                 mInsetsComputer);
+@@ -775,7 +836,8 @@ public class InputMethodService extends AbstractInputMethodService {
+      * {@link #onCreateInputView} and {@link #onStartInputView} and related
+      * appropriate functions if the UI is displayed.
+      */
+-    @Override public void onConfigurationChanged(Configuration newConfig) {
++    @Override
++    public void onConfigurationChanged(Configuration newConfig) {
+         super.onConfigurationChanged(newConfig);
+         
+         boolean visible = mWindowVisible;
+@@ -1588,7 +1650,17 @@ public class InputMethodService extends AbstractInputMethodService {
+      * for the window has occurred (creating its views etc).
+      */
+     public void onWindowShown() {
+-        // Intentionally empty
++        if (mAnimationEnterIndex == 0) {
++            mWindow.getWindow().setWindowAnimations(android.R.style.Animation_InputMethod);
++            return;
++        }
++        Dialog dialog = this.getWindow();
++        mWindowIme = dialog.getWindow();
++        mWindowIme.setWindowAnimations(-1);
++        dialog.show();
++        Animation anim = retrieveAnimation(true);
++        if (anim == null) return;
++        mRootView.startAnimation(anim);
+     }
+     
+     /**
+@@ -1596,9 +1668,58 @@ public class InputMethodService extends AbstractInputMethodService {
+      * after previously being visible.
+      */
+     public void onWindowHidden() {
+-        // Intentionally empty
++        if (mAnimationExitIndex == 0) {
++            mWindow.getWindow().setWindowAnimations(android.R.style.Animation_InputMethod);
++            return;
++        }
++        final Dialog dialog = this.getWindow();
++        mWindowIme = dialog.getWindow();
++        mWindowIme.setWindowAnimations(-1);
++
++        final Handler handler = new Handler();
++        final Runnable runnable = new Runnable() {
++                @Override
++                public void run() {
++                     dialog.hide();
++                }
++        };
++
++        Animation anim = retrieveAnimation(false);
++        if (anim != null){
++            anim.setAnimationListener(new AnimationListener() {
++                @Override
++                public void onAnimationStart(Animation animation) {}
++                @Override
++                public void onAnimationRepeat(Animation animation) {}
++                @Override
++                public void onAnimationEnd(Animation animation) {
++                    handler.removeCallbacks(runnable);
++                    dialog.hide();
++                }
++            });
++            dialog.show();
++            mRootView.startAnimation(anim);
++            if (mAnimationDuration > 0) {
++                handler.postDelayed(runnable, (mAnimationDuration * 2));
++            } else {
++                handler.postDelayed(runnable, 1000);
++            }
++        }
+     }
+-    
++
++    private Animation retrieveAnimation(boolean enter){
++        int[] animArray = AwesomeAnimationHelper.getAnimations(enter ? mAnimationEnterIndex : mAnimationExitIndex);
++        int animInt = enter ? animArray[1] : animArray[0];
++        if (animInt == 0) return null;
++        Animation anim = AnimationUtils.loadAnimation(this, animInt);
++        Interpolator intplr= AwesomeAnimationHelper.getInterpolator(this, mInterpolatorIndex);
++        if (intplr != null) anim.setInterpolator(intplr);
++        if (mAnimationDuration > 0) {
++            anim.setDuration(mAnimationDuration);
++        }
++        return anim;
++    }
++
+     /**
+      * Called when a new client has bound to the input method.  This
+      * may be followed by a series of {@link #onStartInput(EditorInfo, boolean)}
+@@ -2445,7 +2566,8 @@ public class InputMethodService extends AbstractInputMethodService {
+      * Performs a dump of the InputMethodService's internal state.  Override
+      * to add your own information to the dump.
+      */
+-    @Override protected void dump(FileDescriptor fd, PrintWriter fout, String[] args) {
++    @Override
++    protected void dump(FileDescriptor fd, PrintWriter fout, String[] args) {
+         final Printer p = new PrintWriterPrinter(fout);
+         p.println("Input method service state for " + this + ":");
+         p.println("  mWindowCreated=" + mWindowCreated
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index e0329a0..a5232ef 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -3118,6 +3118,142 @@ public final class Settings {
+         public static final String RECENTS_USE_OMNISWITCH = "recents_use_omniswitch";
+ 
+         /**
++         *
++         * @hide
++         */
++        public static final String[] ACTIVITY_ANIMATION_CONTROLS = new String[] {
++                "activity_open",
++                "activity_close",
++                "task_open",
++                "task_close",
++                "task_to_front",
++                "task_to_back",
++                "wallpaper_open",
++                "wallpaper_close",
++                "wallpaper_intra_open",
++                "wallpaper_intra_close",
++        };
++
++        /**
++         *
++         * @hide
++         */
++        public static final String ANIMATION_CONTROLS_DURATION = "animation_controls_duration";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String ANIMATION_CONTROLS_NO_SCROLL = "animation_controls_no_scroll";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String ANIMATION_CONTROLS_NO_OVERRIDE = "animation_controls_no_override";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String LISTVIEW_ANIMATION_CACHE = "listview_animation_cache";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String LISTVIEW_ANIMATION_EXCLUDED_APPS = "listview_animation_excluded_apps";
++
++        /**
++         * ListView Animations
++         * 0 == None
++         * 1 == Wave (Left)
++         * 2 == Wave (Right)
++         * 3 == Scale
++         * 4 == Alpha
++         * 5 == Stack (Top)
++         * 6 == Stack (Bottom)
++         * 7 == Translate (Left)
++         * 8 == Translate (Right)
++         * @hide
++         */
++        public static final String LISTVIEW_ANIMATION = "listview_animation";
++
++        /**
++         * ListView Interpolators
++         * 0 == None
++         * 1 == accelerate_interpolator
++         * 2 == decelerate_interpolator
++         * 3 == accelerate_decelerate_interpolator
++         * 4 == anticipate_interpolator
++         * 5 == overshoot_interpolator
++         * 6 == anticipate_overshoot_interpolator
++         * 7 == bounce_interpolator
++         * @hide
++         */
++        public static final String LISTVIEW_INTERPOLATOR = "listview_interpolator";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String LISTVIEW_DURATION = "listview_duration";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String ANIMATION_IME_DURATION = "animation_ime_duration";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String ANIMATION_IME_ENTER = "animation_ime_enter";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String ANIMATION_IME_EXIT = "animation_ime_exit";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String ANIMATION_IME_INTERPOLATOR = "animation_ime_interpolator";
++
++        /**
++         * Determine custom scroll friction.
++         * @hide
++         */
++        public static final String CUSTOM_SCROLL_FRICTION = "custom_scroll_friction";
++
++        /**
++         * Determine custom fling velocity.
++         * @hide
++         */
++        public static final String CUSTOM_FLING_VELOCITY = "custom_fling_velocity";
++
++        /**
++         * Determine custom overscroll distance.
++         * @hide
++         */
++        public static final String CUSTOM_OVERSCROLL_DISTANCE = "custom_overscroll_distance";
++
++        /**
++         * Determine custom overfling distance.
++         * @hide
++         */
++        public static final String CUSTOM_OVERFLING_DISTANCE = "custom_overfling_distance";
++
++        /**
++         *
++         * @hide
++         */
++        public static final String ANIMATION_TOAST = "animation_toast";
++
++        /**
+          * Immersive mode global actions switch
+          * 0 = no
+          * 1 = yes
+diff --git a/core/java/android/view/ViewConfiguration.java b/core/java/android/view/ViewConfiguration.java
+index 3211166..a3d45ea 100644
+--- a/core/java/android/view/ViewConfiguration.java
++++ b/core/java/android/view/ViewConfiguration.java
+@@ -18,13 +18,16 @@ package android.view;
+ 
+ import android.app.AppGlobals;
+ import android.content.Context;
++import android.content.ContentResolver;
+ import android.content.res.Configuration;
+ import android.content.res.Resources;
+ import android.graphics.Point;
+ import android.os.RemoteException;
++import android.os.UserHandle;
+ import android.provider.Settings;
+ import android.util.DisplayMetrics;
+ import android.util.SparseArray;
++import android.provider.Settings;
+ 
+ /**
+  * Contains methods to standard constants used in the UI for timeouts, sizes, and distances.
+@@ -180,7 +183,13 @@ public class ViewConfiguration {
+     /**
+      * Maximum velocity to initiate a fling, as measured in dips per second
+      */
+-    private static final int MAXIMUM_FLING_VELOCITY = 8000;
++    private static int MAXIMUM_FLING_VELOCITY = 8000;
++
++    /**
++     * Maximum velocity to initiate a fling, as measured in dips per second
++     * @hide
++     */
++    public static final int DEFAULT_MAXIMUM_FLING_VELOCITY = 8000;
+ 
+     /**
+      * Delay before dispatching a recurring accessibility event in milliseconds.
+@@ -200,17 +209,35 @@ public class ViewConfiguration {
+     /**
+      * The coefficient of friction applied to flings/scrolls.
+      */
+-    private static final float SCROLL_FRICTION = 0.015f;
++    private static float SCROLL_FRICTION = 0.015f;
++
++    /**
++     * The coefficient of friction applied to flings/scrolls.
++     * @hide
++     */
++    public static final float DEFAULT_SCROLL_FRICTION = 0.015f;
++
++    /**
++     * Max distance in dips to overscroll for edge effects
++     */
++    private static int OVERSCROLL_DISTANCE = 0;
+ 
+     /**
+      * Max distance in dips to overscroll for edge effects
++     * @hide
+      */
+-    private static final int OVERSCROLL_DISTANCE = 0;
++    public static final int DEFAULT_OVERSCROLL_DISTANCE = 0;
+ 
+     /**
+      * Max distance in dips to overfling for edge effects
+      */
+-    private static final int OVERFLING_DISTANCE = 6;
++    private static int OVERFLING_DISTANCE = 6;
++
++    /**
++     * Max distance in dips to overfling for edge effects
++     * @hide
++     */
++    public static final int DEFAULT_OVERFLING_DISTANCE = 6;
+ 
+     /**
+      * Configuration values for overriding {@link #hasPermanentMenuKey()} behavior.
+@@ -277,6 +304,39 @@ public class ViewConfiguration {
+      */
+     private ViewConfiguration(Context context) {
+         mContext = context;
++        final ContentResolver resolver = context.getContentResolver();
++        if (Settings.System.getInt(resolver,
++                          Settings.System.ANIMATION_CONTROLS_NO_SCROLL, 0) != 1) {
++            SCROLL_FRICTION = DEFAULT_SCROLL_FRICTION;
++            MAXIMUM_FLING_VELOCITY = DEFAULT_MAXIMUM_FLING_VELOCITY;
++            OVERSCROLL_DISTANCE = DEFAULT_OVERSCROLL_DISTANCE;
++            OVERFLING_DISTANCE = DEFAULT_OVERFLING_DISTANCE;
++        } else {
++            SCROLL_FRICTION = Settings.System.getFloat(resolver,
++                          Settings.System.CUSTOM_SCROLL_FRICTION, DEFAULT_SCROLL_FRICTION);
++            int maximumFlingVelocity = Settings.System.getInt(resolver,
++                          Settings.System.CUSTOM_FLING_VELOCITY, DEFAULT_MAXIMUM_FLING_VELOCITY);
++            if (maximumFlingVelocity == 0) {
++                MAXIMUM_FLING_VELOCITY = DEFAULT_MAXIMUM_FLING_VELOCITY;
++            } else {
++                MAXIMUM_FLING_VELOCITY = maximumFlingVelocity;
++            }
++            int overScrollDistance = Settings.System.getInt(resolver,
++                          Settings.System.CUSTOM_OVERSCROLL_DISTANCE, DEFAULT_OVERSCROLL_DISTANCE);
++            if (overScrollDistance > 100) {
++                OVERSCROLL_DISTANCE = DEFAULT_OVERSCROLL_DISTANCE;
++            } else {
++                OVERSCROLL_DISTANCE = overScrollDistance;
++            }
++            int overFlingDistance = Settings.System.getInt(resolver,
++                          Settings.System.CUSTOM_OVERFLING_DISTANCE, DEFAULT_OVERFLING_DISTANCE);
++            if (overFlingDistance > 100 || overFlingDistance == 0) {
++                OVERFLING_DISTANCE = DEFAULT_OVERFLING_DISTANCE;
++            } else {
++                OVERFLING_DISTANCE = overFlingDistance;
++            }
++        }
++
+         final Resources res = context.getResources();
+         final DisplayMetrics metrics = res.getDisplayMetrics();
+         final Configuration config = res.getConfiguration();
+@@ -333,7 +393,6 @@ public class ViewConfiguration {
+                     sHasPermanentMenuKeySet = true;
+                     break;
+             }
+-
+             boolean hasNavBar = res.getBoolean(com.android.internal.R.bool.config_showNavigationBar);
+             int deviceKeys = res.getInteger(com.android.internal.R.integer.config_deviceHardwareKeys);
+             // TODO we should have those in some central place
+@@ -739,15 +798,15 @@ public class ViewConfiguration {
+                     Settings.System.HARDWARE_KEYS_DISABLE, 0) == 1;
+ 
+         boolean forceShowMenu = Settings.System.getInt(mContext.getContentResolver(),
+-                    Settings.System.FORCE_SHOW_OVERFLOW_MENU, sHasHwMenuKey ? 0 : 1) == 1;
++               Settings.System.FORCE_SHOW_OVERFLOW_MENU, sHasHwMenuKey ? 0 : 1) == 1;
+ 
+         boolean emulateHwMenuKey = Settings.System.getInt(mContext.getContentResolver(),
+-                    Settings.System.EMULATE_HW_MENU_KEY, 0) == 1;
++               Settings.System.EMULATE_HW_MENU_KEY, 0) == 1;
+ 
+         if (forceShowMenu && sHasPermanentMenuKey && !hardwareKeysDisable){
+             return false;
+         }
+-        if (emulateHwMenuKey){
++        if (emulateHwMenuKey) {
+             return true;
+         }
+         return sHasPermanentMenuKey;
+diff --git a/core/java/android/widget/AbsListView.java b/core/java/android/widget/AbsListView.java
+index 816f6f3..8734632 100644
+--- a/core/java/android/widget/AbsListView.java
++++ b/core/java/android/widget/AbsListView.java
+@@ -1,5 +1,6 @@
+ /*
+  * Copyright (C) 2006 The Android Open Source Project
++ * This code has been modified. Portions copyright (C) 2013, ThinkingBridge Project
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+@@ -25,10 +26,14 @@ import android.graphics.drawable.Drawable;
+ import android.graphics.drawable.TransitionDrawable;
+ import android.os.Bundle;
+ import android.os.Debug;
++import android.os.Message;
++import android.os.Handler;
+ import android.os.Parcel;
+ import android.os.Parcelable;
+ import android.os.StrictMode;
+ import android.os.Trace;
++import android.os.UserHandle;
++import android.provider.Settings;
+ import android.text.Editable;
+ import android.text.InputType;
+ import android.text.TextUtils;
+@@ -59,8 +64,13 @@ import android.view.ViewTreeObserver;
+ import android.view.accessibility.AccessibilityEvent;
+ import android.view.accessibility.AccessibilityManager;
+ import android.view.accessibility.AccessibilityNodeInfo;
++import android.view.animation.AlphaAnimation;
++import android.view.animation.Animation;
++import android.view.animation.AnimationUtils;
+ import android.view.animation.Interpolator;
+ import android.view.animation.LinearInterpolator;
++import android.view.animation.ScaleAnimation;
++import android.view.animation.TranslateAnimation;
+ import android.view.inputmethod.BaseInputConnection;
+ import android.view.inputmethod.CompletionInfo;
+ import android.view.inputmethod.CorrectionInfo;
+@@ -72,9 +82,12 @@ import android.view.inputmethod.InputMethodManager;
+ import android.widget.RemoteViews.OnClickHandler;
+ 
+ import com.android.internal.R;
+-
++import com.android.internal.util.aokp.AwesomeAnimationHelper;
+ import java.util.ArrayList;
++import java.util.Arrays;
+ import java.util.List;
++import java.util.HashSet;
++import java.util.Set;
+ 
+ /**
+  * Base class that can be used to implement virtualized lists of items. A list does
+@@ -694,6 +707,17 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+     private SavedState mPendingSync;
+ 
+     /**
++     * for ListView Animations
++     */
++    private boolean mIsWidget;
++    private boolean mIsScrolling;
++    private int mWidth, mHeight = 0;
++    private int mPositionV;
++    private boolean mIsTap = false;
++    private Set<String> mExcludedApps = new HashSet<String>();
++    private int mListAnimationMode = 0;
++
++    /**
+      * Interface definition for a callback to be invoked when the list or grid
+      * has been scrolled.
+      */
+@@ -837,6 +861,36 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+         mOverflingDistance = configuration.getScaledOverflingDistance();
+ 
+         mDensityScale = getContext().getResources().getDisplayMetrics().density;
++
++        int listAnimationCache = Settings.System.getInt(
++                mContext.getContentResolver(),
++                Settings.System.LISTVIEW_ANIMATION_CACHE,
++                0);
++
++        if (listAnimationCache == 1) {
++            setPersistentDrawingCache(ViewGroup.PERSISTENT_ANIMATION_CACHE);
++        } else if (listAnimationCache == 2) {
++            setPersistentDrawingCache(ViewGroup.PERSISTENT_SCROLLING_CACHE);
++        } else if (listAnimationCache == 3) {
++            setPersistentDrawingCache(ViewGroup.PERSISTENT_ALL_CACHES);
++        } else {
++            setPersistentDrawingCache(ViewGroup.PERSISTENT_NO_CACHE
++                     | ViewGroup.PERSISTENT_SCROLLING_CACHE);
++        }
++
++        createExcludedAppsSet(Settings.System.getString(mContext.getContentResolver(),
++                    Settings.System.LISTVIEW_ANIMATION_EXCLUDED_APPS));
++    }
++
++    /**
++     * Create the set of excluded apps given a string of packages delimited with '|'.
++     * @param excludedApps
++     */
++    private void createExcludedAppsSet(String excludedApps) {
++        if (TextUtils.isEmpty(excludedApps))
++            return;
++        String[] appsToExclude = excludedApps.split("\\|");
++        mExcludedApps = new HashSet<String>(Arrays.asList(appsToExclude));
+     }
+ 
+     @Override
+@@ -2090,6 +2144,8 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+         mInLayout = false;
+ 
+         mOverscrollMax = (b - t) / OVERSCROLL_LIMIT_DIVISOR;
++        mHeight = getHeight();
++        mWidth = getWidth();
+ 
+         // TODO: Move somewhere sane. This doesn't belong in onLayout().
+         if (mFastScroller != null) {
+@@ -2254,8 +2310,12 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+         }
+ 
+         final View scrapView = mRecycler.getScrapView(position);
+-        final View child = mAdapter.getView(position, scrapView, this);
++        View child = mAdapter.getView(position, scrapView, this);
+         if (scrapView != null) {
++            if (mIsScrolling && !mIsWidget) {
++                child = setAnimation(child);
++            }
++
+             if (child != scrapView) {
+                 // Failed to re-bind the data, return scrap to the heap.
+                 mRecycler.addScrapView(scrapView, position);
+@@ -2308,6 +2368,106 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+         return child;
+     }
+ 
++    private View setAnimation(View view) {
++        if (mExcludedApps.contains(mContext.getApplicationInfo().packageName)) {
++            mListAnimationMode = 0;
++        } else {
++            mListAnimationMode = Settings.System.getInt(
++                        mContext.getContentResolver(),
++                        Settings.System.LISTVIEW_ANIMATION,
++                        0);
++        }
++
++        int listAnimationInterpolatorMode = Settings.System.getInt(
++                mContext.getContentResolver(),
++                Settings.System.LISTVIEW_INTERPOLATOR,
++                0);
++
++        if (mListAnimationMode == 0
++            || view == null) {
++            return view;
++        }
++
++        int scrollY = 0;
++        boolean down = false;
++        Animation anim = null;
++
++        int temp = Settings.System.getInt(
++                mContext.getContentResolver(),
++                Settings.System.LISTVIEW_DURATION,
++                0);
++        int listAnimationDuration = temp * 15;
++
++        try {
++            scrollY = getChildAt(0).getTop();
++        } catch (NullPointerException e) {
++            scrollY = mPositionV;
++        }
++
++        if (mPositionV < scrollY) {
++            down = true;
++        }
++
++        mPositionV = scrollY;
++
++        switch (mListAnimationMode) {
++            case 1:
++                anim = new ScaleAnimation(0.5f, 1.0f, 0.5f, 1.0f);
++                break;
++            case 2:
++                anim = new ScaleAnimation(0.5f, 1.0f, 0.5f, 1.0f,
++                    Animation.RELATIVE_TO_SELF, 1.0f,
++                    Animation.RELATIVE_TO_SELF, 1.0f);
++                break;
++            case 3:
++                anim = new ScaleAnimation(0.5f, 1.0f, 0.5f, 1.0f,
++                    Animation.RELATIVE_TO_SELF, 0.5f,
++                    Animation.RELATIVE_TO_SELF, 0.5f);
++                break;
++            case 4:
++                anim = new AlphaAnimation(0.0f, 1.0f);
++                break;
++            case 5:
++                anim = new TranslateAnimation(0.0f, 0.0f, -mHeight, 0.0f);
++                break;
++            case 6:
++                anim = new TranslateAnimation(0.0f, 0.0f, mHeight, 0.0f);
++                break;
++            case 7:
++                if (down) {
++                    anim = new TranslateAnimation(0.0f, 0.0f, -mHeight, 0.0f);
++                } else {
++                    anim = new TranslateAnimation(0.0f, 0.0f, mHeight, 0.0f);
++                }
++                break;
++            case 8:
++                if (down) {
++                    anim = new TranslateAnimation(0.0f, 0.0f, mHeight, 0.0f);
++                } else {
++                    anim = new TranslateAnimation(0.0f, 0.0f, -mHeight, 0.0f);
++                }
++                break;
++            case 9:
++                anim = new TranslateAnimation(-mWidth, 0.0f, 0.0f, 0.0f);
++                break;
++            case 10:
++                anim = new TranslateAnimation(mWidth, 0.0f, 0.0f, 0.0f);
++                break;
++            default:
++                return view;
++        }
++
++        Interpolator itplr = AwesomeAnimationHelper.getInterpolator(mContext, listAnimationInterpolatorMode);
++        if (itplr != null) {
++            anim.setInterpolator(itplr);
++        }
++        if (listAnimationDuration > 0) {
++            anim.setDuration(listAnimationDuration);
++        }
++        view.startAnimation(anim);
++        return view;
++    }
++
+     class ListItemAccessibilityDelegate extends AccessibilityDelegate {
+         @Override
+         public AccessibilityNodeInfo createAccessibilityNodeInfo(View host) {
+@@ -3200,6 +3360,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+         int incrementalDeltaY = mLastY != Integer.MIN_VALUE ? y - mLastY : deltaY;
+ 
+         if (mTouchMode == TOUCH_MODE_SCROLL) {
++            mIsWidget = false;
+             if (PROFILE_SCROLLING) {
+                 if (!mScrollProfilingStarted) {
+                     Debug.startMethodTracing("AbsListViewScroll");
+@@ -3392,6 +3553,12 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+         }
+     }
+ 
++    private final Handler mInverse = new Handler() {
++        public void handleMessage(Message msg) {
++            mIsTap = !mIsTap;
++        }
++    };
++
+     @Override
+     public boolean onTouchEvent(MotionEvent ev) {
+         if (!isEnabled()) {
+@@ -3932,6 +4099,8 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+ 
+         switch (action & MotionEvent.ACTION_MASK) {
+         case MotionEvent.ACTION_DOWN: {
++        mIsTap = true;
++        mInverse.sendEmptyMessageDelayed(0, 100);
+             int touchMode = mTouchMode;
+             if (touchMode == TOUCH_MODE_OVERFLING || touchMode == TOUCH_MODE_OVERSCROLL) {
+                 mMotionCorrection = 0;
+@@ -3984,6 +4153,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+ 
+         case MotionEvent.ACTION_CANCEL:
+         case MotionEvent.ACTION_UP: {
++            mIsTap = false;
+             mTouchMode = TOUCH_MODE_REST;
+             mActivePointerId = INVALID_POINTER;
+             recycleVelocityTracker();
+@@ -4046,6 +4216,11 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+      * @param newState The new scroll state.
+      */
+     void reportScrollStateChange(int newState) {
++        if (newState == OnScrollListener.SCROLL_STATE_IDLE) {
++                mIsScrolling = false;
++            } else {
++                mIsScrolling = true;
++            }
+         if (newState != mLastScrollState) {
+             if (mOnScrollListener != null) {
+                 mLastScrollState = newState;
+@@ -5445,6 +5620,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
+         int count = mItemCount;
+         int lastHandledItemCount = mLastHandledItemCount;
+         mLastHandledItemCount = mItemCount;
++        mIsWidget = true;
+ 
+         if (mChoiceMode != CHOICE_MODE_NONE && mAdapter != null && mAdapter.hasStableIds()) {
+             confirmCheckedPositionsById();
+diff --git a/core/java/android/widget/Toast.java b/core/java/android/widget/Toast.java
+index e38dfa7..4d3501d 100644
+--- a/core/java/android/widget/Toast.java
++++ b/core/java/android/widget/Toast.java
+@@ -25,6 +25,7 @@ import android.graphics.PixelFormat;
+ import android.os.Handler;
+ import android.os.RemoteException;
+ import android.os.ServiceManager;
++import android.provider.Settings;
+ import android.util.Log;
+ import android.view.Gravity;
+ import android.view.LayoutInflater;
+@@ -34,6 +35,8 @@ import android.view.WindowManager;
+ import android.view.accessibility.AccessibilityEvent;
+ import android.view.accessibility.AccessibilityManager;
+ 
++import com.android.internal.util.aokp.AwesomeAnimationHelper;
++
+ /**
+  * A toast is a view containing a quick little message for the user.  The toast class
+  * helps you create and show those.
+@@ -386,6 +389,8 @@ public class Toast {
+                 // the layout direction
+                 final Configuration config = mView.getContext().getResources().getConfiguration();
+                 final int gravity = Gravity.getAbsoluteGravity(mGravity, config.getLayoutDirection());
++                mParams.windowAnimations = AwesomeAnimationHelper.getToastAnimations(Settings.System.getInt(context.getContentResolver(),
++                              Settings.System.ANIMATION_TOAST, 1));
+                 mParams.gravity = gravity;
+                 if ((gravity & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.FILL_HORIZONTAL) {
+                     mParams.horizontalWeight = 1.0f;
+diff --git a/core/java/com/android/internal/util/aokp/AwesomeAnimationHelper.java b/core/java/com/android/internal/util/aokp/AwesomeAnimationHelper.java
+new file mode 100644
+index 0000000..62e3532
+--- /dev/null
++++ b/core/java/com/android/internal/util/aokp/AwesomeAnimationHelper.java
+@@ -0,0 +1,253 @@
++/*
++ * Copyright (C) 2013 AOKP by Steve Spear - Stevespear426
++ * This code has been modified. Portions copyright (C) 2013, XuiMod.
++ * 
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package com.android.internal.util.aokp;
++
++import java.util.ArrayList;
++import java.util.Random;
++
++import android.content.Context;
++import android.content.res.Resources;
++import android.view.animation.AnimationUtils;
++import android.view.animation.Interpolator;
++import com.android.internal.R;
++
++public class AwesomeAnimationHelper {
++
++    public final static int ANIMATION_RANDOM = -1;
++    public final static int ANIMATION_DEFAULT = 0;
++    public final static int ANIMATION_FADE = 1;
++    public final static int ANIMATION_SLIDE_RIGHT = 2;
++    public final static int ANIMATION_SLIDE_LEFT = 3;
++    public final static int ANIMATION_SLIDE_RIGHT_NO_FADE = 4;
++    public final static int ANIMATION_SLIDE_LEFT_NO_FADE = 5;
++    public final static int ANIMATION_SLIDE_UP = 6;
++    public final static int ANIMATION_SLIDE_DOWN = 7;
++    public final static int ANIMATION_TRANSLUCENT = 8;
++    public final static int ANIMATION_GROW_SHRINK = 9;
++    public final static int ANIMATION_GROW_SHRINK_CENTER = 10;
++    public final static int ANIMATION_GROW_SHRINK_BOTTOM = 11;
++    public final static int ANIMATION_GROW_SHRINK_LEFT = 12;
++    public final static int ANIMATION_GROW_SHRINK_RIGHT = 13;
++
++    public static final int INTERPOLATOR_NONE = 0;
++    public static final int INTERPOLATOR_ACCELERATE = 1;
++    public static final int INTERPOLATOR_DECELERATE = 2;
++    public static final int INTERPOLATOR_ACCELERATE_DECELERATE = 3;
++    public static final int INTERPOLATOR_ANTICIPATE = 4;
++    public static final int INTERPOLATOR_OVERSHOOT = 5;
++    public static final int INTERPOLATOR_ANTICIPATE_OVERSHOOT = 6;
++    public static final int INTERPOLATOR_BOUNCE = 7;
++    public static final int INTERPOLATOR_CYCLE = 8;
++    public static final int INTERPOLATOR_LINEAR = 9;
++
++    public static final int TOAST_RANDOM = -1;
++    public static final int TOAST_NONE = 0;
++    public static final int TOAST_DEFAULT = 1;
++    public static final int TOAST_FADE = 2;
++    public static final int TOAST_SLIGHTRIGHT = 3;
++    public static final int TOAST_SLIGHTLEFT = 4;
++    public static final int TOAST_XYLON = 5;
++    public static final int TOAST_TOKO = 6;
++    public static final int TOAST_TN = 7;
++    public static final int TOAST_HONAMI = 8;
++    public static final int TOAST_FASTFADE = 9;
++    public static final int TOAST_GROWFADE = 10;
++    public static final int TOAST_GROWFADECENTER = 11;
++    public static final int TOAST_GROWFADEBOTTOM = 12;
++    public static final int TOAST_TRANSLUCENT = 13;
++
++    public static int[] getAnimationsList() {
++        ArrayList<Integer> animList = new ArrayList<Integer>();
++        animList.add(ANIMATION_DEFAULT);
++        animList.add(ANIMATION_FADE);
++        animList.add(ANIMATION_SLIDE_RIGHT);
++        animList.add(ANIMATION_SLIDE_LEFT);
++        animList.add(ANIMATION_SLIDE_RIGHT_NO_FADE);
++        animList.add(ANIMATION_SLIDE_LEFT_NO_FADE);
++        animList.add(ANIMATION_SLIDE_UP);
++        animList.add(ANIMATION_SLIDE_DOWN);
++        animList.add(ANIMATION_TRANSLUCENT);
++        animList.add(ANIMATION_GROW_SHRINK);
++        animList.add(ANIMATION_GROW_SHRINK_CENTER);
++        animList.add(ANIMATION_GROW_SHRINK_BOTTOM);
++        animList.add(ANIMATION_GROW_SHRINK_LEFT);
++        animList.add(ANIMATION_GROW_SHRINK_RIGHT);
++        animList.add(ANIMATION_RANDOM);
++        int length = animList.size();
++        int[] anim = new int[length];
++        for (int i = 0; i < length; i++) {
++            anim[i] = animList.get(i);
++        }
++        return anim;
++    }
++
++    public static int[] getAnimations(int mAnim) {
++    	if (mAnim == ANIMATION_RANDOM){
++    		mAnim = (new Random()).nextInt(14);
++    		// Random number from 0 to 13
++    	}
++        int[] anim = new int[2];
++        switch (mAnim) {
++            case ANIMATION_FADE:
++                anim[0] = R.anim.animcontrol_slow_fade_out;
++                anim[1] = R.anim.animcontrol_slow_fade_in;
++                break;
++            case ANIMATION_SLIDE_RIGHT:
++                anim[0] = R.anim.animcontrol_slide_out_right_ribbon;
++                anim[1] = R.anim.animcontrol_slide_in_right_ribbon;
++                break;
++            case ANIMATION_SLIDE_LEFT:
++                anim[0] = R.anim.animcontrol_slide_out_left_ribbon;
++                anim[1] = R.anim.animcontrol_slide_in_left_ribbon;
++                break;
++            case ANIMATION_SLIDE_UP:
++                anim[0] = R.anim.animcontrol_slide_out_down_ribbon;
++                anim[1] = R.anim.animcontrol_slide_in_up_ribbon;
++                break;
++            case ANIMATION_SLIDE_DOWN:
++                anim[0] = R.anim.animcontrol_slide_out_up;
++                anim[1] = R.anim.animcontrol_slide_in_down;
++                break;
++            case ANIMATION_SLIDE_RIGHT_NO_FADE:
++                anim[0] = R.anim.animcontrol_slide_out_right_no_fade;
++                anim[1] = R.anim.animcontrol_slide_in_right_no_fade;
++                break;
++            case ANIMATION_SLIDE_LEFT_NO_FADE:
++                anim[0] = R.anim.animcontrol_slide_out_left_no_fade;
++                anim[1] = R.anim.animcontrol_slide_in_left_no_fade;
++                break;
++            case ANIMATION_TRANSLUCENT:
++                anim[0] = R.anim.animcontrol_translucent_exit_ribbon;
++                anim[1] = R.anim.animcontrol_translucent_enter_ribbon;
++                break;
++            case ANIMATION_GROW_SHRINK:
++                anim[0] = R.anim.animcontrol_shrink_fade_out_ribbon;
++                anim[1] = R.anim.animcontrol_grow_fade_in_ribbon;
++                break;
++            case ANIMATION_GROW_SHRINK_CENTER:
++                anim[0] = R.anim.animcontrol_shrink_fade_out_center_ribbon;
++                anim[1] = R.anim.animcontrol_grow_fade_in_center_ribbon;
++                break;
++            case ANIMATION_GROW_SHRINK_LEFT:
++                anim[0] = R.anim.animcontrol_shrink_fade_out_left_ribbon;
++                anim[1] = R.anim.animcontrol_grow_fade_in_left_ribbon;
++                break;
++            case ANIMATION_GROW_SHRINK_RIGHT:
++                anim[0] = R.anim.animcontrol_shrink_fade_out_right_ribbon;
++                anim[1] = R.anim.animcontrol_grow_fade_in_right_ribbon;
++                break;
++            case ANIMATION_GROW_SHRINK_BOTTOM:
++                anim[0] = R.anim.animcontrol_shrink_fade_out_from_bottom_ribbon;
++                anim[1] = R.anim.animcontrol_grow_fade_in_from_bottom_ribbon;
++                break;
++        }
++        return anim;
++    }
++
++    public static String getProperName(Resources res, int index) {
++    	String[] str = res.getStringArray(R.array.anim_controls_entries);
++    	if (index == ANIMATION_RANDOM){
++    		index = str.length - 1;
++    	}
++    	return str[index];
++    }
++
++    public static Interpolator getInterpolator(Context ctx, int index) {
++        Interpolator itplr = null;
++        switch(index) {
++           case INTERPOLATOR_ACCELERATE:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.accelerate_interpolator);
++                break;
++           case INTERPOLATOR_DECELERATE:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.decelerate_interpolator);
++                break;
++           case INTERPOLATOR_ACCELERATE_DECELERATE:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.accelerate_decelerate_interpolator);
++                break;
++           case INTERPOLATOR_ANTICIPATE:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.anticipate_interpolator);
++                break;
++           case INTERPOLATOR_OVERSHOOT:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.overshoot_interpolator);
++                break;
++           case INTERPOLATOR_ANTICIPATE_OVERSHOOT:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.anticipate_overshoot_interpolator);
++                break;
++           case INTERPOLATOR_BOUNCE:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.bounce_interpolator);
++                break;
++           case INTERPOLATOR_CYCLE:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.cycle_interpolator);
++                break;
++           case INTERPOLATOR_LINEAR:
++                itplr = AnimationUtils.loadInterpolator(ctx, android.R.anim.linear_interpolator);
++                break;
++        }
++        return itplr;
++    }
++
++    public static int getToastAnimations(int mToastAnim) {
++    	if (mToastAnim == TOAST_RANDOM){
++    		mToastAnim = (new Random()).nextInt(14);
++    		// Random number from 0 to 13
++    	}
++        int anim = -1;
++        switch (mToastAnim) {
++            case TOAST_DEFAULT:
++                anim = R.style.Animation_Toast;
++                break;
++            case TOAST_FADE:
++                anim = R.style.Animation_Toast_Fade;
++                break;
++            case TOAST_SLIGHTRIGHT:
++                anim = R.style.Animation_Toast_SlideRight;
++                break;
++            case TOAST_SLIGHTLEFT:
++                anim = R.style.Animation_Toast_SlideLeft;
++                break;
++            case TOAST_XYLON:
++                anim = R.style.Animation_Toast_Xylon;
++                break;
++            case TOAST_TOKO:
++                anim = R.style.Animation_Toast_Toko;
++                break;
++            case TOAST_TN:
++                anim = R.style.Animation_Toast_Tn;
++                break;
++            case TOAST_HONAMI:
++                anim = R.style.Animation_Toast_Honami;
++                break;
++            case TOAST_FASTFADE:
++                anim = R.style.Animation_Toast_FastFade;
++                break;
++            case TOAST_GROWFADE:
++                anim = R.style.Animation_Toast_GrowFade;
++                break;
++            case TOAST_GROWFADECENTER:
++                anim = R.style.Animation_Toast_GrowFadeCenter;
++                break;
++            case TOAST_GROWFADEBOTTOM:
++                anim = R.style.Animation_Toast_GrowFadeBottom;
++                break;
++            case TOAST_TRANSLUCENT:
++                anim = R.style.Animation_Toast_Translucent;
++                break;
++        }
++        return anim;
++    }
++}
+diff --git a/core/res/res/anim/animcontrol_grow_fade_in_center_ribbon.xml b/core/res/res/anim/animcontrol_grow_fade_in_center_ribbon.xml
+new file mode 100644
+index 0000000..0a3e8c6
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_grow_fade_in_center_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="50.0%" android:pivotY="50.0%" android:fromXScale="0.5" android:toXScale="1.0" android:fromYScale="0.5" android:toYScale="1.0" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_grow_fade_in_from_bottom_ribbon.xml b/core/res/res/anim/animcontrol_grow_fade_in_from_bottom_ribbon.xml
+new file mode 100644
+index 0000000..0c94e12
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_grow_fade_in_from_bottom_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="50.0%" android:pivotY="100.0%" android:fromXScale="0.5" android:toXScale="1.0" android:fromYScale="0.5" android:toYScale="1.0" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_grow_fade_in_left_ribbon.xml b/core/res/res/anim/animcontrol_grow_fade_in_left_ribbon.xml
+new file mode 100644
+index 0000000..5187077
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_grow_fade_in_left_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="0.0%" android:pivotY="50.0%" android:fromXScale="0.5" android:toXScale="1.0" android:fromYScale="0.5" android:toYScale="1.0" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_grow_fade_in_ribbon.xml b/core/res/res/anim/animcontrol_grow_fade_in_ribbon.xml
+new file mode 100644
+index 0000000..5926921
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_grow_fade_in_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="50.0%" android:pivotY="0.0%" android:fromXScale="0.5" android:toXScale="1.0" android:fromYScale="0.5" android:toYScale="1.0" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_grow_fade_in_right_ribbon.xml b/core/res/res/anim/animcontrol_grow_fade_in_right_ribbon.xml
+new file mode 100644
+index 0000000..cbfe122
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_grow_fade_in_right_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="100.0%" android:pivotY="50.0%" android:fromXScale="0.5" android:toXScale="1.0" android:fromYScale="0.5" android:toYScale="1.0" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_honami_toast_enter.xml b/core/res/res/anim/animcontrol_honami_toast_enter.xml
+new file mode 100644
+index 0000000..a7ad7bb
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_honami_toast_enter.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set xmlns:android="http://schemas.android.com/apk/res/android">
++    <alpha android:interpolator="@android:interpolator/accelerate_decelerate" android:duration="350" android:fromAlpha="0.0" android:toAlpha="1.0" />
++    <rotate android:interpolator="@android:interpolator/accelerate_decelerate" android:duration="350" android:fromDegrees="-3.0" android:toDegrees="0.0" android:pivotX="50.0%" android:pivotY="50.0%" />
++    <scale android:interpolator="@android:interpolator/accelerate_decelerate" android:duration="350" android:pivotX="50.0%" android:pivotY="50.0%" android:fromXScale="1.0" android:toXScale="1.0" android:fromYScale="0.7" android:toYScale="1.0" />
++    <translate android:interpolator="@android:interpolator/accelerate_decelerate" android:duration="350" android:fromXDelta="0.0" android:toXDelta="0.0" android:fromYDelta="-5.9999943%p" android:toYDelta="0.0" />
++</set>
+diff --git a/core/res/res/anim/animcontrol_honami_toast_exit.xml b/core/res/res/anim/animcontrol_honami_toast_exit.xml
+new file mode 100644
+index 0000000..50043aa
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_honami_toast_exit.xml
+@@ -0,0 +1,7 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set xmlns:android="http://schemas.android.com/apk/res/android">
++    <alpha android:interpolator="@android:interpolator/accelerate_quad" android:duration="450" android:fromAlpha="1.0" android:toAlpha="0.0" />
++    <rotate android:interpolator="@android:interpolator/accelerate_quad" android:duration="450" android:fromDegrees="0.0" android:toDegrees="1.0" android:pivotX="50.0%" android:pivotY="50.0%" />
++    <scale android:interpolator="@android:interpolator/accelerate_quad" android:duration="450" android:pivotX="50.0%" android:pivotY="50.0%" android:fromXScale="1.0" android:toXScale="1.0" android:fromYScale="1.0" android:toYScale="0.7" />
++    <translate android:interpolator="@android:interpolator/accelerate_quad" android:duration="450" android:fromXDelta="0.0" android:toXDelta="0.0" android:fromYDelta="0.0" android:toYDelta="4.4999957%p" />
++</set>
+diff --git a/core/res/res/anim/animcontrol_shrink_fade_out_center_ribbon.xml b/core/res/res/anim/animcontrol_shrink_fade_out_center_ribbon.xml
+new file mode 100644
+index 0000000..f4ba77b
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_shrink_fade_out_center_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="50.0%" android:pivotY="50.0%" android:fromXScale="1.0" android:toXScale="0.5" android:fromYScale="1.0" android:toYScale="0.5" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_shrink_fade_out_from_bottom_ribbon.xml b/core/res/res/anim/animcontrol_shrink_fade_out_from_bottom_ribbon.xml
+new file mode 100644
+index 0000000..83c11d8
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_shrink_fade_out_from_bottom_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="50.0%" android:pivotY="100.0%" android:fromXScale="1.0" android:toXScale="0.5" android:fromYScale="1.0" android:toYScale="0.5" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_shrink_fade_out_left_ribbon.xml b/core/res/res/anim/animcontrol_shrink_fade_out_left_ribbon.xml
+new file mode 100644
+index 0000000..51ac3a5
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_shrink_fade_out_left_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="0.0%" android:pivotY="50.0%" android:fromXScale="1.0" android:toXScale="0.5" android:fromYScale="1.0" android:toYScale="0.5" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_shrink_fade_out_ribbon.xml b/core/res/res/anim/animcontrol_shrink_fade_out_ribbon.xml
+new file mode 100644
+index 0000000..ccf0820
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_shrink_fade_out_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="50.0%" android:pivotY="0.0%" android:fromXScale="1.0" android:toXScale="0.5" android:fromYScale="1.0" android:toYScale="0.5" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_shrink_fade_out_right_ribbon.xml b/core/res/res/anim/animcontrol_shrink_fade_out_right_ribbon.xml
+new file mode 100644
+index 0000000..6475069
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_shrink_fade_out_right_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:shareInterpolator="false"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:interpolator/decelerate_quint" android:duration="1000" android:pivotX="100.0%" android:pivotY="50.0%" android:fromXScale="1.0" android:toXScale="0.5" android:fromYScale="1.0" android:toYScale="0.5" />
++    <alpha android:interpolator="@android:interpolator/decelerate_cubic" android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_in_down.xml b/core/res/res/anim/animcontrol_slide_in_down.xml
+new file mode 100644
+index 0000000..66e5635
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_in_down.xml
+@@ -0,0 +1,3 @@
++<?xml version="1.0" encoding="utf-8"?>
++<translate android:duration="1000" android:fromYDelta="-100.0%p" android:toYDelta="0.0"
++  xmlns:android="http://schemas.android.com/apk/res/android" />
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_in_left_no_fade.xml b/core/res/res/anim/animcontrol_slide_in_left_no_fade.xml
+new file mode 100644
+index 0000000..2ea24f7
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_in_left_no_fade.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="-100.0%p" android:toXDelta="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_in_left_ribbon.xml b/core/res/res/anim/animcontrol_slide_in_left_ribbon.xml
+new file mode 100644
+index 0000000..91cef1a
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_in_left_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="-50.0%p" android:toXDelta="0.0" />
++    <alpha android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_in_right_no_fade.xml b/core/res/res/anim/animcontrol_slide_in_right_no_fade.xml
+new file mode 100644
+index 0000000..5aeb9a2
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_in_right_no_fade.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="100.0%p" android:toXDelta="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_in_right_ribbon.xml b/core/res/res/anim/animcontrol_slide_in_right_ribbon.xml
+new file mode 100644
+index 0000000..a585b98
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_in_right_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="50.0%p" android:toXDelta="0.0" />
++    <alpha android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_in_up_ribbon.xml b/core/res/res/anim/animcontrol_slide_in_up_ribbon.xml
+new file mode 100644
+index 0000000..cfe6e0b
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_in_up_ribbon.xml
+@@ -0,0 +1,3 @@
++<?xml version="1.0" encoding="utf-8"?>
++<translate android:duration="1000" android:fromYDelta="100.0%p" android:toYDelta="0.0"
++  xmlns:android="http://schemas.android.com/apk/res/android" />
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_out_down_ribbon.xml b/core/res/res/anim/animcontrol_slide_out_down_ribbon.xml
+new file mode 100644
+index 0000000..8c3d3b7
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_out_down_ribbon.xml
+@@ -0,0 +1,3 @@
++<?xml version="1.0" encoding="utf-8"?>
++<translate android:duration="1000" android:fromYDelta="0.0" android:toYDelta="100.0%p"
++  xmlns:android="http://schemas.android.com/apk/res/android" />
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_out_left_no_fade.xml b/core/res/res/anim/animcontrol_slide_out_left_no_fade.xml
+new file mode 100644
+index 0000000..71115b0
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_out_left_no_fade.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="0.0" android:toXDelta="-100.0%p" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_out_left_ribbon.xml b/core/res/res/anim/animcontrol_slide_out_left_ribbon.xml
+new file mode 100644
+index 0000000..3dad2eb
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_out_left_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="0.0" android:toXDelta="-50.0%p" />
++    <alpha android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_out_right_no_fade.xml b/core/res/res/anim/animcontrol_slide_out_right_no_fade.xml
+new file mode 100644
+index 0000000..35e3482
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_out_right_no_fade.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="0.0" android:toXDelta="100.0%p" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_out_right_ribbon.xml b/core/res/res/anim/animcontrol_slide_out_right_ribbon.xml
+new file mode 100644
+index 0000000..00b7bbd
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_out_right_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="0.0" android:toXDelta="50.0%p" />
++    <alpha android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slide_out_up.xml b/core/res/res/anim/animcontrol_slide_out_up.xml
+new file mode 100644
+index 0000000..82ed401
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slide_out_up.xml
+@@ -0,0 +1,3 @@
++<?xml version="1.0" encoding="utf-8"?>
++<translate android:duration="1000" android:fromYDelta="0.0" android:toYDelta="-100.0%p"
++  xmlns:android="http://schemas.android.com/apk/res/android" />
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slow_fade_in.xml b/core/res/res/anim/animcontrol_slow_fade_in.xml
+new file mode 100644
+index 0000000..5a636f5
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slow_fade_in.xml
+@@ -0,0 +1,3 @@
++<?xml version="1.0" encoding="utf-8"?>
++<alpha android:interpolator="@android:interpolator/decelerate_quad" android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0"
++  xmlns:android="http://schemas.android.com/apk/res/android" />
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_slow_fade_out.xml b/core/res/res/anim/animcontrol_slow_fade_out.xml
+new file mode 100644
+index 0000000..005c8f2
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_slow_fade_out.xml
+@@ -0,0 +1,3 @@
++<?xml version="1.0" encoding="utf-8"?>
++<alpha android:interpolator="@android:interpolator/decelerate_quad" android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0"
++  xmlns:android="http://schemas.android.com/apk/res/android" />
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_tn_toast_enter.xml b/core/res/res/anim/animcontrol_tn_toast_enter.xml
+new file mode 100644
+index 0000000..60f37af
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_tn_toast_enter.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:interpolator="@android:anim/decelerate_interpolator"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:anim/linear_interpolator" android:duration="200" android:fillAfter="false" android:startOffset="200" android:fromXScale="0.0" android:toXScale="1.0" android:fromYScale="1.0" android:toYScale="1.0" />
++    <translate android:duration="200" android:startOffset="200" android:fromXDelta="50.0%" android:toXDelta="0.0" />
++</set>
+diff --git a/core/res/res/anim/animcontrol_tn_toast_exit.xml b/core/res/res/anim/animcontrol_tn_toast_exit.xml
+new file mode 100644
+index 0000000..308a751
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_tn_toast_exit.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:interpolator="@android:anim/accelerate_interpolator"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <scale android:interpolator="@android:anim/linear_interpolator" android:duration="200" android:fromXScale="1.0" android:toXScale="0.0" android:fromYScale="1.0" android:toYScale="1.0" />
++    <translate android:duration="200" android:fromXDelta="0.0" android:toXDelta="50.0%" />
++</set>
+diff --git a/core/res/res/anim/animcontrol_toko_toast_enter.xml b/core/res/res/anim/animcontrol_toko_toast_enter.xml
+new file mode 100644
+index 0000000..8176679
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_toko_toast_enter.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<alpha android:interpolator="@android:anim/decelerate_interpolator"
++    android:duration="@android:integer/config_longAnimTime"
++    android:fromAlpha="0.0" android:toAlpha="1.0"
++    xmlns:android="http://schemas.android.com/apk/res/android" />
+diff --git a/core/res/res/anim/animcontrol_toko_toast_exit.xml b/core/res/res/anim/animcontrol_toko_toast_exit.xml
+new file mode 100644
+index 0000000..5ab16a7
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_toko_toast_exit.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<alpha android:interpolator="@android:anim/accelerate_interpolator"
++    android:duration="@android:integer/config_longAnimTime"
++    android:fromAlpha="1.0" android:toAlpha="0.0"
++    xmlns:android="http://schemas.android.com/apk/res/android" />
+diff --git a/core/res/res/anim/animcontrol_translucent_enter_ribbon.xml b/core/res/res/anim/animcontrol_translucent_enter_ribbon.xml
+new file mode 100644
+index 0000000..05214b7
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_translucent_enter_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:interpolator="@android:interpolator/decelerate_quad"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="75.0%" android:toXDelta="0.0" />
++    <alpha android:duration="1000" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_translucent_exit_ribbon.xml b/core/res/res/anim/animcontrol_translucent_exit_ribbon.xml
+new file mode 100644
+index 0000000..386807b
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_translucent_exit_ribbon.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set android:interpolator="@android:interpolator/accelerate_quad"
++  xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="1000" android:fromXDelta="0.0%" android:toXDelta="75.0%" />
++    <alpha android:duration="1000" android:fromAlpha="1.0" android:toAlpha="0.0" />
++</set>
+\ No newline at end of file
+diff --git a/core/res/res/anim/animcontrol_xylon_toast_enter.xml b/core/res/res/anim/animcontrol_xylon_toast_enter.xml
+new file mode 100644
+index 0000000..208dc98
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_xylon_toast_enter.xml
+@@ -0,0 +1,5 @@
++<?xml version="1.0" encoding="utf-8"?>
++<set xmlns:android="http://schemas.android.com/apk/res/android">
++    <translate android:duration="@android:integer/config_mediumAnimTime" android:fromXDelta="-50.0%p" android:toXDelta="0.0" />
++    <alpha android:duration="@android:integer/config_mediumAnimTime" android:fromAlpha="0.0" android:toAlpha="1.0" />
++</set>
+diff --git a/core/res/res/anim/animcontrol_xylon_toast_exit.xml b/core/res/res/anim/animcontrol_xylon_toast_exit.xml
+new file mode 100644
+index 0000000..15ff427
+--- /dev/null
++++ b/core/res/res/anim/animcontrol_xylon_toast_exit.xml
+@@ -0,0 +1,4 @@
++<?xml version="1.0" encoding="utf-8"?>
++<translate android:duration="@android:integer/config_longAnimTime"
++      android:fromYDelta="0.0" android:toYDelta="100.0%p"
++      xmlns:android="http://schemas.android.com/apk/res/android" />
+diff --git a/core/res/res/values/custom_arrays.xml b/core/res/res/values/custom_arrays.xml
+index 14b0605..54aa4e7 100644
+--- a/core/res/res/values/custom_arrays.xml
++++ b/core/res/res/values/custom_arrays.xml
+@@ -24,4 +24,42 @@
+         <item>com.google.android.gsf|com.google.android.talk</item>
+     </string-array>
+ 
++    <!-- Animation Control - Animation Chooser List -->
++
++    <string-array name="anim_controls_entries">
++        <item>@string/animation_default</item>
++        <item>@string/animation_fade</item>
++        <item>@string/animation_slide_right</item>
++        <item>@string/animation_slide_left</item>
++        <item>@string/animation_slide_right_no_fade</item>
++        <item>@string/animation_slide_left_no_fade</item>
++        <item>@string/animation_slide_up</item>
++        <item>@string/animation_slide_down</item>
++        <item>@string/animation_translucent</item>
++        <item>@string/animation_grow_shrink</item>
++        <item>@string/animation_grow_shrink_center</item>
++        <item>@string/animation_grow_shrink_bottom</item>
++        <item>@string/animation_grow_shrink_left</item>
++        <item>@string/animation_grow_shrink_right</item>
++        <item>@string/animation_random</item>
++        </string-array>
++
++    <string-array name="anim_controls_values">
++        <item>0</item>
++        <item>1</item>
++        <item>2</item>
++        <item>3</item>
++        <item>4</item>
++        <item>5</item>
++        <item>6</item>
++        <item>7</item>
++        <item>8</item>
++        <item>9</item>
++        <item>10</item>
++        <item>11</item>
++        <item>12</item>
++        <item>13</item>
++        <item>-1</item>
++    </string-array>
++
+ </resources>
+diff --git a/core/res/res/values/custom_strings.xml b/core/res/res/values/custom_strings.xml
+index 6596e3c..07475bb 100644
+--- a/core/res/res/values/custom_strings.xml
++++ b/core/res/res/values/custom_strings.xml
+@@ -58,4 +58,21 @@
+ 
+     <!-- Immersive mode confirmation: Pick confirmation window from bottom when status bar is visible -->
+     <string name="immersive_mode_confirmation_bottom">Swipe up from the bottom to exit full screen.</string>
++
++    <!-- Animation Strings -->
++    <string name="animation_default">Default</string>
++    <string name="animation_fade">Fade</string>
++    <string name="animation_slide_right">Slide in right</string>
++    <string name="animation_slide_left">Slide in left</string>
++    <string name="animation_slide_right_no_fade">Slide in right (No fade)</string>
++    <string name="animation_slide_left_no_fade">Slide in left (No fade)</string>
++    <string name="animation_slide_up">Slide in bottom</string>
++    <string name="animation_slide_down">Slide in top</string>
++    <string name="animation_translucent">Translucent</string>
++    <string name="animation_grow_shrink">Grow in (Top)</string>
++    <string name="animation_grow_shrink_center">Grow in (Center)</string>
++    <string name="animation_grow_shrink_bottom">Grow in (Bottom)</string>
++    <string name="animation_grow_shrink_left">Grow in (Left)</string>
++    <string name="animation_grow_shrink_right">Grow in (Right)</string>
++    <string name="animation_random">Random</string>
+ </resources> 
+diff --git a/core/res/res/values/custom_styles.xml b/core/res/res/values/custom_styles.xml
+new file mode 100644
+index 0000000..39401c7
+--- /dev/null
++++ b/core/res/res/values/custom_styles.xml
+@@ -0,0 +1,78 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2006 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++  
++          http://www.apache.org/licenses/LICENSE-2.0
++  
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++<resources>
++
++    <style name="Animation.Toast.Fade">
++        <item name="windowEnterAnimation">@anim/fade_in</item>
++        <item name="windowExitAnimation">@anim/fade_out</item>
++    </style>
++
++    <style name="Animation.Toast.SlideRight">
++        <item name="windowEnterAnimation">@anim/slide_in_right</item>
++        <item name="windowExitAnimation">@anim/slide_out_right</item>
++    </style>
++
++    <style name="Animation.Toast.SlideLeft">
++        <item name="windowEnterAnimation">@anim/slide_in_left</item>
++        <item name="windowExitAnimation">@anim/slide_out_left</item>
++    </style>
++
++    <style name="Animation.Toast.Xylon">
++        <item name="windowEnterAnimation">@anim/animcontrol_xylon_toast_enter</item>
++        <item name="windowExitAnimation">@anim/animcontrol_xylon_toast_exit</item>
++    </style>
++
++    <style name="Animation.Toast.Toko">
++        <item name="windowEnterAnimation">@anim/animcontrol_toko_toast_enter</item>
++        <item name="windowExitAnimation">@anim/animcontrol_toko_toast_exit</item>
++    </style>
++
++    <style name="Animation.Toast.Tn">
++        <item name="windowEnterAnimation">@anim/animcontrol_tn_toast_enter</item>
++        <item name="windowExitAnimation">@anim/animcontrol_tn_toast_exit</item>
++    </style>
++
++    <style name="Animation.Toast.Honami">
++        <item name="windowEnterAnimation">@anim/animcontrol_honami_toast_enter</item>
++        <item name="windowExitAnimation">@anim/animcontrol_honami_toast_exit</item>
++    </style>
++
++    <style name="Animation.Toast.FastFade">
++        <item name="windowEnterAnimation">@anim/fast_fade_in</item>
++        <item name="windowExitAnimation">@anim/fast_fade_out</item>
++    </style>
++
++    <style name="Animation.Toast.GrowFade">
++        <item name="windowEnterAnimation">@anim/grow_fade_in</item>
++        <item name="windowExitAnimation">@anim/fast_fade_out</item>
++    </style>
++
++    <style name="Animation.Toast.GrowFadeCenter">
++        <item name="windowEnterAnimation">@anim/grow_fade_in_center</item>
++        <item name="windowExitAnimation">@anim/fast_fade_out</item>
++    </style>
++
++    <style name="Animation.Toast.GrowFadeBottom">
++        <item name="windowEnterAnimation">@anim/grow_fade_in_from_bottom</item>
++        <item name="windowExitAnimation">@anim/fast_fade_out</item>
++    </style>
++
++    <style name="Animation.Toast.Translucent">
++        <item name="windowEnterAnimation">@anim/translucent_enter</item>
++        <item name="windowExitAnimation">@anim/translucent_exit</item>
++    </style>
++
++</resources>
+diff --git a/core/res/res/values/custom_symbols.xml b/core/res/res/values/custom_symbols.xml
+new file mode 100644
+index 0000000..58e790d
+--- /dev/null
++++ b/core/res/res/values/custom_symbols.xml
+@@ -0,0 +1,76 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++/* Copyright 2012, The Android Open Source Project
++**
++** Licensed under the Apache License, Version 2.0 (the "License");
++** you may not use this file except in compliance with the License.
++** You may obtain a copy of the License at
++**
++**     http://www.apache.org/licenses/LICENSE-2.0
++**
++** Unless required by applicable law or agreed to in writing, software
++** distributed under the License is distributed on an "AS IS" BASIS,
++** WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++** See the License for the specific language governing permissions and
++** limitations under the License.
++*/
++-->
++<resources>
++  <!-- AOKP -->
++  <java-symbol type="string" name="animation_default"/>
++  <java-symbol type="string" name="animation_fade"/>
++  <java-symbol type="string" name="animation_slide_left"/>
++  <java-symbol type="string" name="animation_slide_right"/>
++  <java-symbol type="string" name="animation_slide_left_no_fade"/>
++  <java-symbol type="string" name="animation_slide_right_no_fade"/>
++  <java-symbol type="string" name="animation_slide_up"/>
++  <java-symbol type="string" name="animation_slide_down"/>
++  <java-symbol type="string" name="animation_translucent"/>
++  <java-symbol type="string" name="animation_grow_shrink"/>
++  <java-symbol type="string" name="animation_grow_shrink_center"/>
++  <java-symbol type="string" name="animation_grow_shrink_bottom"/>
++  <java-symbol type="string" name="animation_grow_shrink_left"/>
++  <java-symbol type="string" name="animation_grow_shrink_right"/>
++  <java-symbol type="string" name="animation_random"/>
++  <java-symbol type="anim" name="animcontrol_shrink_fade_out_ribbon" />
++  <java-symbol type="anim" name="animcontrol_shrink_fade_out_center_ribbon" />
++  <java-symbol type="anim" name="animcontrol_shrink_fade_out_right_ribbon" />
++  <java-symbol type="anim" name="animcontrol_shrink_fade_out_left_ribbon" />
++  <java-symbol type="anim" name="animcontrol_shrink_fade_out_from_bottom_ribbon" />
++  <java-symbol type="anim" name="animcontrol_grow_fade_in_ribbon" />
++  <java-symbol type="anim" name="animcontrol_grow_fade_in_center_ribbon" />
++  <java-symbol type="anim" name="animcontrol_grow_fade_in_left_ribbon" />
++  <java-symbol type="anim" name="animcontrol_grow_fade_in_right_ribbon" />
++  <java-symbol type="anim" name="animcontrol_grow_fade_in_from_bottom_ribbon" />
++  <java-symbol type="anim" name="animcontrol_translucent_enter_ribbon" />
++  <java-symbol type="anim" name="animcontrol_translucent_exit_ribbon" />
++  <java-symbol type="anim" name="animcontrol_slide_in_down" />
++  <java-symbol type="anim" name="animcontrol_slide_out_up" />
++  <java-symbol type="anim" name="animcontrol_slide_in_right_ribbon" />
++  <java-symbol type="anim" name="animcontrol_slide_out_right_ribbon" />
++  <java-symbol type="anim" name="animcontrol_slide_in_left_ribbon" />
++  <java-symbol type="anim" name="animcontrol_slide_out_left_ribbon" />
++  <java-symbol type="anim" name="animcontrol_slow_fade_in" />
++  <java-symbol type="anim" name="animcontrol_slow_fade_out" />
++  <java-symbol type="anim" name="animcontrol_slide_in_up_ribbon" />
++  <java-symbol type="anim" name="animcontrol_slide_out_down_ribbon" />
++  <java-symbol type="anim" name="animcontrol_slide_out_right_no_fade" />
++  <java-symbol type="anim" name="animcontrol_slide_out_left_no_fade" />
++  <java-symbol type="anim" name="animcontrol_slide_in_right_no_fade" />
++  <java-symbol type="anim" name="animcontrol_slide_in_left_no_fade" />
++  <java-symbol type="array" name="anim_controls_entries" />
++
++   <!-- Toast Animation -->
++  <java-symbol type="style" name="Animation.Toast.Fade" />
++  <java-symbol type="style" name="Animation.Toast.SlideRight" />
++  <java-symbol type="style" name="Animation.Toast.SlideLeft" />
++  <java-symbol type="style" name="Animation.Toast.Xylon" />
++  <java-symbol type="style" name="Animation.Toast.Toko" />
++  <java-symbol type="style" name="Animation.Toast.Tn" />
++  <java-symbol type="style" name="Animation.Toast.Honami" />
++  <java-symbol type="style" name="Animation.Toast.FastFade" />
++  <java-symbol type="style" name="Animation.Toast.GrowFade" />
++  <java-symbol type="style" name="Animation.Toast.GrowFadeCenter" />
++  <java-symbol type="style" name="Animation.Toast.GrowFadeBottom" />
++  <java-symbol type="style" name="Animation.Toast.Translucent" />
++</resources>
+diff --git a/services/java/com/android/server/wm/AppTransition.java b/services/java/com/android/server/wm/AppTransition.java
+index 756e06a..2221477 100644
+--- a/services/java/com/android/server/wm/AppTransition.java
++++ b/services/java/com/android/server/wm/AppTransition.java
+@@ -17,11 +17,15 @@
+ package com.android.server.wm;
+ 
+ import android.content.Context;
++import android.content.ContentResolver;
++import android.database.ContentObserver;
+ import android.graphics.Bitmap;
+ import android.graphics.Point;
+ import android.os.Debug;
+ import android.os.Handler;
+ import android.os.IRemoteCallback;
++import android.os.UserHandle;
++import android.provider.Settings;
+ import android.util.Slog;
+ import android.view.WindowManager;
+ import android.view.animation.AlphaAnimation;
+@@ -58,6 +62,9 @@ import static com.android.internal.R.styleable.WindowAnimation_wallpaperIntraOpe
+ import static com.android.internal.R.styleable.WindowAnimation_wallpaperIntraCloseEnterAnimation;
+ import static com.android.internal.R.styleable.WindowAnimation_wallpaperIntraCloseExitAnimation;
+ 
++import com.android.internal.util.aokp.AwesomeAnimationHelper;
++import android.widget.Toast;
++
+ // State management of app transitions.  When we are preparing for a
+ // transition, mNextAppTransition will be the kind of transition to
+ // perform or TRANSIT_NONE if we are not waiting.  If we are waiting,
+@@ -147,10 +154,19 @@ public class AppTransition implements Dump {
+     private final Interpolator mDecelerateInterpolator;
+     private final Interpolator mThumbnailFadeoutInterpolator;
+ 
++    private SettingsObserver mSettingsObserver;
++    private int[] mActivityAnimations = new int[10];
++    private int mAnimationDuration;
++    private boolean mIsResId = false;
++    private boolean mNoOverrides;
++
+     private int mCurrentUserId = 0;
+ 
+     AppTransition(Context context, Handler h) {
+         mContext = context;
++        mSettingsObserver = new SettingsObserver(h);
++        mSettingsObserver.observe();
++        updateSettings();
+         mH = h;
+         mConfigShortAnimTime = context.getResources().getInteger(
+                 com.android.internal.R.integer.config_shortAnimTime);
+@@ -285,10 +301,14 @@ public class AppTransition implements Dump {
+         int anim = 0;
+         Context context = mContext;
+         if (animAttr >= 0) {
+-            AttributeCache.Entry ent = getCachedAnimations(lp);
+-            if (ent != null) {
+-                context = ent.context;
+-                anim = ent.array.getResourceId(animAttr, 0);
++            if (mIsResId) {
++                anim = animAttr;
++            } else {
++                AttributeCache.Entry ent = getCachedAnimations(lp);
++                if (ent != null) {
++                    context = ent.context;
++                    anim = ent.array.getResourceId(animAttr, 0);
++                }
+             }
+         }
+         if (anim != 0) {
+@@ -481,6 +501,7 @@ public class AppTransition implements Dump {
+ 
+     Animation loadAnimation(WindowManager.LayoutParams lp, int transit, boolean enter,
+                             int appWidth, int appHeight) {
++        mIsResId = false;
+         Animation a;
+         if (mNextAppTransitionType == NEXT_TRANSIT_TYPE_CUSTOM) {
+             a = loadAnimation(mNextAppTransitionPackage, enter ?
+@@ -514,57 +535,143 @@ public class AppTransition implements Dump {
+             int animAttr = 0;
+             switch (transit) {
+                 case TRANSIT_ACTIVITY_OPEN:
+-                    animAttr = enter
+-                            ? WindowAnimation_activityOpenEnterAnimation
+-                            : WindowAnimation_activityOpenExitAnimation;
++                    if (mActivityAnimations[0] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[0]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_activityOpenEnterAnimation
++                                : WindowAnimation_activityOpenExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_ACTIVITY_CLOSE:
+-                    animAttr = enter
+-                            ? WindowAnimation_activityCloseEnterAnimation
+-                            : WindowAnimation_activityCloseExitAnimation;
++                    if (mActivityAnimations[1] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[1]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_activityCloseEnterAnimation
++                                : WindowAnimation_activityCloseExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_TASK_OPEN:
+-                    animAttr = enter
+-                            ? WindowAnimation_taskOpenEnterAnimation
+-                            : WindowAnimation_taskOpenExitAnimation;
++                    if (mActivityAnimations[2] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[2]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_taskOpenEnterAnimation
++                                : WindowAnimation_taskOpenExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_TASK_CLOSE:
+-                    animAttr = enter
+-                            ? WindowAnimation_taskCloseEnterAnimation
+-                            : WindowAnimation_taskCloseExitAnimation;
++                    if (mActivityAnimations[3] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[3]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_taskCloseEnterAnimation
++                                : WindowAnimation_taskCloseExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_TASK_TO_FRONT:
+-                    animAttr = enter
+-                            ? WindowAnimation_taskToFrontEnterAnimation
+-                            : WindowAnimation_taskToFrontExitAnimation;
++                    if (mActivityAnimations[4] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[4]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_taskToFrontEnterAnimation
++                                : WindowAnimation_taskToFrontExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_TASK_TO_BACK:
+-                    animAttr = enter
+-                            ? WindowAnimation_taskToBackEnterAnimation
+-                            : WindowAnimation_taskToBackExitAnimation;
++                    if (mActivityAnimations[5] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[5]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_taskToBackEnterAnimation
++                                : WindowAnimation_taskToBackExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_WALLPAPER_OPEN:
+-                    animAttr = enter
+-                            ? WindowAnimation_wallpaperOpenEnterAnimation
+-                            : WindowAnimation_wallpaperOpenExitAnimation;
++                    if (mActivityAnimations[6] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[6]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_wallpaperOpenEnterAnimation
++                                : WindowAnimation_wallpaperOpenExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_WALLPAPER_CLOSE:
+-                    animAttr = enter
+-                            ? WindowAnimation_wallpaperCloseEnterAnimation
+-                            : WindowAnimation_wallpaperCloseExitAnimation;
++                    if (mActivityAnimations[7] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[7]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_wallpaperCloseEnterAnimation
++                                : WindowAnimation_wallpaperCloseExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_WALLPAPER_INTRA_OPEN:
+-                    animAttr = enter
+-                            ? WindowAnimation_wallpaperIntraOpenEnterAnimation
+-                            : WindowAnimation_wallpaperIntraOpenExitAnimation;
++                    if (mActivityAnimations[8] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[8]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_wallpaperIntraOpenEnterAnimation
++                                : WindowAnimation_wallpaperIntraOpenExitAnimation;
++                    }
+                     break;
+                 case TRANSIT_WALLPAPER_INTRA_CLOSE:
+-                    animAttr = enter
+-                            ? WindowAnimation_wallpaperIntraCloseEnterAnimation
+-                            : WindowAnimation_wallpaperIntraCloseExitAnimation;
++                    if (mActivityAnimations[9] != 0) {
++                        mIsResId = true;
++                        int[] animArray = AwesomeAnimationHelper.getAnimations(mActivityAnimations[9]);
++                        animAttr = enter
++                                ? animArray[1]
++                                : animArray[0];
++                    } else {
++                        animAttr = enter
++                                ? WindowAnimation_wallpaperIntraCloseEnterAnimation
++                                : WindowAnimation_wallpaperIntraCloseExitAnimation;
++                    }
+                     break;
+             }
+             a = animAttr != 0 ? loadAnimation(lp, animAttr) : null;
++            if (a != null) {
++                if (mAnimationDuration > 0) {
++                    a.setDuration(mAnimationDuration);
++                }
++            }
++            mIsResId = false;
+             if (DEBUG_APP_TRANSITIONS || DEBUG_ANIM) Slog.v(TAG,
+                     "applyAnimation:"
+                     + " anim=" + a
+@@ -584,6 +691,7 @@ public class AppTransition implements Dump {
+ 
+     void overridePendingAppTransition(String packageName, int enterAnim, int exitAnim,
+                                              IRemoteCallback startedCallback) {
++        if (mNoOverrides) return;
+         if (isTransitionSet()) {
+             mNextAppTransitionType = NEXT_TRANSIT_TYPE_CUSTOM;
+             mNextAppTransitionPackage = packageName;
+@@ -599,6 +707,7 @@ public class AppTransition implements Dump {
+ 
+     void overridePendingAppTransitionScaleUp(int startX, int startY, int startWidth,
+                                                     int startHeight) {
++        if (mNoOverrides) return;
+         if (isTransitionSet()) {
+             mNextAppTransitionType = NEXT_TRANSIT_TYPE_SCALE_UP;
+             mNextAppTransitionPackage = null;
+@@ -614,6 +723,7 @@ public class AppTransition implements Dump {
+ 
+     void overridePendingAppTransitionThumb(Bitmap srcThumb, int startX, int startY,
+                                            IRemoteCallback startedCallback, boolean scaleUp) {
++        if (mNoOverrides) return;
+         if (isTransitionSet()) {
+             mNextAppTransitionType = scaleUp ? NEXT_TRANSIT_TYPE_THUMBNAIL_SCALE_UP
+                     : NEXT_TRANSIT_TYPE_THUMBNAIL_SCALE_DOWN;
+@@ -764,4 +874,47 @@ public class AppTransition implements Dump {
+     public void setCurrentUser(int newUserId) {
+         mCurrentUserId = newUserId;
+     }
++
++    private class SettingsObserver extends ContentObserver {
++
++        SettingsObserver(Handler handler) {
++            super(handler);
++        }
++
++        void observe() {
++            ContentResolver resolver = mContext.getContentResolver();
++            resolver.registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ANIMATION_CONTROLS_DURATION),
++                    false, this);
++            resolver.registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ANIMATION_CONTROLS_NO_OVERRIDE),
++                    false, this);
++            for (int i = 0; i < 10; i++) {
++              resolver.registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ACTIVITY_ANIMATION_CONTROLS[i]),
++                    false, this);
++            }
++
++        }
++
++        @Override
++        public void onChange(boolean selfChange) {
++            updateSettings();
++        }
++    }
++
++    private void updateSettings() {
++        ContentResolver resolver = mContext.getContentResolver();
++        for (int i = 0; i < 10; i++) {
++            mActivityAnimations[i] = Settings.System.getInt(resolver,
++                 Settings.System.ACTIVITY_ANIMATION_CONTROLS[i], 0);
++        }
++
++        mNoOverrides = Settings.System.getInt(resolver,
++                 Settings.System.ANIMATION_CONTROLS_NO_OVERRIDE, 0) == 1;
++
++        int temp = Settings.System.getInt(resolver,
++                 Settings.System.ANIMATION_CONTROLS_DURATION, 0);
++        mAnimationDuration = temp * 15;
++    }
+ }
+-- 
+1.7.9.5
+

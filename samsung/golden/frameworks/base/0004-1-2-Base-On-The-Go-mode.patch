@@ -1,0 +1,2323 @@
+From 97883cd446a6483fd1761143e3d9acfdd8a9bd4b Mon Sep 17 00:00:00 2001
+From: Evisceration <eviscerationls@gmail.com>
+Date: Sat, 15 Mar 2014 18:39:21 +0700
+Subject: [PATCH 4/8] [1/2] Base: On-The-Go mode
+
+On-The-Go turns on the camera of your phone and streams it to an overlay,
+which is drawn over everything.
+this makes you feel like your display is transparent, as you see the content
+behind it.
+
+its really useful when you are using your phone while walking, thats why
+we called it "On-The-Go"
+
+allows to change transparency of the overlay via the notification.
+
+have fun!
+
+rewrite and tweak de service
+
+add Tile
+
+drawable courtesy of @Alex-Cruz thanks :)
+
+also fix possible NPE
+
+PS11: rebased
+Conflicts:
+        packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSetting$
+
+PS12: handle display orientation changes, now Landscape also working
+      (tested, working, not sure if i merged it the right way
+      https://gerrit.nameless-rom.org/4950 )
+
+PS13: Make it multi-user aware (https://gerrit.nameless-rom.org/4951/_
+PS15: Rebased
+
+Change-Id: I149e3578e51d9b8b8c8bff41c4eaebca774739ab
+
+Conflicts:
+
+	packages/SystemUI/res/values/custom_strings.xml
+---
+ core/java/android/provider/Settings.java           |   22 ++
+ .../android/internal/util/omni/DeviceUtils.java    |   60 ++-
+ core/res/res/drawable-hdpi/ic_lock_onthego.png     |  Bin 0 -> 921 bytes
+ core/res/res/drawable-mdpi/ic_lock_onthego.png     |  Bin 0 -> 511 bytes
+ core/res/res/drawable-xhdpi/ic_lock_onthego.png    |  Bin 0 -> 973 bytes
+ core/res/res/drawable-xxhdpi/ic_lock_onthego.png   |  Bin 0 -> 1740 bytes
+ core/res/res/values/custom_strings.xml             |    3 +
+ core/res/res/values/symbols.xml                    |    2 +
+ packages/SystemUI/AndroidManifest.xml              |   19 +
+ .../SystemUI/res/drawable-hdpi/ic_qs_onthego.png   |  Bin 0 -> 4164 bytes
+ .../res/drawable-hdpi/ic_qs_onthego_front.png      |  Bin 0 -> 4192 bytes
+ .../SystemUI/res/drawable-mdpi/ic_qs_onthego.png   |  Bin 0 -> 3686 bytes
+ .../res/drawable-mdpi/ic_qs_onthego_front.png      |  Bin 0 -> 3678 bytes
+ .../SystemUI/res/drawable-xhdpi/ic_qs_onthego.png  |  Bin 0 -> 4795 bytes
+ .../res/drawable-xhdpi/ic_qs_onthego_front.png     |  Bin 0 -> 4755 bytes
+ .../SystemUI/res/drawable-xxhdpi/ic_qs_onthego.png |  Bin 0 -> 6097 bytes
+ .../res/drawable-xxhdpi/ic_qs_onthego_front.png    |  Bin 0 -> 6139 bytes
+ .../res/layout/quick_settings_onthego_dialog.xml   |   52 +++
+ packages/SystemUI/res/values/custom_strings.xml    |   14 +-
+ .../systemui/nameless/onthego/OnTheGoDialog.java   |  155 ++++++++
+ .../systemui/nameless/onthego/OnTheGoReceiver.java |   70 ++++
+ .../systemui/nameless/onthego/OnTheGoService.java  |  413 ++++++++++++++++++++
+ .../systemui/statusbar/phone/QuickSettings.java    |   30 ++
+ .../statusbar/phone/QuickSettingsModel.java        |   80 ++++
+ .../internal/policy/impl/GlobalActions.java        |   63 ++-
+ 25 files changed, 969 insertions(+), 14 deletions(-)
+ create mode 100644 core/res/res/drawable-hdpi/ic_lock_onthego.png
+ create mode 100644 core/res/res/drawable-mdpi/ic_lock_onthego.png
+ create mode 100644 core/res/res/drawable-xhdpi/ic_lock_onthego.png
+ create mode 100644 core/res/res/drawable-xxhdpi/ic_lock_onthego.png
+ create mode 100644 packages/SystemUI/res/drawable-hdpi/ic_qs_onthego.png
+ create mode 100644 packages/SystemUI/res/drawable-hdpi/ic_qs_onthego_front.png
+ create mode 100644 packages/SystemUI/res/drawable-mdpi/ic_qs_onthego.png
+ create mode 100644 packages/SystemUI/res/drawable-mdpi/ic_qs_onthego_front.png
+ create mode 100644 packages/SystemUI/res/drawable-xhdpi/ic_qs_onthego.png
+ create mode 100644 packages/SystemUI/res/drawable-xhdpi/ic_qs_onthego_front.png
+ create mode 100644 packages/SystemUI/res/drawable-xxhdpi/ic_qs_onthego.png
+ create mode 100644 packages/SystemUI/res/drawable-xxhdpi/ic_qs_onthego_front.png
+ create mode 100644 packages/SystemUI/res/layout/quick_settings_onthego_dialog.xml
+ create mode 100644 packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoDialog.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoReceiver.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoService.java
+
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index aea8051..d2bc101 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -2602,6 +2602,22 @@ public final class Settings {
+         public static final String NETWORK_TRAFFIC_STATE = "network_traffic_state";
+ 
+         /**
++         * The alpha value of the On-The-Go overlay.
++         *
++         * @hide
++         */
++        public static final String ON_THE_GO_ALPHA = "on_the_go_alpha";
++
++        /**
++         * The camera instance to use.
++         * 0 = Rear Camera
++         * 1 = Front Camera
++         *
++         * @hide
++         */
++        public static final String ON_THE_GO_CAMERA = "on_the_go_camera";
++
++        /**
+          * Show Screenshot in Power Menu
+          * @hide
+          */
+@@ -2614,6 +2630,12 @@ public final class Settings {
+         public static final String SCREENRECORD_IN_POWER_MENU = "screenrecord_in_power_menu";
+ 
+         /**
++         * Show on the go in Power Menu
++         * @hide
++         */
++        public static final String ONTHEGO_IN_POWER_MENU = "onthego_in_power_menu";
++
++        /**
+          * Show AirplaneMode in Power Menu
+          * @hide
+          */
+diff --git a/core/java/com/android/internal/util/omni/DeviceUtils.java b/core/java/com/android/internal/util/omni/DeviceUtils.java
+index 60d8c55..f68716e 100644
+--- a/core/java/com/android/internal/util/omni/DeviceUtils.java
++++ b/core/java/com/android/internal/util/omni/DeviceUtils.java
+@@ -33,8 +33,14 @@ import android.view.WindowManager;
+ import android.provider.Settings;
+ 
+ import com.android.internal.telephony.PhoneConstants;
++import static android.hardware.Sensor.TYPE_ACCELEROMETER;
++import static android.hardware.Sensor.TYPE_MAGNETIC_FIELD;
++import static android.hardware.Sensor.TYPE_GYROSCOPE;
+ import static android.hardware.Sensor.TYPE_LIGHT;
++import static android.hardware.Sensor.TYPE_PRESSURE;
+ import static android.hardware.Sensor.TYPE_PROXIMITY;
++import static android.hardware.Sensor.TYPE_GRAVITY;
++import static android.hardware.Sensor.TYPE_AMBIENT_TEMPERATURE;
+ 
+ import java.util.List;
+ 
+@@ -93,6 +99,26 @@ public class DeviceUtils {
+         return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS);
+     }
+ 
++    public static boolean deviceSupportsCamera(Context context) {
++        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA);
++    }
++
++    public static boolean deviceSupportsFrontCamera(Context context) {
++        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT);
++    }
++
++    public static boolean deviceOnlySupportsFrontCamera(Context context) {
++        boolean supportBackCamera = deviceSupportsCamera(context);
++        boolean supportFrontCamera = deviceSupportsFrontCamera(context);
++        return (!supportBackCamera && supportFrontCamera);
++    }
++
++    public static boolean deviceOnlySupportsBackCamera(Context context) {
++        boolean supportBackCamera = deviceSupportsCamera(context);
++        boolean supportFrontCamera = deviceSupportsFrontCamera(context);
++        return (supportBackCamera && !supportFrontCamera);
++    }
++
+     public static boolean deviceSupportsVibrator(Context ctx) {
+         Vibrator vibrator = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
+         return vibrator.hasVibrator();
+@@ -112,9 +138,19 @@ public class DeviceUtils {
+         return false;
+     }
+ 
+-    public static boolean deviceSupportsProximitySensor(Context context) {
++    public static boolean deviceSupportsAcceleroMeter(Context context) {
+         SensorManager sm = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+-        return sm.getDefaultSensor(TYPE_PROXIMITY) != null;
++        return sm.getDefaultSensor(TYPE_ACCELEROMETER) != null;
++    }
++
++    public static boolean deviceSupportsMagnetoMeter(Context context) {
++        SensorManager sm = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
++        return sm.getDefaultSensor(TYPE_MAGNETIC_FIELD) != null;
++    }
++
++    public static boolean deviceSupportsGyroscope(Context context) {
++        SensorManager sm = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
++        return sm.getDefaultSensor(TYPE_GYROSCOPE) != null;
+     }
+ 
+     public static boolean deviceSupportsLightSensor(Context context) {
+@@ -122,6 +158,26 @@ public class DeviceUtils {
+         return sm.getDefaultSensor(TYPE_LIGHT) != null;
+     }
+ 
++    public static boolean deviceSupportsPressure(Context context) {
++        SensorManager sm = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
++        return sm.getDefaultSensor(TYPE_PRESSURE) != null;
++    }
++
++    public static boolean deviceSupportsProximitySensor(Context context) {
++        SensorManager sm = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
++        return sm.getDefaultSensor(TYPE_PROXIMITY) != null;
++    }
++
++    public static boolean deviceSupportsGravitySensor(Context context) {
++        SensorManager sm = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
++        return sm.getDefaultSensor(TYPE_GRAVITY) != null;
++    }
++
++    public static boolean deviceSupportsTemperatureSensor(Context context) {
++        SensorManager sm = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
++        return sm.getDefaultSensor(TYPE_AMBIENT_TEMPERATURE) != null;
++    }
++
+     public static boolean deviceSupportNavigationBar(Context context) {
+         final boolean showByDefault = context.getResources().getBoolean(
+                 com.android.internal.R.bool.config_showNavigationBar);
+diff --git a/core/res/res/drawable-hdpi/ic_lock_onthego.png b/core/res/res/drawable-hdpi/ic_lock_onthego.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..12e1d955e4c5850bdf0b7eec338f55218fead42b
+GIT binary patch
+literal 921
+zcmV;K17`e*P)<h;3K|Lk000e1NJLTq001xm001xu1^@s6R|5Hm00006VoOIv0RI60
+z0RN!9r;`8x010qNS#tmY*MR^4*MR~1vu3RT000McNliru-UAH|AT5jUATIy_113pC
+zK~!ko?U+r7Rb?2*f6pC1YBG(AW>WeRL`X`|C=f$Pi3*}cMIuQ17J(qSa3MjEDK2zT
+z5z%#{VgrH;K_w$MkwjQT<fh3?vQ`agqvOo@bMp=yPv;)*ov(W?-Dh>)&-4F3@B4hb
+z4|Js~|8I$z++3XlJPo`CTm?P{evF749ibidJ^w44)LJKif68LHq~0@K|CvcmtOdpk
+z`ul+eoj~B12K$c#!<}LSX9}*+yXxFdA<(0Kr2eU%SGTG2JHm~scLGb(KZYXWV#fp*
+z^_isk-_#LxP~ELAt~&4s)xGNP4P0nlT~t-@Ta%9;vs_+Kqe{TnslVF1e5u}574R=M
+zq46SFUj^{<)UPt2M%A<GA59QA+xBauzNuc$fcivzR{g%oQ+T7D;QQ1Q88CmVz3Q40
+zz&CR3!FJ|C>w)Jp?Hv&@46G<wa~?PjTuJRm)SYVIY-_(?J)P0yh1B1xeq3?_-=q`z
+zp<wK?dMdpiHq5Afq#tDE)zp8V`fUk;BWd0{O?a*kn#D7xMeqTPWx7rQ$I|x#V0Fpz
+zi95d!cobNf-Uj_ZZ*J~$GeRIDRL=mL6Nmv|Bn>}Sk{n)5?*k&@8t|671Xuzr1|9;I
+z0n3wJ?wM`72zASCuElBf;gUV>P#>6eqs|c6--Pc!rrux0L@o-v%UFT$S3RUItQvv2
+z>Ua+5QT1elVD_1Mca;b%E70_|6dMK_kf^J@RUxpcfWS*>>|XUi1Dn`Y6#{z-z%9?^
+zP6GvVeyU1cXjQI#0r)o)KmG#V2ENG6>uEcIRKU#>IG2J~HV9q<>cG%+o_=kL;O7Ac
+zfxKHh3H(#Aq-VNIIkhQ(uL17^ujhsi1NDd)t$GP%i+U|*lwX(Ce$>tCP-gzQc7cB-
+z_nb7ng_quD-Lw;^O#=KAz^B|=A|C}_j)=k8R%We5@O>$T&L(8zz{ZI9t{u0b)f3pB
+za&{*;0b3*DNV{yYRRR;a`h+Xo3GA&vAZ_{zJ*objD$cuGO^emXbA_)Dr-~^iL1JMF
+vNW&2^GKux8fQ{*iS&xY8bfqg@nY7#lff)(jWHXQH00000NkvXXu0mjfL#n3!
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-mdpi/ic_lock_onthego.png b/core/res/res/drawable-mdpi/ic_lock_onthego.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..c093de7b1f6c44175b704baf19a9a6ed9d37ffd3
+GIT binary patch
+literal 511
+zcmV<b0RaAqP)<h;3K|Lk000e1NJLTq001BW001Be1^@s6b9#F800006VoOIv0RI60
+z0RN!9r;`8x010qNS#tmY*MR^4*MR~1vu3RT000McNliru-UAH|At3BUZPNe%0gOpR
+zK~z}7?U%tT1W_Ev-z<t1+a4$p2M4u@l2Tin99$eY$;Cl!xyZ?1;NU2^ILg6>TpX;M
+zn{p5bwWUqDNRkvvDci^8P5nGGJM7LIsr_E&z4`rm-_QHKH*aQ?s_8!q=m&OzEuc4Q
+z^Eh91SIIcBDi}tLen-?5XfP^J{EI!%4D0|oAQ7dp1Ehd6;1uYN(!3G4;JebcjhlcC
+z{B>d*ph&P%w#;XR$pY};18@U4VVl<jkJ{i!Z$MKYqTLlXz>FBY6`1e<*aPyqeG9As
+zbHHF20IpVbf8PUO9!UEvOTJnFcV-C#NNPyOdVm$+TEx!7T#lp<z`D;--3i3P1n4XC
+z2rfr)3XTfHOQ2vtEZPQG5@y>#9q?*EOxgS%$cT2qah#G;s$D5{FYX`MtiY3)>7?;m
+zescr1%(F(R+l=^?H2`41Fdz2Fu>%0K0Pn&)>ysBgfL_}dVZK==*9t&Rm>&n^Rs<0A
+z7$)`gSt&IhkXy2``4Yf15dT5$7;p$=YX6MC(I=4M7+s|8Q%wK>002ovPDHLkV1hAC
+B+5!Lo
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xhdpi/ic_lock_onthego.png b/core/res/res/drawable-xhdpi/ic_lock_onthego.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..5e7d8ff66118123068d280aedad9d7d2d7421f11
+GIT binary patch
+literal 973
+zcmV;;12X)HP)<h;3K|Lk000e1NJLTq002M$002M;1^@s6s%dfF00006VoOIv0RI60
+z0RN!9r;`8x010qNS#tmY*MR^4*MR~1vu3RT000McNliru-UAH|A1X~%pRfP`16oN$
+zK~#9!?VDSOO;H%f|KFKmXp9$<TOKJUmzqKixs!NMcri`N0}ozY@}`Iv&x&}EiE>H2
+zknp5I!jK2VP_CKWX3BMp@$+Dp)3NqG`^>rSefIz5)cV$1=llQHTHm)W=ST?>BuG%j
+zuyQ*9%$L+CsaMh+GrL<A$^#9+d;Z6nY7w9Zf1Hmy`Go}IN2z>Cl}UrfEcQBJbeskF
+zT%bCU72rk|dzYkdagPH#0%E{|YRLrafj4QyJAm2A_N)p<z7A*wE&~^VHNcQ+A-@~w
+zbFBL>z>GK(Zv|eH9dqJFd=_wz@OTv$;$whI3=Es2PW~YI;Z2mupQSKZ7r6@&pk7k9
+zq(KhzS4s6bboX0Qy_psDWLW64zy$~SXOgB!8ZrRiRz_*+H#(+quV<Su&~*@{)8Ju8
+zS(EoUJ)c8U6h?oUWAL7&+4qDT@T0)zjIvKr5a7OpOjDZuYDfVV1N&TQ5oiN80L{SI
+zN+Q21+ofhm^8H?{7?wkbxDG5YC;1xSt;4aYX>}%tB=Zw!@Y-z6F;=cDmjJcErwnJ>
+zGV1IMNuoQg%}}5_2LU?DISX3S9QgnY&#+$$N#c;B?`B{daLhYU_4~BlUhX(B*zYV4
+zbcPgQZOHE$2W$c^0FQvZm7XDbatVT^_Roq;-n>11SoG`fqse14qZ9%Z`(0p3j`eFK
+z-Ii3cnNVy2R``_v3TRU==^-#O4!1(jeb)O4;82LTFe1w22L+_9U0$7&Sp@hF42`M)
+zqXGn2npW?477<=XRe*`WZy!>bo264(L^u*f0halY>GP@I9w0zx6tlo0pYnE}^0|_3
+z`RN%a0j@iDWM-JzOi4FOIa5=`TK|%!`Iv8IY2FoS0f0KcQI_;GU<s53sREO)k@QrO
+zYZuoiX`Gq$#8v=F9g@cT*cO`Ehf2#<sREAvfq-?t#mw3jR{+}sa`^rn`#KkN#a@Zz
+z=LL|zH-P?1DnKev@}nhP@iD*Dzn7tkMJf;SV?C0!4)Z%nlgz9?wgO1nDEBkCBsJ^r
+z@Bb?vwRyB1<x@W0%sLej<TC?Ye{5K7X7}^->7%3UMWtqdIlu$pVWEEC3ygPUfresn
+vunHA+grpYl7<}5yx|AS6f&>W?6dZp5x?O6>fEJ_r00000NkvXXu0mjfd$+se
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xxhdpi/ic_lock_onthego.png b/core/res/res/drawable-xxhdpi/ic_lock_onthego.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..f0a6d689833b49dc6e0b92126ca88926a07fedaa
+GIT binary patch
+literal 1740
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/values/custom_strings.xml b/core/res/res/values/custom_strings.xml
+index 07475bb..8040a7a 100644
+--- a/core/res/res/values/custom_strings.xml
++++ b/core/res/res/values/custom_strings.xml
+@@ -47,6 +47,9 @@
+     <!-- Storage description for the SD card on the dock. [CHAR LIMIT=NONE] -->
+     <string name="storage_sd_dock_card">Dock SD card</string>
+ 
++    <!-- label for item that takes On-The-Go in the phone options dialog -->
++    <string name="global_action_onthego">On-the-go mode</string>
++
+     <!-- label for item that toggle mobile data -->
+     <string name="global_actions_toggle_mobile_data">Mobile data</string>
+ 
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+index 81c083b..fb75df4 100644
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -1340,6 +1340,7 @@
+   <java-symbol type="drawable" name="ic_lock_airplane_mode_off" />
+   <java-symbol type="drawable" name="ic_lock_mobile_data" />
+   <java-symbol type="drawable" name="ic_lock_mobile_data_off" />
++  <java-symbol type="drawable" name="ic_lock_onthego" />
+   <java-symbol type="drawable" name="ic_menu_cc" />
+   <java-symbol type="drawable" name="jog_tab_bar_left_unlock" />
+   <java-symbol type="drawable" name="jog_tab_bar_right_sound_off" />
+@@ -1416,6 +1417,7 @@
+   <java-symbol type="string" name="global_action_silent_mode_off_status" />
+   <java-symbol type="string" name="global_action_silent_mode_on_status" />
+   <java-symbol type="string" name="global_action_toggle_silent_mode" />
++  <java-symbol type="string" name="global_action_onthego" />
+   <java-symbol type="string" name="invalidPuk" />
+   <java-symbol type="string" name="lockscreen_carrier_default" />
+   <java-symbol type="style" name="Animation.LockScreen" />
+diff --git a/packages/SystemUI/AndroidManifest.xml b/packages/SystemUI/AndroidManifest.xml
+index 131fa58..431b8c4 100644
+--- a/packages/SystemUI/AndroidManifest.xml
++++ b/packages/SystemUI/AndroidManifest.xml
+@@ -94,6 +94,9 @@
+     <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
+ 
++    <!-- On the go -->
++    <uses-permission android:name="android.permission.CAMERA" />
++
+     <application
+         android:persistent="true"
+         android:allowClearUserData="false"
+@@ -124,6 +127,22 @@
+             android:process=":screenrecord"
+             android:exported="false" />
+ 
++        <!-- on the go mode -->
++        <service android:name=".nameless.onthego.OnTheGoService"
++                android:process=":onthego"
++                android:exported="false" />
++
++        <receiver android:name=".nameless.onthego.OnTheGoReceiver"
++                android:exported="true" >
++            <intent-filter>
++                <action android:name="com.android.systemui.action.ON_THE_GO_START" />
++                <action android:name="com.android.systemui.action.ON_THE_GO_STOP" />
++                <action android:name="com.android.systemui.action.ON_THE_GO_RESTART" />
++                <action android:name="com.android.systemui.action.ON_THE_GO_TOOGLE_OPTIONS" />
++            </intent-filter>
++        </receiver>
++        <!-- on the go mode -->
++
+         <service android:name=".LoadAverageService"
+                 android:exported="true" />
+ 
+diff --git a/packages/SystemUI/res/drawable-hdpi/ic_qs_onthego.png b/packages/SystemUI/res/drawable-hdpi/ic_qs_onthego.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..a788011bdc72f2076e14cb1f7d4096a5648b4704
+GIT binary patch
+literal 4164
+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
+O0000<MNUMnLSTYj(Z>@2
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-hdpi/ic_qs_onthego_front.png b/packages/SystemUI/res/drawable-hdpi/ic_qs_onthego_front.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..a5235bfe23bc45a4956de53487c42fc5f8007909
+GIT binary patch
+literal 4192
+zcmV-m5TEafP)<h;3K|Lk000e1NJLTq001xm001xu1^@s6R|5Hm00009a7bBm003B(
+z003B(0oiRg(*OVpPiaF#P*7-ZbZ>KLZ*U+<Lqi~Na&Km7Y-Iodc-oy)XH-+^7Crag
+z^g>IBfRsybQWXdwQbLP>6p<z>Aqfylh#{fb6;Z(vMMVS~$e@S=j*ftg6;Uh<iVD~V
+z<RPMtgQJLw%KPDaqifc@_vX$1wbwr9tn;0-&j-K=43<bUQ8j=JsX`tR;Dg7+#^K~H
+zK!FM*Z~zbpvt%K2{UZSY_<lS*D<Z%Lz5oGu(+dayz)hRLFdT>f59&ghTmgWD0l;*T
+zI7<kC6aYYajzXpYKt=(8otP$50H6c_V9R4-;{Z@C0AMG7=F<Rxo%or10RUT+Ar%3j
+zkpLhQWr#!oXgdI`&sK^>09Y^p6lP1rIRMx#05C~cW=H_Aw*bJ-5DT&Z2n+x)QHX^p
+z00esgV8|mQcmRZ%02D^@S3L16t`O%c004NIvOKvYIYoh62rY33S640`D9%Y2D-<?i
+z0%4j!F2Z@488U%158(66005wo6%pWr^Zj_v4zAA5HjcIqUoGmt2LB>rV&neh&#Q1i
+z007~1e$oCcFS8neI|hJl{-P!B1ZZ9hpmq0)X0i`JwE&>$+E?>%_<lS*MWK+n+1cgf
+z<k(8YLR(?VSAG6x!e78w{cQPuJpA|d;J)G{fihizM+Erb!p!tcr5w+a34~(Y=8s4G
+zw+sLL9n&JjNn*KJDiq^U5^;`1nvC-@r6P$!k}1U{(*I=Q-z@tBKHoI}uxdU5dyy@u
+zU1J0GOD7Ombim^G008p4Z^6_k2m^p<gW=D2|L;HjN1!DDfM!XOaR2~bL?kX$%CkSm
+z2mk;?pn)o|K^yeJ7%adB9Ki+L!3+FgHiSYX#KJ-lLJDMn9CBbOtb#%)hRv`YDqt_v
+zKpix|QD}yfa1JiQRk#j4a1Z)n2%f<xynzV>LC6RbVIkUx0b+_+BaR3cnT7Zv!AJxW
+zizFb)h!jyGOOZ85F;a?DAXP{m@;!0_Ifq<Ex{*7`05XF7hP+2Hl!3BQJ=6@fL%FCo
+z8iYoo3(#bAF`ADSpqtQgv>H8(HlgRxt7s3}k3K`kFu>>-2Q$QMFfPW!La{h336o>X
+zu_CMttHv6zR;&ZNiS=X8v3CR#fknUxHUxJ<AYmRsNLWl*PS{AOARHt#5!wki2?K;t
+z!Y3k=s7tgax)J%r7-BLphge7~Bi0g+6E6^Zh(p9TBoc{3GAFr^0!gu?RMHaCM$&Fl
+zBk3%un>0uoBa_M6WNWeqIg~6QE69c9o#eyhGvpiOA@W-aonk<7r1(?fC{oI5N*U!4
+z<uv66WtcKSRim0x-Ke2d5jBrmLam{;Qm;{ms1r1GnmNsb7D-E`t)i9F8fX`2_i3-_
+zbh;7Ul^#x)&{xvS=|||7=mYe33=M`AgU5(xC>fg=2N-7=cNnjjOr{yriy6mMFgG#l
+znCF=fnQv8CDz++o6_Lscl}eQ+l^ZHARH>?_s@|##Rr6KLRFA1%Q+=*RRWnoLsR`7U
+zt5vF<Q0r40Q)j6=sE4X&sBct1q<&fbi3VB2Ov6t@q*0);U*o*SAPZv|vv@2aYYnT0
+zb%8a+Cb7-ge0D0knEf5Qi#@8Tp*ce{N;6lpQuCB%KL_KOarm5cP6_8Ir<e17iry6O
+zDdH&`rZh~sF=bq9s+O0QSgS~@QL9Jmy*94xr=6y~MY~!1fet~(N+(<=M`w@D1)b+p
+z*;C!83a1uLJv#NSE~;y#8=<>IcfW3@?wFpwUVxrVZ>QdQz32KIeJ}k~{cZZE^+ya?
+z2D1z#2HOnI7(B%_ac?{wFUQ;QQA1tBKtrWrm0_3Rgps+?Jfqb{jYbcQX~taRB;#$y
+zZN{S}1|}gUOHJxc?wV3fxuz+mJ4`!F$IZ;mqRrNsHJd##*D~ju=bP7?-?v~|cv>vB
+zsJ6IeNwVZxrdjT`yl#bBIa#GxRa#xMMy;K#CDyyGyQdMSxlWT#tDe?p!?5wT$+oGt
+z8L;Kp2HUQ-ZMJ=3XJQv;x5ci*?vuTfeY$;({XGW_huIFR9a<fJbF^|4I#xQ~n$Dc=
+zKYhjYmgz5NSkDm8*fZm{6U!;YX`NG>(?@3)XSs8O^N5RyOM=TTmp(3=8^+zpz2r)C
+z^>JO{deZfso3oq3?Wo(Y?l$ge?uXo;%ru`Vo>?<<(8I_>;8Eq#KMS9gFl*neeosSB
+zfoHYnBQIkwkyowPu(zdms`p{<7e4kra-ZWq<2*OsGTvEV%s0Td$hXT+!*8Bnh2KMe
+zBmZRodjHV?r+_5^X9J0WL4jKW`}lf%A-|44I@@LTvf1rHjG(ze6+w@Jt%Bvjts!X0
+z?2xS?_ve_-k<Mujg;0Lz*3buG=3$G&ehepthlN*$KaOySSQ^nWmo<0M+(UEUMEXRQ
+zMBbZcF;6+KElM>iKB_KiJlZ$9G`c^=E@oNG)mWWaNo-3TIW8)$Hg0Ub-~8?KhvJ>$
+z3*&nim@mj(aCxE5!t{lw7O5^0EIO7zOo&c6l<+|iDySBWCGrz@C5{St!X3hAA}`T4
+z(TLbXTq+(;@<=L8dXnssyft|w#WSTW<++3>sgS%(4NTpeI-VAqb|7ssJvzNHgOZVu
+zaYCvgO_R1~>SyL=cFU|~g|hy|Zi}}s9+d~lYqOB71z9Z$wnC=pR9Yz4DhIM>Wmjgu
+z&56o6maCpC&F##y%G;1PobR9i?GnNg;gYtchD%p19a!eQtZF&3JaKv33gZ<8D~47E
+ztUS1iwkmDaPpj=$m#%)jCVEY4fnLGNg2A-`YwHVD3gv};>)hAvT~AmqS>Lr``i7kw
+zJ{5_It`yrBmlc25DBO7E8;5VoznR>Ww5hAaxn$2~(q`%A-YuS64wkBy=9dm`4cXeX
+z4c}I@?e+FW+b@^RDBHV(wnMq2zdX3SWv9u`%{xC-q*U}&`cyXV(%rRT*Z6MH?i+i&
+z_B8C(+grT%{XWUQ+f@NoP1R=AW&26{v-dx)iK^-Nmiuj8txj!m?Z*Ss1N{dh4z}01
+z)YTo*JycSU)+_5r4#yw9{+;i4Ee$peRgIj+;v;ZGdF1K$3E%e~4LaI(jC-u%2h$&R
+z9cLXcYC@Xwnns&bn)_Q~Te?roKGD|d-g^8;+aC{{G(1^(O7m37Y1-+6)01cN&y1aw
+zoqc{T`P^XJqPBbIW6s}d4{z_f5Om?vMgNQEJG?v2T=KYd^0M3I6IZxbny)%vZR&LD
+zJpPl@Psh8QyPB@KTx+@RdcC!KX7}kEo;S|j^u2lU7XQ}Oo;f|;z4Ll+_r>@1-xl3|
+zawq-H%e&ckC+@AhPrP6BK<z=<L*0kfKU@CX*zeqbYQT4(^U>T#_XdT7&;F71j}Joy
+zkC~6lh7E@6o;W@^IpRNZ{ptLtL(gQ-CY~4mqW;US7Zxvm_|@yz&e53Bp_lTPlfP|z
+zrTyx_>lv@x#=^!PzR7qqF<$gm`|ZJZ+;<)Cqu&ot<a{81DF0~rvGr5Xr~8u`lav1h
+z1DNytV>2z=0000WV@Og>004R=004l4008;_004mL004C`008P>0026e000+nl3&F}
+z000GxNkl<Zc-rime@t6d6vsbpsRD%&m}G3obQFV~4qY}BHMki31>3T@VU{iaMK(7>
+zB5`1{p@A+8&8R<;WukG))W!J&amq??h@y~?%|%f$*$<<GAe|6|U|DIQ?e(8KQ|fDZ
+zJjMoQCwX}<=iGbW{l0t8_nvcFoe+YnBw0W?a6x1L6ySphuAZ2IN2fVPkDfU$*8p4t
+zFin|BCyoSifn?xYpmQz(cntUuxGq5V6|f!{neAI>J@9GJ<N<Pk*16yVd&Ah413P9j
+zfLnpvCTWu`?_xFrxL!pY<7{4mp8>}tZGMz@-E0IPfS1GAhk!R`JB_{qL<1E;`e9&|
+z5Mt2h^WpdV|B8r+K(E&eU@YJR7^bq#w5&i3un1V7a4iB7BooB}mB3-iJc&T35CVh2
+zfY<BAZnxj(a5(hxuv-Y2+S=Mu&Ye5gqkheWn9B94P$ym?#HLBcdcL{2xg$3>m-hDd
+zfA!n9Z>ON3;2xFlsWDisR<&4P1WKl`viZO-!08ZeZc0r}eJUy{N?%x5_|4$pAZD`}
+zhr_{%6DR(Ni;HtuES9yC5rSF(w*yBsY&R!RAHuc_*kG|(R*jF3ciL>W(`{{S2q8#J
+zOr)iy<p;Cbyf7stWo0-3YJK1(jShWQO{3!C;*U3O+?eigIOy%|Wnf?cx7$s5dHIgM
+zzP|6K>%^OYM<$_8rBiiWI<OisR8>{gW@ct$G#ZJIk0(7n9i!2R&1PE<{H+y$A<Wl*
+z7D$qQp$oBUf2v)ogoK1;rKP3syId}uPA49Zhxzm8)6&v%p|Y~_ajgKh0yiq?kH`u3
+z0jVMSW&&>kM`d(+6!=n7D}XDwLq<l%mg3^#lHuWD#>dC;cswj!x|G(|)~2SWrd?VN
+zvUmlZ3)m^2EkI$2z7K}cM+09d8T0b;Y%Z5;ps}&>owT$xoK7cBr<1a>vV8`FVL?t#
+z&NEY4fy00|NVi*ld4O#ioqG$gCX{jBym>JulZnX4NPIpYUauFY)5*xlh;ynd&<m^t
+z4#@q!7kF3NZkR@F@0CveA31*f_&%%EdLSVof!^L;Vq#+Ocs%UcvuE47b?eHsu+UF3
+zhQB3X@&E-ultuur0mp)s-QC@dRaI5H;^N|nj*iA)FwoiA$%+*#GV}BE-&7h%H;vNb
+zdEn+C-LF6`Fi(M*^fF)g9;lWlb?qgi+wJZyDk`${_4SP=CnqC>pr@yYq@*NMb#?Vw
+zqtTeGFo#20qtOC|$s@n&b6S!gtJS)xy}f<ZVzJQQ-_Ov{5MyIw?BBotXo$&AD<60|
+zgnnl@=L{t^H8opnYHCi##>S%8>oFRQT)cRZ($dlwmMmHF(B+Iq5kfqyB1&ANVw@+0
+z5Tc=>;lSd>izz87;mnycR8&-um6gT8g9r1~M59^&G^z}BCj+tj)TvXB?Cfmn>gpzh
+z)0;PMwg@5oGXdakF*R8o*nezn47b~j&*x)wbTqHNzW)BMuC591u-omrj*gDgYV!dl
+z7K)THP@usNxPiB&0|#@uU!jn7N!9=j0A8;bzu%8er^D~}=NOH~V|u;b6_8ST0h7$?
+z)W`%DG6Qu$h71=jMVYz)FeZgTJ_2k3)rMfP18V_$M8pKrOOoe^*0W>+3*9SYlRM;u
+zO)~e54Y<dKV69qt*yV(I&nGe`p0V=!13;R_I?(6x`D@^zFr0taOaeF$cr^46uJJU>
+z?V=>nGYQ}b@Z=Qxeg?d*pl?%(^`)a<b_w*V_hk9|&H!c!wH+M5$q;tk<tiI$smyiB
+zYdUg80bKi$@Ba!wr&2d70r&ymm13cp05A;vrl9|QE^VRUtn5&jSZR8Dbq4=#vl`eS
+qE7a8rC;f7u2<X>1{z9Psp8)_2NAB)nb&1XZ0000<MNUMnLSTXh=<A~Z
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-mdpi/ic_qs_onthego.png b/packages/SystemUI/res/drawable-mdpi/ic_qs_onthego.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..a06b0c078827b56678ae6fc28208c4b8e9798120
+GIT binary patch
+literal 3686
+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
+Ef+_~#_5c6?
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-mdpi/ic_qs_onthego_front.png b/packages/SystemUI/res/drawable-mdpi/ic_qs_onthego_front.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..15984ac1b853915a84d44e64743543e4e771f660
+GIT binary patch
+literal 3678
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-xhdpi/ic_qs_onthego.png b/packages/SystemUI/res/drawable-xhdpi/ic_qs_onthego.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..cbe1f06765eb98e9fcd8baa340f9d832bf09f569
+GIT binary patch
+literal 4795
+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
+VcyD1bN_+qS002ovPDHLkV1ml*7uWy*
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-xhdpi/ic_qs_onthego_front.png b/packages/SystemUI/res/drawable-xhdpi/ic_qs_onthego_front.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..d17aceea13074c8b261bec4c0a7b3d2595bf8c84
+GIT binary patch
+literal 4755
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-xxhdpi/ic_qs_onthego.png b/packages/SystemUI/res/drawable-xxhdpi/ic_qs_onthego.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..fa84d69fea05de0df09cfb1e457a176f89d8f404
+GIT binary patch
+literal 6097
+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
+XLadjp>L=#`00000NkvXXu0mjfS8av1
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-xxhdpi/ic_qs_onthego_front.png b/packages/SystemUI/res/drawable-xxhdpi/ic_qs_onthego_front.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..d29b06083e515ec079a473908fbe95d0b8a752c7
+GIT binary patch
+literal 6139
+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
+N002ovPDHLkV1i+0mZ|^%
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/layout/quick_settings_onthego_dialog.xml b/packages/SystemUI/res/layout/quick_settings_onthego_dialog.xml
+new file mode 100644
+index 0000000..2c0f706
+--- /dev/null
++++ b/packages/SystemUI/res/layout/quick_settings_onthego_dialog.xml
+@@ -0,0 +1,52 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Copyright (C) 2012 The Android Open Source Project
++
++     Licensed under the Apache License, Version 2.0 (the "License");
++     you may not use this file except in compliance with the License.
++     You may obtain a copy of the License at
++
++          http://www.apache.org/licenses/LICENSE-2.0
++
++     Unless required by applicable law or agreed to in writing, software
++     distributed under the License is distributed on an "AS IS" BASIS,
++     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++     See the License for the specific language governing permissions and
++     limitations under the License.
++-->
++
++<RelativeLayout
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    style="@style/BrightnessDialogContainer">
++
++    <TextView
++        android:id="@+id/alpha_slider_label"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:text="@string/onthego_transparency"
++        android:layout_alignParentTop="true" />
++
++    <SeekBar
++        android:id="@+id/alpha_slider"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_gravity="center_vertical"
++        android:layout_below="@+id/alpha_slider_label"
++        android:max="65" />
++
++    <View
++        android:id="@+id/onthego_divider_0"
++        android:layout_width="match_parent"
++        android:layout_height="2dp"
++        android:background="@android:color/white"
++        android:layout_marginTop="5dp"
++        android:layout_marginBottom="5dp"
++        android:layout_below="@+id/alpha_slider" />
++
++    <Switch
++        android:id="@+id/onthego_camera_toggle"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_below="@+id/onthego_divider_0"
++        android:text="@string/onthego_front_camera"
++        android:layout_alignParentRight="true" />
++</RelativeLayout>
+diff --git a/packages/SystemUI/res/values/custom_strings.xml b/packages/SystemUI/res/values/custom_strings.xml
+index 7eb4474..94338a1 100644
+--- a/packages/SystemUI/res/values/custom_strings.xml
++++ b/packages/SystemUI/res/values/custom_strings.xml
+@@ -130,7 +130,6 @@
+     <string name="quick_settings_tinted_mode_screen_label">Screen</string>
+     <string name="quick_settings_tinted_mode_actionbar_label">Action bar</string>
+ 
+-    <!-- battery saver mode -->
+     <string name="battery_saver_start">Battery Saver Enabled</string>
+     <string name="battery_saver_stop">Battery Saver Disabled</string>
+     <string name="battery_saver_change">Battery Saver Change network to</string>
+@@ -153,6 +152,19 @@
+     <string name="battery_saver_airplane_text">Airplane mode enabled by battery saver because there is no signal after 5 minutes</string>
+     <string name="battery_saver_disable">Disable</string>
+ 
++    <!-- On-The-Go mode strings -->
++    <string name="onthego_notif_ticker">On-The-Go activated</string>
++    <string name="onthego_notif_title">On-The-Go is active</string>
++    <string name="onthego_notif_stop">Stop</string>
++    <string name="onthego_notif_options">Options</string>
++    <string name="onthego_notif_error">Unable to start On-The-Go</string>
++    <string name="onthego_notif_restart">Restart On-The-Go</string>
++    <string name="onthego_notif_camera_changed">Camera mode changed</string>
++    <string name="onthego_transparency">Transparency</string>
++    <string name="onthego_front_camera">Use front camera</string>
++    <string name="quick_settings_onthego_back">Rear Camera</string>
++    <string name="quick_settings_onthego_front">Front Camera</string>
++
+     <!-- Dialog title for navigation bar button selection -->
+     <string name="navbar_dialog_title">Choose action to assign</string>
+     <string name="navbar_home_button">Home button</string>
+diff --git a/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoDialog.java b/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoDialog.java
+new file mode 100644
+index 0000000..07d9c2b
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoDialog.java
+@@ -0,0 +1,155 @@
++/*
++* <!--
++* Copyright (C) 2014 The NamelessROM Project
++*
++* This program is free software: you can redistribute it and/or modify
++* it under the terms of the GNU General Public License as published by
++* the Free Software Foundation, either version 3 of the License, or
++* (at your option) any later version.
++*
++* This program is distributed in the hope that it will be useful,
++* but WITHOUT ANY WARRANTY; without even the implied warranty of
++* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++* GNU General Public License for more details.
++*
++* You should have received a copy of the GNU General Public License
++* along with this program. If not, see <http://www.gnu.org/licenses/>.
++* -->
++*/
++
++package com.android.systemui.nameless.onthego;
++
++import android.app.Dialog;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.res.Resources;
++import android.os.Bundle;
++import android.os.Handler;
++import android.os.UserHandle;
++import android.provider.Settings;
++import android.view.View;
++import android.view.Window;
++import android.view.WindowManager;
++import android.widget.CompoundButton;
++import android.widget.SeekBar;
++import android.widget.Switch;
++
++import com.android.systemui.R;
++import com.android.internal.util.omni.DeviceUtils;
++
++public class OnTheGoDialog extends Dialog {
++
++    protected final Context mContext;
++    protected final Handler mHandler = new Handler();
++
++    private final int mOnTheGoDialogLongTimeout;
++    private final int mOnTheGoDialogShortTimeout;
++
++    private final Runnable mDismissDialogRunnable = new Runnable() {
++        public void run() {
++            if (OnTheGoDialog.this.isShowing()) {
++                OnTheGoDialog.this.dismiss();
++            }
++        }
++    };
++
++    public OnTheGoDialog(Context ctx) {
++        super(ctx);
++        mContext = ctx;
++        final Resources r = mContext.getResources();
++        mOnTheGoDialogLongTimeout =
++                r.getInteger(R.integer.quick_settings_brightness_dialog_long_timeout);
++        mOnTheGoDialogShortTimeout =
++                r.getInteger(R.integer.quick_settings_brightness_dialog_short_timeout);
++    }
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        Window window = getWindow();
++        window.setType(WindowManager.LayoutParams.TYPE_VOLUME_OVERLAY);
++        window.getAttributes().privateFlags |=
++                WindowManager.LayoutParams.PRIVATE_FLAG_SHOW_FOR_ALL_USERS;
++        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
++        window.requestFeature(Window.FEATURE_NO_TITLE);
++
++        setContentView(R.layout.quick_settings_onthego_dialog);
++        setCanceledOnTouchOutside(true);
++
++        final ContentResolver resolver = mContext.getContentResolver();
++
++        final SeekBar mSlider = (SeekBar) findViewById(R.id.alpha_slider);
++        final float value = Settings.System.getFloatForUser(resolver,
++                Settings.System.ON_THE_GO_ALPHA, 0.5f, UserHandle.USER_CURRENT);
++        final int progress = ((int) (value * 100));
++        mSlider.setProgress(progress);
++        mSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
++            @Override
++            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
++                sendAlphaBroadcast(String.valueOf(i + 10));
++            }
++
++            @Override
++            public void onStartTrackingTouch(SeekBar seekBar) {
++                removeAllOnTheGoDialogCallbacks();
++            }
++
++            @Override
++            public void onStopTrackingTouch(SeekBar seekBar) {
++                dismissOnTheGoDialog(mOnTheGoDialogShortTimeout);
++            }
++        });
++
++        final View mDivider = findViewById(R.id.onthego_divider_0);
++        final Switch mCamSwitch = (Switch) findViewById(R.id.onthego_camera_toggle);
++        if (!DeviceUtils.deviceSupportsFrontCamera(mContext)) {
++            mDivider.setVisibility(View.GONE);
++            mCamSwitch.setVisibility(View.GONE);
++        } else {
++            mDivider.setVisibility(View.VISIBLE);
++            mCamSwitch.setVisibility(View.VISIBLE);
++            final boolean useFrontCam = (Settings.System.getIntForUser(resolver,
++                   Settings.System.ON_THE_GO_CAMERA, 0, UserHandle.USER_CURRENT) == 1);
++            mCamSwitch.setChecked(useFrontCam);
++            mCamSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
++                 @Override
++                 public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
++                     Settings.System.putIntForUser(resolver,
++                        Settings.System.ON_THE_GO_CAMERA, (b ? 1 : 0), UserHandle.USER_CURRENT);
++                     dismissOnTheGoDialog(mOnTheGoDialogShortTimeout);
++                 }
++            });
++        }
++    }
++
++    @Override
++    protected void onStart() {
++        super.onStart();
++        dismissOnTheGoDialog(mOnTheGoDialogLongTimeout);
++    }
++
++    @Override
++    protected void onStop() {
++        super.onStop();
++        removeAllOnTheGoDialogCallbacks();
++    }
++
++    private void dismissOnTheGoDialog(int timeout) {
++        removeAllOnTheGoDialogCallbacks();
++        mHandler.postDelayed(mDismissDialogRunnable, timeout);
++    }
++
++    private void removeAllOnTheGoDialogCallbacks() {
++        mHandler.removeCallbacks(mDismissDialogRunnable);
++    }
++
++    private void sendAlphaBroadcast(String i) {
++        final float value = (Float.parseFloat(i) / 100);
++        final Intent alphaBroadcast = new Intent();
++        alphaBroadcast.setAction(OnTheGoReceiver.ACTION_TOGGLE_ALPHA);
++        alphaBroadcast.putExtra(OnTheGoReceiver.EXTRA_ALPHA, value);
++        mContext.sendBroadcast(alphaBroadcast);
++    }
++
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoReceiver.java b/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoReceiver.java
+new file mode 100644
+index 0000000..204e7b5
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoReceiver.java
+@@ -0,0 +1,70 @@
++/*
++* <!--
++* Copyright (C) 2014 The NamelessROM Project
++*
++* This program is free software: you can redistribute it and/or modify
++* it under the terms of the GNU General Public License as published by
++* the Free Software Foundation, either version 3 of the License, or
++* (at your option) any later version.
++*
++* This program is distributed in the hope that it will be useful,
++* but WITHOUT ANY WARRANTY; without even the implied warranty of
++* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++* GNU General Public License for more details.
++*
++* You should have received a copy of the GNU General Public License
++* along with this program. If not, see <http://www.gnu.org/licenses/>.
++* -->
++*/
++
++package com.android.systemui.nameless.onthego;
++
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++import android.os.Handler;
++
++public class OnTheGoReceiver extends BroadcastReceiver {
++
++    public static final String ACTION_START
++            = "com.android.systemui.action.ON_THE_GO_START";
++    public static final String ACTION_STOP
++            = "com.android.systemui.action.ON_THE_GO_STOP";
++    public static final String ACTION_ALREADY_STOP
++            = "com.android.systemui.action.ON_THE_GO_ALREADY_STOP";
++    public static final String ACTION_RESTART
++            = "com.android.systemui.action.ON_THE_GO_RESTART";
++    public static final String ACTION_TOGGLE_ALPHA
++            = "com.android.systemui.action.ON_THE_GO_TOOGLE_ALPHA";
++    public static final String ACTION_TOGGLE_OPTIONS
++            = "com.android.systemui.action.ON_THE_GO_TOOGLE_OPTIONS";
++    public static final String EXTRA_ALPHA
++            = "com.android.systemui.action.ON_THE_GO_EXTRA_ALPHA";
++
++    @Override
++    public void onReceive(final Context context, Intent intent) {
++        final String action = intent.getAction();
++        Handler handler = new Handler();
++
++        if (action != null && !action.isEmpty()) {
++            final Intent serviceTriggerIntent = new Intent(context, OnTheGoService.class);
++            if (action.equals(ACTION_START)) {
++                context.startService(serviceTriggerIntent);
++            } else if (action.equals(ACTION_STOP)) {
++                context.stopService(serviceTriggerIntent);
++                Intent stopIntent = new Intent();
++                stopIntent.setAction(ACTION_ALREADY_STOP);
++                context.sendBroadcast(stopIntent);
++            } else if (action.equals(ACTION_RESTART)) {
++                context.stopService(serviceTriggerIntent);
++                handler.postDelayed(new Runnable() {
++                    @Override
++                    public void run() {
++                        context.startService(serviceTriggerIntent);
++                    }}, 1000);
++            } else if (action.equals(ACTION_TOGGLE_OPTIONS)) {
++                new OnTheGoDialog(context).show();
++            }
++        }
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoService.java b/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoService.java
+new file mode 100644
+index 0000000..4004fb2
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/nameless/onthego/OnTheGoService.java
+@@ -0,0 +1,413 @@
++/*
++* <!--
++* Copyright (C) 2014 The NamelessROM Project
++*
++* This program is free software: you can redistribute it and/or modify
++* it under the terms of the GNU General Public License as published by
++* the Free Software Foundation, either version 3 of the License, or
++* (at your option) any later version.
++*
++* This program is distributed in the hope that it will be useful,
++* but WITHOUT ANY WARRANTY; without even the implied warranty of
++* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
++* GNU General Public License for more details.
++*
++* You should have received a copy of the GNU General Public License
++* along with this program. If not, see <http://www.gnu.org/licenses/>.
++* -->
++*/
++
++package com.android.systemui.nameless.onthego;
++
++import android.app.Notification;
++import android.app.NotificationManager;
++import android.app.PendingIntent;
++import android.app.Service;
++import android.content.BroadcastReceiver;
++import android.content.ComponentName;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.content.res.Resources;
++import android.database.ContentObserver;
++import android.graphics.PixelFormat;
++import android.graphics.SurfaceTexture;
++import android.hardware.Camera;
++import android.hardware.Camera.Face;
++import android.hardware.Camera.FaceDetectionListener;
++import android.net.Uri;
++import android.os.Handler;
++import android.os.UserHandle;
++import android.os.IBinder;
++import android.os.IPowerManager;
++import android.os.RemoteException;
++import android.os.ServiceManager;
++import android.os.SystemClock;
++import android.provider.Settings;
++import android.view.Surface;
++import android.view.TextureView;
++import android.view.ViewGroup;
++import android.view.WindowManager;
++import android.widget.FrameLayout;
++
++import com.android.systemui.R;
++import com.android.internal.util.omni.DeviceUtils;
++
++import java.io.IOException;
++
++public class OnTheGoService extends Service implements FaceDetectionListener {
++
++    private static final int ONTHEGO_NOTIFICATION_ID = 81333378;
++
++    private static final int CAMERA_BACK  = 0;
++    private static final int CAMERA_FRONT = 1;
++
++    private static final int NOTIFICATION_STARTED = 0;
++    private static final int NOTIFICATION_ERROR   = 1;
++
++    private Context mContext;
++    private Resources mResources;
++    private SettingsObserver mSettingsObserver;
++
++    private FrameLayout mOverlay;
++    private Camera mCamera;
++    private IPowerManager mPowerManager;
++    private NotificationManager mNotificationManager;
++    private WindowManager mWindowManager;
++
++    @Override
++    public void onCreate() {
++        super.onCreate();
++        mContext = this;
++        mResources = mContext.getResources();
++
++        mPowerManager = IPowerManager.Stub.asInterface(ServiceManager.getService(Context.POWER_SERVICE));
++        mNotificationManager =
++            (NotificationManager) this.getSystemService(NOTIFICATION_SERVICE);
++        mWindowManager = (WindowManager) this.getSystemService(WINDOW_SERVICE);
++
++        IntentFilter filter = new IntentFilter();
++        filter.addAction(OnTheGoReceiver.ACTION_TOGGLE_ALPHA);
++        filter.addAction(Intent.ACTION_SCREEN_OFF);
++        filter.addAction(Intent.ACTION_USER_PRESENT);
++        registerReceiver(mBroadcastReceiver, filter);
++
++        setupViews();
++
++        mSettingsObserver = new SettingsObserver(new Handler());
++        mSettingsObserver.observe();
++
++        createNotification(NOTIFICATION_STARTED);
++    }
++
++    @Override
++    public IBinder onBind(Intent intent) {
++        return null;
++    }
++
++    @Override
++    public void onDestroy() {
++        if (mBroadcastReceiver != null) {
++            unregisterReceiver(mBroadcastReceiver);
++        }
++        resetViews();
++        if (mNotificationManager != null) {
++            mNotificationManager.cancel(ONTHEGO_NOTIFICATION_ID);
++        }
++        super.onDestroy();
++    }
++
++    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            String action = intent.getAction();
++            if (action.equals(OnTheGoReceiver.ACTION_TOGGLE_ALPHA)) {
++                final float intentAlpha = intent.getFloatExtra(OnTheGoReceiver.EXTRA_ALPHA, 0.5f);
++                toggleOnTheGoAlpha(intentAlpha);
++            } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
++                resetViews();
++            } else if (action.equals(Intent.ACTION_USER_PRESENT)) {
++                setupViews();
++            }
++        }
++    };
++
++    private final class SettingsObserver extends ContentObserver {
++        SettingsObserver(Handler handler) {
++            super(handler);
++        }
++
++        void observe() {
++            final ContentResolver resolver = mContext.getContentResolver();
++            resolver.registerContentObserver(Settings.System.getUriFor(
++                    Settings.System.ON_THE_GO_CAMERA), false, this);
++        }
++
++        void unobserve() {
++            mContext.getContentResolver().unregisterContentObserver(this);
++        }
++
++        @Override
++        public void onChange(boolean selfChange, Uri uri) {
++            super.onChange(selfChange, uri);
++            restartOnTheGo();
++        }
++    }
++
++    @Override
++    public int onStartCommand(Intent intent, int flags, int startId) {
++        super.onStartCommand(intent, flags, startId);
++        return START_STICKY;
++    }
++
++    private void restartOnTheGo() {
++        Intent restartIntent = new Intent();
++        restartIntent.setAction(OnTheGoReceiver.ACTION_RESTART);
++        mContext.sendBroadcast(restartIntent);
++    }
++
++    private void toggleOnTheGoAlpha() {
++        final float alpha = Settings.System.getFloatForUser(mContext.getContentResolver(),
++                Settings.System.ON_THE_GO_ALPHA, 0.5f, UserHandle.USER_CURRENT);
++        toggleOnTheGoAlpha(alpha);
++    }
++
++    private void toggleOnTheGoAlpha(float alpha) {
++        Settings.System.putFloatForUser(mContext.getContentResolver(),
++                Settings.System.ON_THE_GO_ALPHA, alpha, UserHandle.USER_CURRENT);
++
++        if (mOverlay != null) {
++            mOverlay.setAlpha(alpha);
++        }
++    }
++
++    private void getCameraInstance(int type) throws RuntimeException {
++        releaseCamera();
++
++        if (!DeviceUtils.deviceSupportsFrontCamera(mContext)) {
++            mCamera = Camera.open();
++            return;
++        }
++
++        switch (type) {
++            // Get hold of the back facing camera
++            default:
++            case CAMERA_BACK:
++                mCamera = Camera.open(0);
++                break;
++            // Get hold of the front facing camera
++            case CAMERA_FRONT:
++                final Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
++                final int cameraCount = Camera.getNumberOfCameras();
++
++                for (int camIdx = 0; camIdx < cameraCount; camIdx++) {
++                    Camera.getCameraInfo(camIdx, cameraInfo);
++                    if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
++                        mCamera = Camera.open(camIdx);
++                    }
++                }
++                break;
++        }
++    }
++
++    private void setupViews() {
++        int cameraType = Settings.System.getIntForUser(mContext.getContentResolver(),
++                Settings.System.ON_THE_GO_CAMERA, 0, UserHandle.USER_CURRENT);
++
++        boolean success = true;
++        try {
++            getCameraInstance(cameraType);
++        } catch (RuntimeException exc) {
++            // Well, you cant have all in this life..
++            createNotification(NOTIFICATION_ERROR);
++            success = false;
++        }
++
++        if (!success) {
++            return;
++        }
++
++        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
++                WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY,
++                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
++                | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
++                | WindowManager.LayoutParams.FLAG_FULLSCREEN
++                | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
++                PixelFormat.TRANSLUCENT
++        );
++
++        final WindowManager wm = (WindowManager) getSystemService(WINDOW_SERVICE);
++        final TextureView mTextureView = new TextureView(mContext);
++        mTextureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
++            @Override
++            public void onSurfaceTextureAvailable(SurfaceTexture surfaceTexture, int i, int i2) {
++                try {
++                    if (mCamera != null) {
++                        mCamera.setDisplayOrientation(wm.getDefaultDisplay().getRotation() + 90);
++                        mCamera.setPreviewTexture(surfaceTexture);
++                        mCamera.startPreview();
++                        try {
++                             mCamera.startFaceDetection();
++                        } catch (IllegalArgumentException ile) {
++                        } catch (RuntimeException re) {
++                        }
++                        mCamera.setFaceDetectionListener(OnTheGoService.this);
++                    }
++                } catch (IOException ignored) {
++                    // ignored
++                }
++            }
++
++            @Override
++            public void onSurfaceTextureSizeChanged(SurfaceTexture surfaceTexture, int i, int i2) {
++                setCameraDisplayOrientation();
++            }
++
++            @Override
++            public boolean onSurfaceTextureDestroyed(SurfaceTexture surfaceTexture) {
++                releaseCamera();
++                return true;
++            }
++
++            @Override
++            public void onSurfaceTextureUpdated(SurfaceTexture surfaceTexture) { }
++        });
++
++        mOverlay = new FrameLayout(mContext);
++        mOverlay.setLayoutParams(new FrameLayout.LayoutParams(
++                        ViewGroup.LayoutParams.MATCH_PARENT,
++                        ViewGroup.LayoutParams.MATCH_PARENT)
++        );
++        mOverlay.addView(mTextureView);
++        mWindowManager.addView(mOverlay, params);
++
++        toggleOnTheGoAlpha();
++    }
++
++    private void resetViews() {
++        if (mOverlay != null) {
++            mOverlay.removeAllViews();
++            mWindowManager.removeView(mOverlay);
++            mOverlay = null;
++        }
++        releaseCamera();
++    }
++
++    private void releaseCamera() {
++        if (mCamera != null) {
++            mCamera.stopPreview();
++            mCamera.release();
++            mCamera = null;
++        }
++    }
++
++    @Override
++    public void onFaceDetection(Face[] faces, Camera camera) {
++        if ((faces != null) && (faces.length > 0)) {
++            if (!isScreenOn()) {
++                wakeDevice();
++            } else {
++                setUserActivity();
++            }
++        }
++    }
++
++    private void setUserActivity() {
++        try {
++            mPowerManager.userActivity(SystemClock.uptimeMillis(), 0, 0);
++        } catch (RemoteException e) {
++        }
++    }
++
++    private boolean isScreenOn() {
++        try {
++            return mPowerManager.isScreenOn();
++        } catch (RemoteException e) {
++        }
++        return false;
++    }
++
++    private void wakeDevice() {
++        try {
++            mPowerManager.wakeUp(SystemClock.uptimeMillis());
++        } catch (RemoteException e) {
++        }
++    }
++
++    private PendingIntent makeServiceIntent(Context context, String action) {
++        Intent intent = new Intent(context, OnTheGoReceiver.class);
++        intent.setAction(action);
++        return PendingIntent.getBroadcast(
++                context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
++    }
++
++    private void createNotification(int type) {
++        mNotificationManager.cancel(ONTHEGO_NOTIFICATION_ID);
++
++        Notification.Builder builder = new Notification.Builder(mContext)
++                .setTicker(mResources.getString(
++                        type == 1 ? R.string.onthego_notif_error
++                                        : R.string.onthego_notif_ticker)
++                )
++                .setContentTitle(mResources.getString(
++                        type == 1 ? R.string.onthego_notif_error
++                                        : R.string.onthego_notif_title)
++                )
++                .setSmallIcon(com.android.internal.R.drawable.ic_lock_onthego)
++                .setWhen(System.currentTimeMillis())
++                .setOngoing(type != 1);
++
++        if (type == 1) {
++            PendingIntent restartIntent = makeServiceIntent(mContext, OnTheGoReceiver.ACTION_RESTART);
++            builder.addAction(com.android.internal.R.drawable.ic_media_play,
++                    mResources.getString(R.string.onthego_notif_restart), restartIntent);
++        } else {
++            PendingIntent stopIntent = makeServiceIntent(mContext, OnTheGoReceiver.ACTION_STOP);
++            PendingIntent optionsIntent = makeServiceIntent(mContext, OnTheGoReceiver.ACTION_TOGGLE_OPTIONS);
++
++            builder
++                .addAction(com.android.internal.R.drawable.ic_media_stop,
++                            mResources.getString(R.string.onthego_notif_stop), stopIntent)
++                .addAction(com.android.internal.R.drawable.ic_text_dot,
++                            mResources.getString(R.string.onthego_notif_options), optionsIntent);
++        }
++        mNotificationManager.notify(ONTHEGO_NOTIFICATION_ID, builder.build());
++    }
++
++    private void setCameraDisplayOrientation() {
++        if (mCamera == null) return;
++
++        final Camera.CameraInfo info = new Camera.CameraInfo();
++        final int cameraType = Settings.System.getIntForUser(getContentResolver(),
++                Settings.System.ON_THE_GO_CAMERA, 0, UserHandle.USER_CURRENT);
++        Camera.getCameraInfo(cameraType, info);
++        final int rotation = ((WindowManager) getSystemService(Context.WINDOW_SERVICE))
++                .getDefaultDisplay().getRotation();
++
++        int degrees = 0;
++        switch (rotation) {
++            case Surface.ROTATION_0:
++                degrees = 0;
++                break;
++            case Surface.ROTATION_90:
++                degrees = 90;
++                break;
++            case Surface.ROTATION_180:
++                degrees = 180;
++                break;
++            case Surface.ROTATION_270:
++                degrees = 270;
++                break;
++        }
++
++        int result;
++        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
++            result = (info.orientation + degrees) % 360;
++            result = (360 - result) % 360;  // compensate the mirror
++        } else {  // back-facing
++            result = (info.orientation - degrees + 360) % 360;
++        }
++        mCamera.setDisplayOrientation(result);
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettings.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettings.java
+index d69a4b6..004f17f 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettings.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettings.java
+@@ -27,6 +27,7 @@ import android.app.admin.DevicePolicyManager;
+ import android.bluetooth.BluetoothAdapter;
+ import android.content.BroadcastReceiver;
+ import android.content.ComponentName;
++import android.content.ContentResolver;
+ import android.content.Context;
+ import android.content.DialogInterface;
+ import android.content.DialogInterface.OnClickListener;
+@@ -1337,6 +1338,35 @@ class QuickSettings {
+         });
+         parent.addView(alarmTile);
+ 
++        // On-the-go tile
++        if (DeviceUtils.deviceSupportsCamera(mContext)
++            && DeviceUtils.deviceSupportsFrontCamera(mContext)) {
++            final QuickSettingsBasicTile onthegoTile
++                       = new QuickSettingsBasicTile(mContext);
++            onthegoTile.setImageResource(R.drawable.ic_qs_onthego);
++            onthegoTile.setTextResource(R.string.quick_settings_onthego_back);
++            onthegoTile.setTemporary(true);
++            onthegoTile.setOnClickListener(new View.OnClickListener() {
++                 @Override
++                 public void onClick(View v) {
++                     ContentResolver resolver = mContext.getContentResolver();
++                     int mode = Settings.System.getInt(resolver,
++                               Settings.System.ON_THE_GO_CAMERA, 0);
++                     Settings.System.putInt(resolver,
++                               Settings.System.ON_THE_GO_CAMERA, (mode != 0) ? 0 : 1);
++                 }
++            });
++            mModel.addOnTheGoTile(onthegoTile, new QuickSettingsModel.RefreshCallback() {
++                 @Override
++                 public void refreshView(QuickSettingsTileView unused, State state) {
++                     onthegoTile.setImageResource(state.iconId);
++                     onthegoTile.setText(state.label);
++                     onthegoTile.setVisibility(state.enabled ? View.VISIBLE : View.GONE);
++                 }
++            });
++            parent.addView(onthegoTile);
++        }
++
+         // Remote Display
+         QuickSettingsBasicTile remoteDisplayTile
+                 = new QuickSettingsBasicTile(mContext);
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettingsModel.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettingsModel.java
+index c91ed05..fa7b2c8 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettingsModel.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettingsModel.java
+@@ -75,6 +75,7 @@ import com.android.systemui.statusbar.policy.NetworkController.NetworkSignalChan
+ import com.android.systemui.statusbar.policy.RotationLockController;
+ import com.android.systemui.statusbar.policy.RotationLockController.RotationLockControllerCallback;
+ import com.android.internal.util.slim.QuietHoursHelper;
++import com.android.systemui.nameless.onthego.OnTheGoReceiver;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+@@ -228,6 +229,20 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         }
+     };
+ 
++    /** Broadcast receive to determine on-the-go. */
++    private BroadcastReceiver mOnTheGoReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            String action = intent.getAction();
++            if (action.equals(OnTheGoReceiver.ACTION_START)) {
++                mOnTheGoRunning = true;
++            } else if (action.equals(OnTheGoReceiver.ACTION_ALREADY_STOP)) {
++                mOnTheGoRunning = false;
++            }
++            onOnTheGoChanged();
++        }
++    };
++
+     /** Broadcast receive to determine battery. */
+     private BroadcastReceiver mBatteryReceiver = new BroadcastReceiver() {
+         @Override
+@@ -315,6 +330,29 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         }
+     }
+ 
++    /** ContentObserver to determine the on-the-go tile */
++    private class OnTheGoObserver extends ContentObserver {
++        public OnTheGoObserver(Handler handler) {
++            super(handler);
++        }
++
++        @Override 
++        public void onChange(boolean selfChange) {
++            onOnTheGoChanged();
++        }
++
++        public void startObserving() {
++            final ContentResolver cr = mContext.getContentResolver();
++            cr.unregisterContentObserver(this);
++            cr.registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ONTHEGO_IN_POWER_MENU), false, this,
++                    UserHandle.USER_ALL);
++            cr.registerContentObserver(
++                    Settings.System.getUriFor(Settings.System.ON_THE_GO_CAMERA), false, this,
++                    UserHandle.USER_ALL);
++        }
++    }
++
+     /** ContentObserver to determine the next alarm */
+     private class NextAlarmObserver extends ContentObserver {
+         public NextAlarmObserver(Handler handler) {
+@@ -534,6 +572,8 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+     private final BatterySaverObserver mBatterySaverObserver;
+     private final RingerObserver mRingerObserver;
+     private final SleepObserver mSleepObserver;
++    private final OnTheGoObserver mOnTheGoObserver;
++
+     private LocationController mLocationController;
+     private final NetworkObserver mMobileNetworkObserver;
+ 
+@@ -576,6 +616,8 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+ 
+     private long mLastClickTime = 0;
+ 
++    private boolean mOnTheGoRunning = false;
++
+     private QuickSettingsTileView mUserTile;
+     private RefreshCallback mUserCallback;
+     private UserState mUserState = new UserState();
+@@ -588,6 +630,10 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+     private RefreshCallback mAlarmCallback;
+     private State mAlarmState = new State();
+ 
++    private QuickSettingsTileView mOnTheGoTile;
++    private RefreshCallback mOnTheGoCallback;
++    private State mOnTheGoState = new State();
++
+     private QuickSettingsTileView mAirplaneModeTile;
+     private RefreshCallback mAirplaneModeCallback;
+     private State mAirplaneModeState = new State();
+@@ -735,6 +781,7 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+                 mBatterySaverObserver.startObserving();
+                 mRingerObserver.startObserving();
+                 mSleepObserver.startObserving();
++                mOnTheGoObserver.startObserving();
+                 mMobileNetworkObserver.startObserving();
+                 refreshRotationLockTile();
+                 onBrightnessLevelChanged();
+@@ -761,6 +808,8 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         mBatterySaverObserver.startObserving();
+         mSleepObserver = new SleepObserver(mHandler);
+         mSleepObserver.startObserving();
++        mOnTheGoObserver = new OnTheGoObserver(mHandler);
++        mOnTheGoObserver.startObserving();
+         mRingerObserver = new RingerObserver(mHandler);
+         mRingerObserver.startObserving();
+         mMobileNetworkObserver = new NetworkObserver(mHandler);
+@@ -820,6 +869,11 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         IntentFilter batteryFilter = new IntentFilter();
+         batteryFilter.addAction(Intent.ACTION_BATTERY_CHANGED);
+         context.registerReceiver(mBatteryReceiver, batteryFilter);
++
++        IntentFilter onTheGofilter = new IntentFilter();
++        onTheGofilter.addAction(OnTheGoReceiver.ACTION_START);
++        onTheGofilter.addAction(OnTheGoReceiver.ACTION_ALREADY_STOP);
++        context.registerReceiver(mOnTheGoReceiver, onTheGofilter);
+     }
+ 
+     public void setService(PhoneStatusBar phoneStatusBar) {
+@@ -851,6 +905,7 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         refreshBackLocationTile();
+         updateRingerState();
+         updateSleepState();
++        onOnTheGoChanged();
+         onMobileNetworkChanged();
+         onQuietHourChanged();
+         refreshTintedFrontTile();
+@@ -919,6 +974,31 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         mTimeCallback.refreshView(view, mTimeState);
+     }
+ 
++    // on-the-go
++    void addOnTheGoTile(QuickSettingsTileView view, RefreshCallback cb) {
++        mOnTheGoTile = view;
++        mOnTheGoCallback = cb;
++        onOnTheGoChanged();
++    }
++
++    void onOnTheGoChanged() {
++        if (mOnTheGoTile == null) {
++            return;
++        }
++
++        Resources r = mContext.getResources();
++        ContentResolver resolver = mContext.getContentResolver();
++        int mode = Settings.System.getInt(resolver,
++                               Settings.System.ON_THE_GO_CAMERA, 0);
++        boolean changeCamera = (mode != 0);
++        mOnTheGoState.iconId = changeCamera ? R.drawable.ic_qs_onthego_front
++                        : R.drawable.ic_qs_onthego;
++        mOnTheGoState.label = changeCamera ? r.getString(R.string.quick_settings_onthego_front)
++                        : r.getString(R.string.quick_settings_onthego_back);
++        mOnTheGoState.enabled = mOnTheGoRunning;
++        mOnTheGoCallback.refreshView(mOnTheGoTile, mOnTheGoState);
++    }
++
+     // Alarm
+     void addAlarmTile(QuickSettingsTileView view, RefreshCallback cb) {
+         mAlarmTile = view;
+diff --git a/policy/src/com/android/internal/policy/impl/GlobalActions.java b/policy/src/com/android/internal/policy/impl/GlobalActions.java
+index 8522b7a..b35e8b0 100644
+--- a/policy/src/com/android/internal/policy/impl/GlobalActions.java
++++ b/policy/src/com/android/internal/policy/impl/GlobalActions.java
+@@ -18,6 +18,7 @@ package com.android.internal.policy.impl;
+ 
+ import com.android.internal.app.AlertController;
+ import com.android.internal.app.AlertController.AlertParams;
++import com.android.internal.statusbar.IStatusBarService;
+ import com.android.internal.telephony.TelephonyIntents;
+ import com.android.internal.telephony.TelephonyProperties;
+ import com.android.internal.R;
+@@ -80,7 +81,6 @@ import android.content.ComponentName;
+ import android.os.IBinder;
+ import android.os.Messenger;
+ 
+-
+ /**
+  * Helper to show the global actions dialog.  Each item is an {@link Action} that
+  * may show depending on whether the keyguard is showing, and whether the device
+@@ -104,7 +104,6 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
+     private ToggleAction mAirplaneModeOn;
+     private ToggleAction mMobileDataOn;
+ 
+-
+     private MyAdapter mAdapter;
+ 
+     private boolean mKeyguardShowing = false;
+@@ -140,7 +139,6 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
+         telephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_SERVICE_STATE);
+         mConnectivityManager = (ConnectivityManager)
+                 context.getSystemService(Context.CONNECTIVITY_SERVICE);
+-
+         mHasTelephony = mConnectivityManager.isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
+         mContext.getContentResolver().registerContentObserver(
+                 Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON), true,
+@@ -165,9 +163,11 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
+         if (mDialog != null) {
+             mDialog.dismiss();
+             mDialog = null;
++            mDialog = createDialog();
+             // Show delayed, so that the dismiss of the previous dialog completes
+             mHandler.sendEmptyMessage(MESSAGE_SHOW);
+         } else {
++            mDialog = createDialog();
+             handleShow();
+         }
+     }
+@@ -186,9 +186,16 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
+ 
+     private void handleShow() {
+         awakenIfNecessary();
+-        mDialog = createDialog();
+         prepareDialog();
+ 
++        final IStatusBarService barService = IStatusBarService.Stub.asInterface(
++              ServiceManager.getService(Context.STATUS_BAR_SERVICE));
++        try {
++             barService.collapsePanels();
++        } catch (RemoteException ex) {
++             // bad bad
++        }
++
+         WindowManager.LayoutParams attrs = mDialog.getWindow().getAttributes();
+         attrs.setTitle("GlobalActions");
+         mDialog.getWindow().setAttributes(attrs);
+@@ -258,16 +265,12 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
+                 R.string.global_actions_mobile_data_off_status) {
+ 
+             void onToggle(boolean on) {
+-                // comment
+-                Log.i(TAG, "onToggle");
+                 boolean currentState = mConnectivityManager.getMobileDataEnabled();
+                 mConnectivityManager.setMobileDataEnabled(!currentState);
+             }
+ 
+             @Override
+             protected void changeStateFromPress(boolean buttonOn) {
+-                // comment
+-                Log.i(TAG, "changeStateFromPress");
+             }
+ 
+             public boolean showDuringKeyguard() {
+@@ -279,7 +282,6 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
+             }
+         };
+ 
+-
+         mItems = new ArrayList<Action>();
+ 
+         // first: power off
+@@ -384,13 +386,38 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
+             }
+         }
+ 
++        // next: onthego, if enabled
++        if (Settings.System.getInt(mContext.getContentResolver(),
++                Settings.System.ONTHEGO_IN_POWER_MENU, 0) != 0) {
++            mItems.add(
++                new SinglePressAction(com.android.internal.R.drawable.ic_lock_onthego,
++                        R.string.global_action_onthego) {
++
++                    public void onPress() {
++                        startOnTheGo();
++                    }
++
++                    public boolean onLongPress() {
++                        stopOnTheGo();
++                        return true;
++                    }
++
++                    public boolean showDuringKeyguard() {
++                        return false;
++                    }
++
++                    public boolean showBeforeProvisioning() {
++                        return true;
++                    }
++                });
++        }
++
+         // next: airplane mode
+         if (Settings.System.getIntForUser(mContext.getContentResolver(),
+                 Settings.System.AIRPLANE_MODE_IN_POWER_MENU, 1, UserHandle.USER_CURRENT) != 0) {
+             mItems.add(mAirplaneModeOn);
+         }
+ 
+-
+         // next: bug report, if enabled
+         if (Settings.Global.getInt(mContext.getContentResolver(),
+                 Settings.Global.BUGREPORT_IN_POWER_MENU, 0) != 0 && isCurrentUserOwner()) {
+@@ -668,10 +695,24 @@ class GlobalActions implements DialogInterface.OnDismissListener, DialogInterfac
+         }
+     }
+ 
++    private void startOnTheGo() {
++        Intent startIntent = new Intent();
++        startIntent.setAction("com.android.systemui.action.ON_THE_GO_START");
++        mContext.sendBroadcast(startIntent);
++    }
++
++    private void stopOnTheGo() {
++        Intent stopIntent = new Intent();
++        stopIntent.setAction("com.android.systemui.action.ON_THE_GO_STOP");
++        mContext.sendBroadcast(stopIntent);
++        mHandler.sendEmptyMessage(MESSAGE_DISMISS);
++    }
++
+     private void prepareDialog() {
+         refreshSilentMode();
+         mAirplaneModeOn.updateState(mAirplaneState);
+-        mMobileDataOn.updateState(mConnectivityManager.getMobileDataEnabled() ? ToggleAction.State.On : ToggleAction.State.Off);
++        mMobileDataOn.updateState(mConnectivityManager.getMobileDataEnabled()
++                          ? ToggleAction.State.On : ToggleAction.State.Off);
+         mAdapter.notifyDataSetChanged();
+         mDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
+         if (mShowSilentToggle) {
+-- 
+1.7.9.5
+

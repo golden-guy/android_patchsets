@@ -1,0 +1,4460 @@
+From a7436baf6899d12b72bcbe64cfeb9d76962c2f91 Mon Sep 17 00:00:00 2001
+From: Yanuar Harry <ai.the.smarties.physics@gmail.com>
+Date: Fri, 7 Feb 2014 14:34:49 +0700
+Subject: [PATCH 3/8] [1/3] Base: Battery Saver mode
+
+Concept:
+http://jira.omnirom.org/browse/CONCEPT-24
+
+introduce battery saver mode
+this based from what user want or what user do to saving the battery life
+this include:
+1. Automatically switch mobile network into what user choice and also disable mobile data IF wifi connected to an AP
+2. Automatically switch mobile network and disable mobile data IF battery low (battery level can configure)
+3. Reduce screen brightness based low battery (this feature will disabled if Auto brightness mode enabled)
+4. Not changing network IF on Call or Usb tether enabled or WifiAP enabled
+5. Not changing network IF there is Download/upload progress
+6. Support For Both GSM and CDMA devices (need someone to test for CDMA devices)
+7. every condition has an option :D
+8. Restore all network configuration if battery saver mode disabled
+9. Add Time Range to start battery saver mode
+10. allow device without mobile data support, to using this feature
+11. fix inconsistent battery low level
+12. rewrite to better performance
+13. modified the controller to support battery saver mode
+14. add bluetooth, gps, wifi, and mobile data (if support) to be disabled while power saving activated
+15. fix build QuickSettings because of LocationController change
+16. rewrite to better performance
+17. fix brightness value
+18. rewrite (again) to allow add more saving mode
+19. do delay changing only for POWER SAVING not NORMAL mode
+20. add Cpu power saving mode
+21. fix Cpu freq value
+22. fix call saving state for non user configuration mode
+23. fix NPE
+24. add kill all task
+25. add disable sync
+26. add disable vibrate
+27. add disable led
+28. add notification :)
+29. finally fix sync interval :D
+
+preview:
+http://jira.omnirom.org/secure/attachment/10394/Screenshot_2014-03-07-19-54-57.png
+http://jira.omnirom.org/secure/attachment/10395/Screenshot_2014-03-07-19-55-56.png
+http://jira.omnirom.org/secure/attachment/10396/Screenshot_2014-03-07-19-56-06.png
+http://jira.omnirom.org/secure/attachment/10397/Screenshot_2014-03-07-19-56-14.png
+http://jira.omnirom.org/secure/attachment/10398/Screenshot_2014-03-07-19-56-27.png
+http://jira.omnirom.org/secure/attachment/10399/Screenshot_2014-03-07-19-56-34.png
+
+PS47: fix conflicts.
+PS48: forgot delete obsolete call to refreshImmersiveTile()
+PS52: Rebased
+PS53: fix some merge derps
+
+Conflicts:
+	packages/SystemUI/src/com/android/systemui/statusbar/policy/BluetoothController.java
+	packages/SystemUI/src/com/android/systemui/statusbar/policy/NetworkController.java
+
+Change-Id: I9d86ef1425228e11cadd85d37c5b6e8b20e50fb0
+---
+ core/java/android/content/Intent.java              |    6 +
+ core/java/android/provider/Settings.java           |  196 ++++
+ packages/SystemUI/AndroidManifest.xml              |   10 +
+ .../res/drawable-hdpi/ic_qs_battery_saver_off.png  |  Bin 0 -> 5005 bytes
+ .../res/drawable-hdpi/ic_qs_battery_saver_on.png   |  Bin 0 -> 3750 bytes
+ .../res/drawable-mdpi/ic_qs_battery_saver_off.png  |  Bin 0 -> 5005 bytes
+ .../res/drawable-mdpi/ic_qs_battery_saver_on.png   |  Bin 0 -> 3750 bytes
+ .../res/drawable-xhdpi/ic_qs_battery_saver_off.png |  Bin 0 -> 6240 bytes
+ .../res/drawable-xhdpi/ic_qs_battery_saver_on.png  |  Bin 0 -> 4308 bytes
+ .../drawable-xxhdpi/ic_qs_battery_saver_off.png    |  Bin 0 -> 5766 bytes
+ .../res/drawable-xxhdpi/ic_qs_battery_saver_on.png |  Bin 0 -> 4409 bytes
+ packages/SystemUI/res/values/custom_strings.xml    |   25 +
+ .../src/com/android/systemui/BootReceiver.java     |    1 -
+ .../systemui/batterysaver/AirPlaneChangeMode.java  |   48 +
+ .../systemui/batterysaver/BatterySaverService.java | 1059 ++++++++++++++++++++
+ .../batterysaver/BluetoothModeChanger.java         |  107 ++
+ .../batterysaver/BrightnessModeChanger.java        |  134 +++
+ .../systemui/batterysaver/CpuModeChanger.java      |  148 +++
+ .../batterysaver/DisableBatterySaverMode.java      |   45 +
+ .../com/android/systemui/batterysaver/Helpers.java |  126 +++
+ .../systemui/batterysaver/InCallChangeMode.java    |   62 ++
+ .../systemui/batterysaver/KillAllModeChanger.java  |   73 ++
+ .../systemui/batterysaver/LedModeChanger.java      |   71 ++
+ .../systemui/batterysaver/LocationModeChanger.java |  114 +++
+ .../batterysaver/MobileDataModeChanger.java        |   90 ++
+ .../android/systemui/batterysaver/ModeChanger.java |  236 +++++
+ .../systemui/batterysaver/NetworkModeChanger.java  |  174 ++++
+ .../systemui/batterysaver/SyncModeChanger.java     |   82 ++
+ .../systemui/batterysaver/VibrateModeChanger.java  |   71 ++
+ .../systemui/batterysaver/WifiModeChanger.java     |  146 +++
+ .../systemui/statusbar/phone/QuickSettings.java    |   39 +-
+ .../statusbar/phone/QuickSettingsModel.java        |   53 +
+ .../statusbar/policy/BluetoothController.java      |   26 +
+ .../statusbar/policy/LocationController.java       |    2 +-
+ .../android/server/NotificationManagerService.java |   15 +-
+ .../java/com/android/server/VibratorService.java   |    4 +
+ 36 files changed, 3153 insertions(+), 10 deletions(-)
+ create mode 100644 packages/SystemUI/res/drawable-hdpi/ic_qs_battery_saver_off.png
+ create mode 100644 packages/SystemUI/res/drawable-hdpi/ic_qs_battery_saver_on.png
+ create mode 100644 packages/SystemUI/res/drawable-mdpi/ic_qs_battery_saver_off.png
+ create mode 100644 packages/SystemUI/res/drawable-mdpi/ic_qs_battery_saver_on.png
+ create mode 100644 packages/SystemUI/res/drawable-xhdpi/ic_qs_battery_saver_off.png
+ create mode 100644 packages/SystemUI/res/drawable-xhdpi/ic_qs_battery_saver_on.png
+ create mode 100644 packages/SystemUI/res/drawable-xxhdpi/ic_qs_battery_saver_off.png
+ create mode 100644 packages/SystemUI/res/drawable-xxhdpi/ic_qs_battery_saver_on.png
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/AirPlaneChangeMode.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/BatterySaverService.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/BluetoothModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/BrightnessModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/CpuModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/DisableBatterySaverMode.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/Helpers.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/InCallChangeMode.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/KillAllModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/LedModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/LocationModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/MobileDataModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/ModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/NetworkModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/SyncModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/VibrateModeChanger.java
+ create mode 100644 packages/SystemUI/src/com/android/systemui/batterysaver/WifiModeChanger.java
+
+diff --git a/core/java/android/content/Intent.java b/core/java/android/content/Intent.java
+index a934276..99e3390 100644
+--- a/core/java/android/content/Intent.java
++++ b/core/java/android/content/Intent.java
+@@ -680,6 +680,12 @@ public class Intent implements Parcelable, Cloneable {
+     public static final String ACTION_POWERMENU = "android.intent.action.POWERMENU";
+ 
+     /**
++     * Global Action: Battery services start/stop
++     * @hide
++     */
++    public static final String ACTION_BATTERY_SERVICES = "android.intent.action.BATTERY_SERVICES";
++
++    /**
+      * Activity Action: Creates a shortcut.
+      * <p>Input: Nothing.</p>
+      * <p>Output: An Intent representing the shortcut. The intent must contain three
+diff --git a/core/java/android/provider/Settings.java b/core/java/android/provider/Settings.java
+index a5232ef..aea8051 100644
+--- a/core/java/android/provider/Settings.java
++++ b/core/java/android/provider/Settings.java
+@@ -4403,6 +4403,34 @@ public final class Settings {
+             MOVED_TO_GLOBAL.add(Settings.Global.SET_GLOBAL_HTTP_PROXY);
+             MOVED_TO_GLOBAL.add(Settings.Global.DEFAULT_DNS_SERVER);
+             MOVED_TO_GLOBAL.add(Settings.Global.PREFERRED_NETWORK_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_OPTION);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_NORMAL_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_SCREEN_OFF);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_IGNORE_LOCKED);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_MODE_CHANGE_DELAY);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_BATTERY_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_BATTERY_LEVEL);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_BLUETOOTH_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_LOCATION_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_WIFI_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_DATA_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_SHOW_TOAST);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_NETWORK_INTERVAL_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_NOSIGNAL_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_SYNC_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_KILLALL_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_LED_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_LED_DISABLE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_VIBRATE_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_VIBRATE_DISABLE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_CPU_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_CPU_FREQ);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_CPU_FREQ_DEFAULT);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_BRIGHTNESS_MODE);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_BRIGHTNESS_LEVEL);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_START);
++            MOVED_TO_GLOBAL.add(Settings.Global.BATTERY_SAVER_END);
+         }
+ 
+         /** @hide */
+@@ -7419,6 +7447,174 @@ public final class Settings {
+                 "preferred_network_mode";
+ 
+         /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_OPTION =
++                "battery_saver_option";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_NORMAL_MODE =
++                "battery_saver_normal_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_POWER_SAVING_MODE =
++                "battery_saver_power_saving_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_SCREEN_OFF =
++                "battery_saver_screen_off";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_IGNORE_LOCKED =
++                "battery_saver_ignore_locked";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_MODE_CHANGE_DELAY =
++                "battery_saver_mode_change_delay";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_BATTERY_MODE =
++                "battery_saver_battery_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_BATTERY_LEVEL =
++                "battery_saver_battery_level";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_BLUETOOTH_MODE =
++                "battery_saver_bluetooth_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_LOCATION_MODE =
++                "battery_saver_location_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_WIFI_MODE =
++                "battery_saver_wifi_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_DATA_MODE =
++                "battery_saver_data_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_NOSIGNAL_MODE =
++                "battery_saver_nosignal_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_NETWORK_INTERVAL_MODE =
++                "battery_saver_network_interval_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_SYNC_MODE =
++                "battery_saver_sync_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_SHOW_TOAST =
++                "battery_saver_show_toast";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_KILLALL_MODE =
++                "battery_saver_killall_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_LED_MODE =
++                "battery_saver_led_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_LED_DISABLE =
++                "battery_saver_led_disable";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_VIBRATE_MODE =
++                "battery_saver_vibrate_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_VIBRATE_DISABLE =
++                "battery_saver_vibrate_disable";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_CPU_MODE =
++                "battery_saver_cpu_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_CPU_FREQ =
++                "battery_saver_cpu_freq";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_CPU_FREQ_DEFAULT =
++                "battery_saver_cpu_freq_default";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_BRIGHTNESS_MODE =
++                "battery_saver_brightness_mode";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_BRIGHTNESS_LEVEL =
++                "battery_saver_brightness_level";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_START =
++                "battery_saver_start";
++
++        /**
++         * @hide
++         */
++        public static final String BATTERY_SAVER_END =
++                "battery_saver_end";
++
++        /**
+          * Name of an application package to be debugged.
+          */
+         public static final String DEBUG_APP = "debug_app";
+diff --git a/packages/SystemUI/AndroidManifest.xml b/packages/SystemUI/AndroidManifest.xml
+index ea87f27..131fa58 100644
+--- a/packages/SystemUI/AndroidManifest.xml
++++ b/packages/SystemUI/AndroidManifest.xml
+@@ -130,6 +130,16 @@
+         <service android:name=".CPUInfoService"
+                 android:exported="true" />
+ 
++        <!-- battery saver mode -->
++        <service android:name=".batterysaver.BatterySaverService" />
++
++        <receiver android:name=".batterysaver.AirPlaneChangeMode"
++                android:exported="true" />
++
++        <receiver android:name=".batterysaver.DisableBatterySaverMode"
++                android:exported="true" />
++        <!-- battery saver mode -->
++
+         <service android:name=".ImageWallpaper"
+                 android:permission="android.permission.BIND_WALLPAPER"
+                 android:exported="true" />
+diff --git a/packages/SystemUI/res/drawable-hdpi/ic_qs_battery_saver_off.png b/packages/SystemUI/res/drawable-hdpi/ic_qs_battery_saver_off.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..99692efc43b3eaa24db7001c9bc003db2eeac939
+GIT binary patch
+literal 5005
+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
+Xrh?VY!>|ms00000NkvXXu0mjfS<8BK
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-hdpi/ic_qs_battery_saver_on.png b/packages/SystemUI/res/drawable-hdpi/ic_qs_battery_saver_on.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..993c16315d7b9ad322664b764b0d03f51f257e37
+GIT binary patch
+literal 3750
+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
+QQ~&?~07*qoM6N<$f+#WwYybcN
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-mdpi/ic_qs_battery_saver_off.png b/packages/SystemUI/res/drawable-mdpi/ic_qs_battery_saver_off.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..99692efc43b3eaa24db7001c9bc003db2eeac939
+GIT binary patch
+literal 5005
+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
+Xrh?VY!>|ms00000NkvXXu0mjfS<8BK
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-mdpi/ic_qs_battery_saver_on.png b/packages/SystemUI/res/drawable-mdpi/ic_qs_battery_saver_on.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..993c16315d7b9ad322664b764b0d03f51f257e37
+GIT binary patch
+literal 3750
+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
+QQ~&?~07*qoM6N<$f+#WwYybcN
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-xhdpi/ic_qs_battery_saver_off.png b/packages/SystemUI/res/drawable-xhdpi/ic_qs_battery_saver_off.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..d9d7fbc501297697ff31b570676a59e956d69222
+GIT binary patch
+literal 6240
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-xhdpi/ic_qs_battery_saver_on.png b/packages/SystemUI/res/drawable-xhdpi/ic_qs_battery_saver_on.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..2f336a215373fd61c0d6e8de7335b4171976f2f3
+GIT binary patch
+literal 4308
+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
+C{rqMC
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-xxhdpi/ic_qs_battery_saver_off.png b/packages/SystemUI/res/drawable-xxhdpi/ic_qs_battery_saver_off.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..27db10e586518ac2169f2c7c427803d233dd64e5
+GIT binary patch
+literal 5766
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/drawable-xxhdpi/ic_qs_battery_saver_on.png b/packages/SystemUI/res/drawable-xxhdpi/ic_qs_battery_saver_on.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..cf719fcfbce8aa00eb45ec8c5872fad7bd2756ab
+GIT binary patch
+literal 4409
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/packages/SystemUI/res/values/custom_strings.xml b/packages/SystemUI/res/values/custom_strings.xml
+index c05f78d..7eb4474 100644
+--- a/packages/SystemUI/res/values/custom_strings.xml
++++ b/packages/SystemUI/res/values/custom_strings.xml
+@@ -103,6 +103,8 @@
+     <string name="quick_settings_quiethours_off_label">Quiet hours disabled</string>
+     <string name="quick_settings_quiethours_active_label">Quiet hours active</string>
+     <string name="quick_settings_quiethours_paused_label">Quiet hours paused</string>
++    <string name="quick_settings_battery_saver_label">Battery saver on</string>
++    <string name="quick_settings_battery_saver_off_label">Battery saver off</string>
+     <string name="quick_settings_ringer_on">Sound on</string>
+     <string name="quick_settings_ringer_off">Sound off</string>
+     <string name="quick_settings_ringer_normal">Sound</string>
+@@ -128,6 +130,29 @@
+     <string name="quick_settings_tinted_mode_screen_label">Screen</string>
+     <string name="quick_settings_tinted_mode_actionbar_label">Action bar</string>
+ 
++    <!-- battery saver mode -->
++    <string name="battery_saver_start">Battery Saver Enabled</string>
++    <string name="battery_saver_stop">Battery Saver Disabled</string>
++    <string name="battery_saver_change">Battery Saver Change network to</string>
++    <string name="battery_saver_network">Network restored</string>
++    <string name="battery_saver_data">Mobile data restored</string>
++    <string name="battery_saver_brightness">Screen Brightness restored</string>
++    <string name="battery_saver_bluetooth">Bluetooth restored</string>
++    <string name="battery_saver_location">Gps restored</string>
++    <string name="battery_saver_wifi">Wi-Fi restored</string>
++    <string name="battery_saver_cpu">CPU restored</string>
++    <string name="battery_saver_cpu_change">Battery Saver Change CPU freq to</string>
++    <string name="battery_saver_sync">Sync restored</string>
++    <string name="battery_saver_led">LED restored</string>
++    <string name="battery_saver_vibrate">Vibrate restored</string>
++    <string name="battery_saver_no_changes">No configuration restored</string>
++    <string name="battery_saver_all">All configuration restored</string>
++    <string name="battery_saver_enable_ticker">Battery saver mode running...</string>
++    <string name="battery_saver_enable_title">Battery saver mode</string>
++    <string name="battery_saver_airplane_ticker">Airplane mode enabled by battery saver</string>
++    <string name="battery_saver_airplane_text">Airplane mode enabled by battery saver because there is no signal after 5 minutes</string>
++    <string name="battery_saver_disable">Disable</string>
++
+     <!-- Dialog title for navigation bar button selection -->
+     <string name="navbar_dialog_title">Choose action to assign</string>
+     <string name="navbar_home_button">Home button</string>
+diff --git a/packages/SystemUI/src/com/android/systemui/BootReceiver.java b/packages/SystemUI/src/com/android/systemui/BootReceiver.java
+index 55d648e..6631bf0 100644
+--- a/packages/SystemUI/src/com/android/systemui/BootReceiver.java
++++ b/packages/SystemUI/src/com/android/systemui/BootReceiver.java
+@@ -44,7 +44,6 @@ public class BootReceiver extends BroadcastReceiver {
+                 Intent cpuinfo = new Intent(context, com.android.systemui.CPUInfoService.class);
+                 context.startService(cpuinfo);
+             }
+-
+         } catch (Exception e) {
+             Log.e(TAG, "Can't start load average service", e);
+         }
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/AirPlaneChangeMode.java b/packages/SystemUI/src/com/android/systemui/batterysaver/AirPlaneChangeMode.java
+new file mode 100644
+index 0000000..ca470eb
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/AirPlaneChangeMode.java
+@@ -0,0 +1,48 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.app.NotificationManager;
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++import android.provider.Settings;
++
++import com.android.systemui.R;
++
++public class AirPlaneChangeMode extends BroadcastReceiver {
++
++    @Override
++    public void onReceive(Context context, Intent intent) {
++        boolean enabled = Settings.Global.getInt(context.getContentResolver(),
++                      Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
++
++        // Change the system setting
++        Settings.Global.putInt(context.getContentResolver(), Settings.Global.AIRPLANE_MODE_ON,
++                                enabled ? 1 : 0);
++
++        // Post the intent
++        Intent newIntent = new Intent(Intent.ACTION_AIRPLANE_MODE_CHANGED);
++        newIntent.putExtra("state", enabled);
++        context.sendBroadcast(newIntent);
++
++        // Dismiss the notification that brought us here.
++        NotificationManager notificationManager =
++                (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
++        notificationManager.cancel(BatterySaverService.BATTERY_SAVER_NOTIFICATION_ID);
++    }
++
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/BatterySaverService.java b/packages/SystemUI/src/com/android/systemui/batterysaver/BatterySaverService.java
+new file mode 100644
+index 0000000..72eda72
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/BatterySaverService.java
+@@ -0,0 +1,1059 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.app.Notification;
++import android.app.NotificationManager;
++import android.app.PendingIntent;
++import android.app.Service;
++import android.content.BroadcastReceiver;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.IntentFilter;
++import android.content.res.Resources;
++import android.database.ContentObserver;
++import android.hardware.usb.UsbManager;
++import android.net.ConnectivityManager;
++import android.net.Uri;
++import android.os.BatteryManager;
++import android.os.Handler;
++import android.os.IBinder;
++import android.os.SystemClock;
++import android.os.UserHandle;
++import android.provider.Settings;
++import android.telephony.PhoneStateListener;
++import android.telephony.TelephonyManager;
++import android.util.Log;
++import android.widget.Toast;
++
++import com.android.systemui.R;
++import com.android.systemui.statusbar.policy.BatteryController;
++import com.android.systemui.statusbar.policy.BatteryController.BatteryStateChangeCallback;
++import com.android.systemui.statusbar.policy.BluetoothController;
++import com.android.systemui.statusbar.policy.BluetoothController.BluetoothConnectionChangeCallback;
++import com.android.systemui.statusbar.policy.LocationController;
++import com.android.systemui.statusbar.policy.LocationController.LocationSettingsChangeCallback;
++import com.android.systemui.statusbar.policy.NetworkController;
++import com.android.systemui.statusbar.policy.NetworkController.NetworkSignalChangedCallback;
++import com.android.internal.widget.LockPatternUtils;
++
++public class BatterySaverService extends Service implements BluetoothConnectionChangeCallback,
++           NetworkSignalChangedCallback, BatteryStateChangeCallback, LocationSettingsChangeCallback {
++
++    public static final String TAG = "BatterySaverService";
++
++    public static final int BATTERY_SAVER_NOTIFICATION_ID = 5151;
++    public static final boolean DEBUG = false;
++
++    public enum State { UNKNOWN, NORMAL, POWER_SAVING };
++
++    private Handler mHandler;
++
++    // services
++    private ConnectivityManager mCM;
++    private TelephonyManager mTM;
++    private NotificationManager mNotificationManager;
++
++    // changing engine
++    private InCallChangeMode mInCallChangeMode;
++    private BrightnessModeChanger mBrightnessModeChanger;
++    private BluetoothModeChanger mBluetoothModeChanger;
++    private CpuModeChanger mCpuModeChanger;
++    private LocationModeChanger mLocationModeChanger;
++    private MobileDataModeChanger mMobileDataModeChanger;
++    private NetworkModeChanger mNetworkModeChanger;
++    private WifiModeChanger mWifiModeChanger;
++    private SyncModeChanger mSyncModeChanger;
++    private KillAllModeChanger mKillAllModeChanger;
++    private LedModeChanger mLedModeChanger;
++    private VibrateModeChanger mVibrateModeChanger;
++
++    // user configuration
++    private int mNormalMode;
++    private int mPowerSavingMode;
++    private int mLowBatteryLevel;
++    private long mUserCheckIntervalTime;
++    private boolean mSmartNoSignalEnabled;
++    private boolean mBatterySaverEnabled;
++    private boolean mSmartBatteryEnabled;
++    private boolean mPowerSaveWhenScreenOff;
++    private boolean mIgnoreWhileLocked;
++    private boolean mShowToast;
++
++    // non-user configuration
++    private Context mContext;
++    private Resources mResources;
++    private State mCurrentState = State.UNKNOWN;
++    private SettingsObserver mSettingsObserver;
++    private boolean mBatteryLowEvent = false;
++    private boolean mIsScreenOff = false;
++    private boolean mSignalEvent = false;
++    private boolean mWifiEvent = false;
++    private boolean mCallEvent = false;
++    private boolean mIsAirPlaneEnabled = false;
++    private long mLastNoSignalTime = 0;
++    private long mLastCheckIntervalTime = 0;
++    private final long mIntervalCheck = 300000; //5minutes
++
++    // controller
++    private BluetoothController mBluetoothController;
++    private BatteryController mBatteryController;
++    private LocationController mLocationController;
++    private NetworkController mNetworkController;
++
++    // For filtering ACTION_POWER_DISCONNECTED on boot
++    private boolean mPowerConnected = false;
++
++    @Override
++    public void onCreate() {
++        super.onCreate();
++        mContext = this;
++        mResources = mContext.getResources();
++        mHandler = new Handler();
++
++        // register all service needed
++        mCM = (ConnectivityManager) this.getSystemService(CONNECTIVITY_SERVICE);
++        mTM = (TelephonyManager) this.getSystemService(TELEPHONY_SERVICE);
++        mNotificationManager =
++            (NotificationManager) this.getSystemService(NOTIFICATION_SERVICE);
++        mInCallChangeMode = new InCallChangeMode(this, this);
++
++        // register controller
++        mBatteryController = new BatteryController(this);
++        mBluetoothController = new BluetoothController(this);
++        mLocationController = new LocationController(this);
++        mNetworkController = new NetworkController(this);
++
++        // register changing engine
++        mBrightnessModeChanger = new BrightnessModeChanger(this);
++        mBluetoothModeChanger = new BluetoothModeChanger(this);
++        mBluetoothModeChanger.setController(mBluetoothController);
++        mCpuModeChanger = new CpuModeChanger(this);
++        mLocationModeChanger = new LocationModeChanger(this);
++        mLocationModeChanger.setController(mLocationController);
++        mMobileDataModeChanger = new MobileDataModeChanger(this);
++        mMobileDataModeChanger.setServices(mCM);
++        mNetworkModeChanger = new NetworkModeChanger(this);
++        mNetworkModeChanger.setServices(mCM, mTM);
++        mWifiModeChanger = new WifiModeChanger(this);
++        mWifiModeChanger.setServices(mCM);
++        mSyncModeChanger = new SyncModeChanger(this);
++        mKillAllModeChanger = new KillAllModeChanger(this);
++        mLedModeChanger = new LedModeChanger(this);
++        mVibrateModeChanger = new VibrateModeChanger(this);
++
++        // register callback
++        mBatteryController.addStateChangedCallback(this);
++        mBluetoothController.addConnectionStateChangedCallback(this);
++        mLocationController.addSettingsChangedCallback(this);
++        mNetworkController.addNetworkSignalChangedCallback(this);
++
++        // initializing user configuration for battery saver mode
++        updateSettings();
++
++        // Register settings observer and set initial preferences
++        mSettingsObserver = new SettingsObserver(mHandler);
++        mSettingsObserver.observe();
++
++        // Register for Intent broadcasts for...
++        IntentFilter filter = new IntentFilter();
++        filter.addAction(Intent.ACTION_BATTERY_CHANGED);
++        filter.addAction(Intent.ACTION_SCREEN_OFF);
++        filter.addAction(Intent.ACTION_SCREEN_ON);
++        filter.addAction(Intent.ACTION_USER_PRESENT);
++        registerReceiver(mBroadcastReceiver, filter);
++
++        IntentFilter cfilter = new IntentFilter();
++        cfilter.addAction(Intent.ACTION_TIME_TICK);
++        cfilter.addAction(Intent.ACTION_TIME_CHANGED);
++        cfilter.addAction(Intent.ACTION_TIMEZONE_CHANGED);
++        registerReceiver(mIntentReceiver, cfilter);
++
++        // register phone state
++        mTM.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
++        if (DEBUG) {
++            Log.i(TAG, " Running... ");
++        }
++        notifyBatterySaver();
++    }
++
++    @Override
++    public int onStartCommand(Intent intent, int flags, int startId) {
++        super.onStartCommand(intent, flags, startId);
++        return START_STICKY;
++    }
++
++    @Override
++    public IBinder onBind(Intent intent) {
++        // no body bind to here
++        return null;
++    }
++
++    private final class SettingsObserver extends ContentObserver {
++        SettingsObserver(Handler handler) {
++            super(handler);
++        }
++
++        void observe() {
++            final ContentResolver resolver = mContext.getContentResolver();
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_OPTION), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_NORMAL_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_SCREEN_OFF), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_IGNORE_LOCKED), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_MODE_CHANGE_DELAY), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_BATTERY_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_BATTERY_LEVEL), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_BLUETOOTH_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_LOCATION_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_DATA_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_WIFI_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_CPU_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_NETWORK_INTERVAL_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_NOSIGNAL_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_SYNC_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_KILLALL_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_LED_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_VIBRATE_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_SHOW_TOAST), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_CPU_FREQ), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_BRIGHTNESS_MODE), false, this);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_BRIGHTNESS_LEVEL), false, this);
++            resolver.registerContentObserver(Settings.System.getUriFor(
++                    Settings.System.SCREEN_BRIGHTNESS_MODE), false, this);
++        }
++
++        void unobserve() {
++            mContext.getContentResolver().unregisterContentObserver(this);
++        }
++
++        @Override
++        public void onChange(boolean selfChange) {
++            onChange(selfChange, null);
++            updateSettings();
++        }
++
++        @Override
++        public void onChange(boolean selfChange, Uri uri) {
++            if (uri != null && uri.equals(Settings.Global.getUriFor(
++                         Settings.Global.BATTERY_SAVER_NORMAL_MODE))) {
++                final ContentResolver resolver = mContext.getContentResolver();
++                mNormalMode = Settings.Global.getInt(resolver,
++                         Settings.Global.BATTERY_SAVER_NORMAL_MODE,
++                         mNetworkModeChanger.getMode());
++                setNewModeValue(State.NORMAL, mNormalMode);
++            } else if (uri != null && uri.equals(Settings.Global.getUriFor(
++                         Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE))) {
++                final ContentResolver resolver = mContext.getContentResolver();
++                mPowerSavingMode = Settings.Global.getInt(resolver,
++                         Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE,
++                         mNetworkModeChanger.getMode());
++                setNewModeValue(State.POWER_SAVING, mPowerSavingMode);
++            } else {
++                final ContentResolver resolver = mContext.getContentResolver();
++                mBatterySaverEnabled = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_OPTION, 0) != 0;
++                mPowerSaveWhenScreenOff = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_SCREEN_OFF, 1) != 0;
++                mIgnoreWhileLocked = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_IGNORE_LOCKED, 1) != 0;
++                updateDelayed(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_MODE_CHANGE_DELAY, 5));
++                mSmartBatteryEnabled = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BATTERY_MODE, 0) != 0;
++                mUserCheckIntervalTime = Settings.Global.getLong(resolver,
++                        Settings.Global.BATTERY_SAVER_NETWORK_INTERVAL_MODE, 0);
++                mSmartNoSignalEnabled = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_NOSIGNAL_MODE, 0) != 0;
++                setShowToast(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_SHOW_TOAST, 0) != 0);
++                int lowBatteryLevels = mResources.getInteger(
++                        com.android.internal.R.integer.config_lowBatteryWarningLevel);
++                mLowBatteryLevel = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BATTERY_LEVEL, lowBatteryLevels);
++                mBluetoothModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BLUETOOTH_MODE, 0) != 0);
++                mCpuModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_CPU_MODE, 0) != 0);
++                mCpuModeChanger.setCpuValue(Settings.Global.getString(resolver,
++                        Settings.Global.BATTERY_SAVER_CPU_FREQ));
++                mLocationModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_LOCATION_MODE, 0) != 0);
++                mMobileDataModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_DATA_MODE, 1) != 0);
++                mWifiModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_WIFI_MODE, 0) != 0);
++                mSyncModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_SYNC_MODE, 0) != 0);
++                mKillAllModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_KILLALL_MODE, 0) != 0);
++                mLedModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_LED_MODE, 0) != 0);
++                mVibrateModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_VIBRATE_MODE, 0) != 0);
++                mBrightnessModeChanger.setModeEnabled(mSmartBatteryEnabled &&
++                        (Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BRIGHTNESS_MODE, 0) != 0));
++                mBrightnessModeChanger.updateBrightnessValue(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BRIGHTNESS_LEVEL, -1));
++                mBrightnessModeChanger.updateBrightnessMode(Settings.System.getInt(resolver,
++                        Settings.System.SCREEN_BRIGHTNESS_MODE, -1));
++            }
++        }
++    }
++
++    private void updateSettings() {
++        final ContentResolver resolver = mContext.getContentResolver();
++        mBatterySaverEnabled = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_OPTION, 0) != 0;
++        mPowerSaveWhenScreenOff = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_SCREEN_OFF, 1) == 1;
++        mIgnoreWhileLocked = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_IGNORE_LOCKED, 1) == 1;
++        updateDelayed(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_MODE_CHANGE_DELAY, 5));
++        mNormalMode = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_NORMAL_MODE,
++                        mNetworkModeChanger.getMode());
++        mPowerSavingMode = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE,
++                        mNetworkModeChanger.getMode());
++        mSmartBatteryEnabled = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BATTERY_MODE, 0) != 0;
++        mUserCheckIntervalTime = Settings.Global.getLong(resolver,
++                        Settings.Global.BATTERY_SAVER_NETWORK_INTERVAL_MODE, 0);
++        mSmartNoSignalEnabled = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_NOSIGNAL_MODE, 0) != 0;
++        setShowToast(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_SHOW_TOAST, 0) != 0);
++        int lowBatteryLevels = mResources.getInteger(
++                        com.android.internal.R.integer.config_lowBatteryWarningLevel);
++        mLowBatteryLevel = Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BATTERY_LEVEL, lowBatteryLevels);
++        mBluetoothModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BLUETOOTH_MODE, 0) != 0);
++        mCpuModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_CPU_MODE, 0) != 0);
++        mCpuModeChanger.setCpuValue(Settings.Global.getString(resolver,
++                        Settings.Global.BATTERY_SAVER_CPU_FREQ));
++        mLocationModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_LOCATION_MODE, 0) != 0);
++        mMobileDataModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_DATA_MODE, 1) != 0);
++        mWifiModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_WIFI_MODE, 0) != 0);
++        mSyncModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_SYNC_MODE, 0) != 0);
++        mKillAllModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_KILLALL_MODE, 0) != 0);
++        mLedModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_LED_MODE, 0) != 0);
++        mVibrateModeChanger.setModeEnabled(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_VIBRATE_MODE, 0) != 0);
++        mBrightnessModeChanger.setModeEnabled(mSmartBatteryEnabled && (Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BRIGHTNESS_MODE, 0) != 0));
++        mBrightnessModeChanger.updateBrightnessValue(Settings.Global.getInt(resolver,
++                        Settings.Global.BATTERY_SAVER_BRIGHTNESS_LEVEL, -1));
++        mBrightnessModeChanger.updateBrightnessMode(Settings.System.getInt(resolver,
++                        Settings.System.SCREEN_BRIGHTNESS_MODE, -1));
++    }
++
++    private void setShowToast(boolean enabled) {
++        mShowToast = enabled;
++        mBrightnessModeChanger.setShowToast(enabled);
++        mBluetoothModeChanger.setShowToast(enabled);
++        mCpuModeChanger.setShowToast(enabled);
++        mLocationModeChanger.setShowToast(enabled);
++        mMobileDataModeChanger.setShowToast(enabled);
++        mNetworkModeChanger.setShowToast(enabled);
++        mWifiModeChanger.setShowToast(enabled);
++        mSyncModeChanger.setShowToast(enabled);
++        mKillAllModeChanger.setShowToast(enabled);
++        mLedModeChanger.setShowToast(enabled);
++        mVibrateModeChanger.setShowToast(enabled);
++    }
++
++    private void updateDelayed(int delay) {
++        mBrightnessModeChanger.setDelayed(delay);
++        mBluetoothModeChanger.setDelayed(delay);
++        mCpuModeChanger.setDelayed(delay);
++        mLocationModeChanger.setDelayed(delay);
++        mMobileDataModeChanger.setDelayed(delay);
++        mNetworkModeChanger.setDelayed(delay);
++        mWifiModeChanger.setDelayed(delay);
++        mSyncModeChanger.setDelayed(delay);
++        mKillAllModeChanger.setDelayed(delay);
++        mLedModeChanger.setDelayed(delay);
++        mVibrateModeChanger.setDelayed(delay);
++    }
++
++    // broadcast receiver
++    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            String action = intent.getAction();
++            if (action.equals(Intent.ACTION_BATTERY_CHANGED)) {
++                final int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS,
++                               BatteryManager.BATTERY_STATUS_UNKNOWN);
++                switch (status) {
++                        case BatteryManager.BATTERY_STATUS_CHARGING:
++                        case BatteryManager.BATTERY_STATUS_FULL:
++                             mPowerConnected = true;
++                             // on charging state
++                             if (!mIsScreenOff && shouldSwitch()) {
++                                 switchToState(State.NORMAL);
++                             }
++                             break;
++                        case BatteryManager.BATTERY_STATUS_UNKNOWN:
++                        case BatteryManager.BATTERY_STATUS_DISCHARGING:
++                        case BatteryManager.BATTERY_STATUS_NOT_CHARGING:
++                             mPowerConnected = false;
++                             break;
++                }
++            } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
++                mIsScreenOff = true;
++                if (mPowerSaveWhenScreenOff && !isTethered() && !mPowerConnected) {
++                    switchToState(State.POWER_SAVING, true, false);
++                }
++            } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
++                mIsScreenOff = false;
++                if ((mPowerConnected || !mIgnoreWhileLocked
++                     || isLockScreenDisabled()) && shouldSwitch()) {
++                    switchToState(State.NORMAL);
++                }
++            } else if (action.equals(Intent.ACTION_USER_PRESENT)) {
++                if (mIgnoreWhileLocked && shouldSwitch()) {
++                    switchToState(State.NORMAL);
++                }
++            }
++        }
++    };
++
++    private final BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
++        @Override
++        public void onReceive(Context context, Intent intent) {
++            // detect when need changing to normal state after screen turn off
++            autoSwitchAfterScreenTurnOff();
++            // detect if no signal > 5 minutes
++            // change to airplane mode
++            autoCheckNetworkMode();
++        }
++    };
++
++    private PhoneStateListener mPhoneStateListener = new PhoneStateListener() {
++        @Override
++        public void onCallStateChanged(int state, String incomingNumber) {
++            if (state != TelephonyManager.CALL_STATE_IDLE) {
++                mCallEvent = true;
++                if (DEBUG) {
++                    Log.i(TAG, " InCall detected ");
++                }
++            } else if ((state == TelephonyManager.CALL_STATE_IDLE) && mCallEvent) {
++                mCallEvent = false;
++                mInCallChangeMode.callPosted();
++                if (DEBUG) {
++                    Log.i(TAG, " InCall ended ");
++                }
++            }
++        }
++    };
++
++    @Override
++    public void onAirplaneModeChanged(boolean enabled) {
++        if (!mBatterySaverEnabled) return;
++        // detect airplane mode
++        // if enabled, force to power saving mode
++        if (enabled && !mPowerConnected) {
++            mIsAirPlaneEnabled = enabled;
++            switchToState(State.POWER_SAVING, enabled, false);
++            if (DEBUG) {
++                Log.i(TAG, " Airplane Mode Enabled ");
++            }
++        } else if (mIsAirPlaneEnabled && !mIsScreenOff && shouldSwitch()) {
++            switchToState(State.NORMAL);
++            if (DEBUG) {
++                Log.i(TAG, " Airplane Mode Disabled ");
++            }
++        }
++    }
++
++    @Override
++    public void onBatteryLevelChanged(int level, boolean pluggedIn) {
++        if (!mBatterySaverEnabled) return;
++        if (mSmartBatteryEnabled) {
++            if (!pluggedIn && (level < mLowBatteryLevel)) {
++                mBatteryLowEvent = true;
++                if (!mIsScreenOff && !mWifiModeChanger.isWifiConnected()) {
++                    // battery low, power saving running
++                    switchToState(State.POWER_SAVING);
++                }
++            } else if ((pluggedIn || (level > mLowBatteryLevel))) {
++                mBatteryLowEvent = false;
++            }
++        }
++    }
++
++    @Override
++    public void onBluetoothConnectionChange(boolean on, boolean connected) {
++        if (!mBatterySaverEnabled) return;
++        if (!mBluetoothModeChanger.isSupported()) {
++            // return default value
++            if (mBluetoothModeChanger.isEnabledByUser()) {
++                mBluetoothModeChanger.setEnabledByUser(false);
++            }
++            return;
++        }
++        // detect bluetooth connected into paired devices
++        mBluetoothModeChanger.setConnected(connected);
++        // detect user interacting while power saving running
++        if (mBluetoothModeChanger.isEnabledByUser() != on) {
++            mBluetoothModeChanger.setEnabledByUser(on);
++        }
++    }
++
++    @Override
++    public void onLocationSettingsChanged(boolean locationEnabled, int locationMode) {
++        if (!mBatterySaverEnabled) return;
++        if (!mLocationModeChanger.isSupported()) {
++            // return default value
++            if (mLocationModeChanger.isEnabledByUser()) {
++                mLocationModeChanger.setEnabledByUser(false);
++            }
++            return;
++        }
++        // detect user interacting while power saving running
++        if (mLocationModeChanger.isEnabledByUser() != locationEnabled) {
++            mLocationModeChanger.setEnabledByUser(locationEnabled);
++        }
++        mLocationModeChanger.setLocationModeByUser(locationMode);
++    }
++
++    @Override
++    public void onMobileDataSignalChanged(
++            boolean enabled, int mobileSignalIconId, String signalContentDescription,
++            int dataTypeIconId, boolean activityIn, boolean activityOut,
++            String dataContentDescription,String enabledDesc) {
++        if (!mBatterySaverEnabled) return;
++        mSignalEvent = enabled && (mobileSignalIconId > 0);
++        if (!mMobileDataModeChanger.isSupported()) {
++            // return default value
++            if (mMobileDataModeChanger.isEnabledByUser()) {
++                mMobileDataModeChanger.setEnabledByUser(false);
++            }
++            return;
++        }
++        if (!mWifiModeChanger.isWifiConnected()) {
++            mMobileDataModeChanger.onActivity((enabled && activityIn), (enabled && activityOut));
++            mNetworkModeChanger.onActivity((enabled && activityIn), (enabled && activityOut));
++            mSyncModeChanger.onActivity((enabled && activityIn), (enabled && activityOut));
++        }
++        // detect user interacting while power saving running
++        if (mMobileDataModeChanger.isEnabledByUser() != mMobileDataModeChanger.isStateEnabled()) {
++            mMobileDataModeChanger.setEnabledByUser(mMobileDataModeChanger.isStateEnabled());
++        }
++    }
++
++    private void autoSwitchAfterScreenTurnOff() {
++        if (!mMobileDataModeChanger.isSupported() || !mNetworkModeChanger.isSupported()) {
++            return;
++        }
++        if (mIsScreenOff && (mUserCheckIntervalTime != 0) && shouldSwitch()
++            && mMobileDataModeChanger.isDisabledByService()) {
++            if ((SystemClock.elapsedRealtime() - mLastCheckIntervalTime) < mUserCheckIntervalTime) {
++                return;
++            }
++            if (mLastCheckIntervalTime != 0) {
++                switchToState(State.NORMAL, true);
++                if (DEBUG) {
++                    Log.i(TAG, " change to normal mode after = " + 
++                          (SystemClock.elapsedRealtime() - mLastCheckIntervalTime));
++                }
++                mHandler.removeCallbacks(mDelayedChangeMode);
++                mHandler.postDelayed(mDelayedChangeMode, ((int) mUserCheckIntervalTime) / 2);
++            }
++            mLastCheckIntervalTime = SystemClock.elapsedRealtime();
++        } else if (!mIsScreenOff && (mLastCheckIntervalTime != 0)) {
++            mLastCheckIntervalTime = 0;
++        }
++    }
++
++    private void autoCheckNetworkMode() {
++        if (!mNetworkModeChanger.isSupported()) {
++            return;
++        }
++        if (!mSignalEvent && mSmartNoSignalEnabled && shouldSwitch()) {
++            if ((SystemClock.elapsedRealtime() - mLastNoSignalTime) < mIntervalCheck) {
++                return;
++            }
++            if (mLastNoSignalTime != 0) {
++                mHandler.removeCallbacks(mEnabledAirPlaneMode);
++                mHandler.post(mEnabledAirPlaneMode);
++            }
++            mLastNoSignalTime = SystemClock.elapsedRealtime();
++        } else if (mSignalEvent && (mLastNoSignalTime != 0)) {
++            mLastNoSignalTime = 0;
++        }
++    }
++
++    private final Runnable mEnabledAirPlaneMode = new Runnable() {
++        public void run() {
++            if (!mSignalEvent) {
++                int airplaneMode = Settings.Global.getInt(mContext.getContentResolver(),
++                      Settings.Global.AIRPLANE_MODE_ON, 0);
++                setAirplaneModeState(airplaneMode != 0);
++                if (DEBUG) {
++                    Log.i(TAG, " No signal, Airplane Mode enable ");
++                }
++                notifyBatterySaverChangeAirPlaneMode();
++            } else {
++                mHandler.removeCallbacks(mEnabledAirPlaneMode);
++            }
++        }
++    };
++
++    private final Runnable mDelayedChangeMode = new Runnable() {
++        public void run() {
++            if (mIsScreenOff && shouldSwitch()) {
++                switchToState(State.POWER_SAVING, true);
++                if (DEBUG) {
++                    Log.i(TAG, " change to power saver mode after = " +
++                          ((int) mUserCheckIntervalTime) / 2);
++                }
++            } else {
++                mHandler.removeCallbacks(mDelayedChangeMode);
++            }
++        }
++    };
++
++    private void setAirplaneModeState(boolean enabled) {
++        // Change the system setting
++        Settings.Global.putInt(mContext.getContentResolver(), Settings.Global.AIRPLANE_MODE_ON,
++                                enabled ? 1 : 0);
++        // Post the intent
++        Intent intent = new Intent(Intent.ACTION_AIRPLANE_MODE_CHANGED);
++        intent.putExtra("state", enabled);
++        mContext.sendBroadcast(intent);
++    }
++
++    @Override
++    public void onWifiSignalChanged(boolean enabled, int wifiSignalIconId,
++            boolean activityIn, boolean activityOut,
++            String wifiSignalContentDescription, String enabledDesc) {
++        if (!mBatterySaverEnabled) return;
++        boolean wifiConnected = enabled && (wifiSignalIconId > 0) && (enabledDesc != null);
++        boolean wifiNotConnected = (wifiSignalIconId > 0) && (enabledDesc == null);
++        if (mWifiModeChanger.isModeEnabled()) {
++            // detect user interacting while power saving running
++            if (mWifiModeChanger.isEnabledByUser() != mWifiModeChanger.isStateEnabled()) {
++                mWifiModeChanger.setEnabledByUser(mWifiModeChanger.isStateEnabled());
++            }
++        } else {
++            // return default value
++            if (mWifiModeChanger.isEnabledByUser()) {
++                mWifiModeChanger.setEnabledByUser(false);
++            }
++        }
++        mWifiModeChanger.onActivity((enabled && activityIn), (enabled && activityOut));
++        if (!mBatteryLowEvent && !mPowerConnected) {
++            if (wifiConnected && !mWifiEvent) {
++                mWifiEvent = true;
++                // wifi connected to AP, power saving running
++                switchToState(State.POWER_SAVING);
++            } else if (wifiNotConnected && mWifiEvent &&
++                   !(mIsScreenOff && mPowerSaveWhenScreenOff)) {
++                // wifi not connected to AP, back to normal
++                switchToState(State.NORMAL);
++                mWifiEvent = false;
++            }
++        }
++    }
++
++    private void restoreAllState() {
++        boolean mobiledata = false;
++        boolean network = false;
++        boolean bluetooth = false;
++        boolean location = false;
++        boolean wifi = false;
++        boolean brightness = false;
++        boolean cpufreq = false;
++        boolean syncs = false;
++        boolean leds = false;
++        boolean vibes = false;
++        if (mBluetoothModeChanger.restoreState()) {
++            bluetooth = true;
++            showToast(2);
++        }
++        if (mLocationModeChanger.restoreState()) {
++            mLocationModeChanger.setLocationMode();
++            location = true;
++            showToast(3);
++        }
++        if (!isTethered()) {
++            if (mMobileDataModeChanger.restoreState()) {
++                mobiledata = true;
++                showToast(0);
++            }
++            if (mNetworkModeChanger.restoreState()) {
++                network = true;
++                showToast(1);
++            }
++            if (mWifiModeChanger.restoreState()) {
++                wifi = true;
++                showToast(4);
++            }
++        }
++        if (mBrightnessModeChanger.restoreState()) {
++            brightness = true;
++            showToast(5);
++        }
++        if (mCpuModeChanger.restoreState()) {
++            cpufreq = true;
++            showToast(6);
++        }
++        if (mSyncModeChanger.restoreState()) {
++            syncs = true;
++            showToast(9);
++        }
++        if (mLedModeChanger.restoreState()) {
++            leds = true;
++            showToast(10);
++        }
++        if (mVibrateModeChanger.restoreState()) {
++            vibes = true;
++            showToast(11);
++        }
++        if (mobiledata && network && bluetooth
++            && location && wifi && brightness && cpufreq
++            && syncs && leds && vibes) {
++            showToast(7);
++        } else if (!mobiledata && !network && !bluetooth
++            && !location && !wifi && !brightness && !cpufreq
++            && !syncs && !leds && !vibes) {
++            showToast(8);
++        }
++    }
++
++    private boolean shouldSwitch() {
++        return !mWifiModeChanger.isWifiConnected() && !mBatteryLowEvent;
++    }
++
++    private boolean isLockScreenDisabled() {
++        LockPatternUtils utils = new LockPatternUtils(mContext);
++        utils.setCurrentUser(UserHandle.USER_OWNER);
++        return utils.isLockScreenDisabled();
++    }
++
++    private boolean deviceSupportsTether() {
++        return (mCM != null) ? mCM.isTetheringSupported() : false;
++    }
++
++    private boolean isOnCall() {
++        return mTM.getCallState() != TelephonyManager.CALL_STATE_IDLE;
++    }
++
++    private boolean isTethered() {
++        if (mCM == null || !deviceSupportsTether()) {
++            return false;
++        }
++
++        String[] usbRegexs = mCM.getTetherableUsbRegexs();
++        String[] bluetoothRegexs = mCM.getTetherableBluetoothRegexs();
++        String[] wifiRegexs = mCM.getTetherableWifiRegexs();
++        String[] tethered = mCM.getTetheredIfaces();
++
++        for (String s : tethered) {
++            for (String regex : wifiRegexs) {
++                if (s.matches(regex)) {
++                    return true;
++                }
++            }
++            for (String regex : usbRegexs) {
++                 if (s.matches(regex)) {
++                     return true;
++                 }
++            }
++            for (String regex : bluetoothRegexs) {
++                 if (s.matches(regex)) {
++                     return true;
++                 }
++            }
++        }
++        return false;
++    }
++
++    public void switchToState(State newState) {
++        switchToState(newState, false);
++    }
++
++    public void switchToState(State newState, boolean checks) {
++        switchToState(newState, false, checks);
++    }
++
++    public void switchToState(State newState, boolean force, boolean checks) {
++        if (mCurrentState == newState && !force) {
++            return;
++        } else if (!mBatterySaverEnabled) {
++            return;
++        } else if (isOnCall()) {
++            // check condition
++            if (mInCallChangeMode.getState() != newState
++                || mInCallChangeMode.isForce() != force
++                || mInCallChangeMode.isChecks() != checks) {
++                mInCallChangeMode.InCallChangeState(newState, force, checks);
++            }
++            return;
++        }
++
++        boolean normalize = false;
++        int networkMode = mNetworkModeChanger.getMode();
++        switch (newState) {
++              case NORMAL:
++                   networkMode = mNormalMode;
++                   normalize = true;
++                   break;
++              case POWER_SAVING:
++                   networkMode = mPowerSavingMode;
++                   break;
++              default:
++                   break;
++        }
++        mCurrentState = newState;
++        updateCurrentState(newState);
++        if ((!mWifiEvent && !checks) || (force && !checks)) {
++            if (mBrightnessModeChanger.isSupported()) {
++                mBrightnessModeChanger.changeMode(false, normalize);
++            }
++            if (mBluetoothModeChanger.isSupported()) {
++                mBluetoothModeChanger.changeMode(false, normalize);
++            }
++            if (mCpuModeChanger.isSupported()) {
++                mCpuModeChanger.changeMode(false, normalize);
++            }
++            if (mLocationModeChanger.isSupported()) {
++                mLocationModeChanger.changeMode(false, normalize);
++            }
++            if (mWifiModeChanger.isSupported()) {
++                mWifiModeChanger.updateTraffic();
++                mWifiModeChanger.changeMode(false, normalize);
++            }
++            if (mSyncModeChanger.isSupported()) {
++                mSyncModeChanger.updateTraffic();
++                mSyncModeChanger.changeMode(false, normalize);
++            }
++            if (mKillAllModeChanger.isSupported() && !mBatteryLowEvent) {
++                mKillAllModeChanger.changeMode(false, normalize);
++            }
++            if (mLedModeChanger.isSupported()) {
++                mLedModeChanger.changeMode(false, normalize);
++            }
++            if (mVibrateModeChanger.isSupported()) {
++                mVibrateModeChanger.changeMode(false, normalize);
++            }
++        }
++        if (mMobileDataModeChanger.isSupported()) {
++            mMobileDataModeChanger.updateTraffic();
++            mMobileDataModeChanger.changeMode(false, normalize);
++        }
++        if (mNetworkModeChanger.isSupported()) {
++            mNetworkModeChanger.updateTraffic();
++            mNetworkModeChanger.changeModes(networkMode, false, normalize);
++        }
++    }
++
++    private void updateCurrentState(State newState) {
++        mBrightnessModeChanger.setState(newState);
++        mBluetoothModeChanger.setState(newState);
++        mCpuModeChanger.setState(newState);
++        mLocationModeChanger.setState(newState);
++        mMobileDataModeChanger.setState(newState);
++        mNetworkModeChanger.setState(newState);
++        mWifiModeChanger.setState(newState);
++        mSyncModeChanger.setState(newState);
++        mKillAllModeChanger.setState(newState);
++        mLedModeChanger.setState(newState);
++        mVibrateModeChanger.setState(newState);
++    }
++
++    private void setNewModeValue(State state, int mode) {
++        int currentMode = state == State.NORMAL ? mNormalMode : mPowerSavingMode;
++        if (mode != currentMode) {
++            if (state == State.NORMAL) {
++                mNormalMode = mode;
++            } else {
++                mPowerSavingMode = mode;
++            }
++            if (mCurrentState == state) {
++                switchToState(state, true, false);
++            }
++        }
++    }
++
++    private void showToast(int codes) {
++        if (!mShowToast) return;
++
++        String what = null;
++        switch (codes) {
++                case 0:
++                    what = mResources.getString(R.string.battery_saver_data);
++                    break;
++                case 1:
++                    what = mResources.getString(R.string.battery_saver_network);
++                    break;
++                case 2:
++                    what = mResources.getString(R.string.battery_saver_bluetooth);
++                    break;
++                case 3:
++                    what = mResources.getString(R.string.battery_saver_location);
++                    break;
++                case 4:
++                    what = mResources.getString(R.string.battery_saver_wifi);
++                    break;
++                case 5:
++                    what = mResources.getString(R.string.battery_saver_brightness);
++                    break;
++                case 6:
++                    what = mResources.getString(R.string.battery_saver_cpu);
++                    break;
++                case 7:
++                    what = mResources.getString(R.string.battery_saver_all);
++                    break;
++                case 8:
++                    what = mResources.getString(R.string.battery_saver_no_changes);
++                    break;
++                case 9:
++                    what = mResources.getString(R.string.battery_saver_sync);
++                    break;
++                case 10:
++                    what = mResources.getString(R.string.battery_saver_led);
++                    break;
++                case 11:
++                    what = mResources.getString(R.string.battery_saver_vibrate);
++                    break;
++        }
++
++        if (what != null) {
++            Toast.makeText(mContext, what, Toast.LENGTH_SHORT).show();
++        }
++    }
++
++    @Override
++    public void onDestroy() {
++        // showing a message battery saver mode stopped
++        Toast.makeText(mContext, mResources.getString(R.string.battery_saver_stop), Toast.LENGTH_SHORT).show();
++        // restore all user configuration
++        restoreAllState();
++        // unregister settings
++        if (mSettingsObserver != null) {
++            mSettingsObserver.unobserve();
++        }
++        // unregister broadcast
++        if (mBroadcastReceiver != null) {
++            unregisterReceiver(mBroadcastReceiver);
++        }
++        if (mIntentReceiver != null) {
++            unregisterReceiver(mIntentReceiver);
++        }
++        if (mTM != null) {
++            mTM.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
++        }
++        mPhoneStateListener = null;
++        // unregister controller
++        if (mBatteryController != null) {
++            mBatteryController.unregisterController(mContext);
++            mBatteryController.removeStateChangedCallback(this);
++        }
++        if (mBluetoothController != null) {
++            mBluetoothController.unregisterController(mContext);
++            mBluetoothController.removeConnectionStateChangedCallback(this);
++        }
++        if (mLocationController != null) {
++            mLocationController.unregisterController(mContext);
++            mLocationController.removeSettingsChangedCallback(this);
++        }
++        if (mNetworkController != null) {
++            mNetworkController.unregisterController(mContext);
++            mNetworkController.removeNetworkSignalChangedCallback(this);
++        }
++        if (DEBUG) {
++            Log.i(TAG, " disabled ");
++        }
++        super.onDestroy();
++    }
++
++    private void notifyBatterySaver() {
++        Resources r = mContext.getResources();
++
++        Intent batIntent = new Intent();
++        batIntent.setClass(mContext, DisableBatterySaverMode.class);
++
++        Notification.Builder b = new Notification.Builder(mContext)
++            .setTicker(r.getString(R.string.battery_saver_enable_ticker))
++            .setContentTitle(r.getString(R.string.battery_saver_enable_title))
++            .setContentText(r.getString(R.string.battery_saver_start))
++            .setSmallIcon(R.drawable.ic_qs_battery_saver_on)
++            .setWhen(System.currentTimeMillis())
++            .setAutoCancel(true)
++            .addAction(R.drawable.ic_qs_battery_saver_off,
++                     r.getString(R.string.battery_saver_disable),
++                     PendingIntent.getBroadcast(mContext, 0, batIntent,
++                        PendingIntent.FLAG_CANCEL_CURRENT));
++        mNotificationManager.notify(BATTERY_SAVER_NOTIFICATION_ID, b.build());
++    }
++
++    private void notifyBatterySaverChangeAirPlaneMode() {
++        Resources r = mContext.getResources();
++
++        Intent disIntent = new Intent();
++        disIntent.setClass(mContext, AirPlaneChangeMode.class);
++
++        Notification.Builder b = new Notification.Builder(mContext)
++            .setTicker(r.getString(R.string.battery_saver_airplane_ticker))
++            .setContentTitle(r.getString(R.string.battery_saver_enable_title))
++            .setContentText(r.getString(R.string.battery_saver_airplane_text))
++            .setSmallIcon(R.drawable.ic_qs_airplane_on)
++            .setWhen(System.currentTimeMillis())
++            .setAutoCancel(true)
++            .addAction(R.drawable.ic_qs_airplane_off,
++                     r.getString(R.string.battery_saver_disable),
++                     PendingIntent.getBroadcast(mContext, 0, disIntent,
++                        PendingIntent.FLAG_CANCEL_CURRENT));
++        mNotificationManager.notify(BATTERY_SAVER_NOTIFICATION_ID, b.build());
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/BluetoothModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/BluetoothModeChanger.java
+new file mode 100644
+index 0000000..0b44590
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/BluetoothModeChanger.java
+@@ -0,0 +1,107 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.bluetooth.BluetoothAdapter;
++import android.bluetooth.BluetoothDevice;
++import android.content.Context;
++import android.util.Log;
++
++import java.util.Set;
++
++import com.android.systemui.R;
++import com.android.systemui.statusbar.policy.BluetoothController;
++
++public class BluetoothModeChanger extends ModeChanger {
++
++    private BluetoothAdapter mBluetoothAdapter;
++    private BluetoothController mBluetoothController;
++    private boolean mConnected = false;
++
++    public BluetoothModeChanger(Context context) {
++        super(context);
++        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
++    }
++
++    public void setConnected(boolean connect) {
++        mConnected = connect;
++    }
++
++    public void setController(BluetoothController controller) {
++        mBluetoothController = controller;
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    @Override
++    public boolean isDelayChanges() {
++        if (!isSupported()) return false;
++        Set<BluetoothDevice> btDevices = mBluetoothController.getBondedBluetoothDevices();
++        return (btDevices.size() == 1) && mConnected;
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        if (!isSupported()) return false;
++        return mBluetoothAdapter.isEnabled();
++    }
++
++    @Override
++    public boolean isSupported() {
++        return (mBluetoothAdapter != null) && isModeEnabled();
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        if (!isStateEnabled()) {
++            mBluetoothAdapter.enable();
++        }
++    }
++
++    @Override
++    public void stateSaving() {
++        if (isStateEnabled()) {
++            mBluetoothAdapter.disable();
++        }
++    }
++
++    @Override
++    public boolean checkModes() {
++        if (isDelayChanges()) {
++            // bluetooth has paired devices and connected, delay changing mode
++            changeMode(true, false);
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " delayed bluetooth changing because connected devices ");
++            }
++            return false;
++        }
++        return true;
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/BrightnessModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/BrightnessModeChanger.java
+new file mode 100644
+index 0000000..cf19d8d
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/BrightnessModeChanger.java
+@@ -0,0 +1,134 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.os.IPowerManager;
++import android.os.PowerManager;
++import android.os.RemoteException;
++import android.os.ServiceManager;
++import android.provider.Settings;
++
++import com.android.systemui.R;
++
++public class BrightnessModeChanger extends ModeChanger {
++
++    private IPowerManager mPM;
++
++    private int mBrightnessMode = -1;
++    private int mUserBrightnessLevel = -1;
++    private int mInitialBrightness = 0;
++    private int mMinimumBacklight;
++    private int mMaximumBacklight;
++    private boolean mIsBrightnessRestored = false;
++
++    public BrightnessModeChanger(Context context) {
++        super(context);
++        mPM = IPowerManager.Stub.asInterface(ServiceManager.getService(Context.POWER_SERVICE));
++        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
++        mMinimumBacklight = pm.getMinimumScreenBrightnessSetting();
++        mMaximumBacklight = pm.getMaximumScreenBrightnessSetting();
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    public void updateBrightnessValue(int initial) {
++        if (initial == -1) {
++            mInitialBrightness = mMinimumBacklight;
++        } else {
++            mInitialBrightness = initial;
++        }
++    }
++
++    public void updateBrightnessMode(int mode) {
++        if (mBrightnessMode != mode) {
++            mBrightnessMode = mode;
++            mUserBrightnessLevel = -1;
++        }
++    }
++
++    private void setBrightness(int brightness) {
++        final ContentResolver resolver = mContext.getContentResolver();
++        mBrightnessMode = Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
++                Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC);
++        if (mBrightnessMode != Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC) {
++            mUserBrightnessLevel = Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS,
++                    mMaximumBacklight);
++            final int level = brightness;
++            Settings.System.putInt(resolver,
++                    Settings.System.SCREEN_BRIGHTNESS_MODE,
++                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
++            try {
++                mPM.setTemporaryScreenBrightnessSettingOverride(level);
++            } catch (RemoteException e) {
++            }
++        }
++    }
++
++    private void restoreBrightness() {
++        if (mUserBrightnessLevel < 0 || mBrightnessMode < 0
++                || mBrightnessMode == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC) {
++            return;
++        }
++        final ContentResolver resolver = mContext.getContentResolver();
++        try {
++            mPM.setTemporaryScreenBrightnessSettingOverride(mUserBrightnessLevel);
++        } catch (RemoteException e) {
++        }
++        Settings.System.putInt(resolver, Settings.System.SCREEN_BRIGHTNESS_MODE,
++                mBrightnessMode);
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public boolean isSupported() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        restoreBrightness();
++    }
++
++    @Override
++    public void stateSaving() {
++        setBrightness(mInitialBrightness);
++    }
++
++    @Override
++    public boolean checkModes() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/CpuModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/CpuModeChanger.java
+new file mode 100644
+index 0000000..7473de7
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/CpuModeChanger.java
+@@ -0,0 +1,148 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++import android.provider.Settings;
++import android.widget.Toast;
++import android.util.Log;
++
++import com.android.systemui.R;
++
++public class CpuModeChanger extends ModeChanger {
++
++    private boolean mIsTegra3 = false;
++    private boolean mIsDynFreq = false;
++    private String mMaxFreqSetting;
++    private String mMaxFreqSaverSetting;
++
++    public CpuModeChanger(Context context) {
++        super(context);
++        updateDefaultCpuValue();
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    private void updateDefaultCpuValue() {
++        mIsTegra3 = Helpers.fileExists(Helpers.TEGRA_MAX_FREQ_PATH);
++        mIsDynFreq = Helpers.fileExists(Helpers.DYN_MAX_FREQ_PATH) && Helpers.fileExists(Helpers.DYN_MIN_FREQ_PATH);
++
++        if (Helpers.fileExists(Helpers.DYN_MAX_FREQ_PATH)) {
++            mMaxFreqSetting = Helpers.readOneLine(Helpers.DYN_MAX_FREQ_PATH);
++        } else {
++            mMaxFreqSetting = Helpers.readOneLine(Helpers.MAX_FREQ_PATH);
++        }
++
++        if (mIsTegra3) {
++            String curTegraMaxSpeed = Helpers.readOneLine(Helpers.TEGRA_MAX_FREQ_PATH);
++            int curTegraMax;
++            try {
++                curTegraMax = Integer.parseInt(curTegraMaxSpeed);
++                if (curTegraMax > 0) {
++                    mMaxFreqSetting = Integer.toString(curTegraMax);
++                }
++            } catch (NumberFormatException ignored) {
++                // Nothing to do
++            }
++        }
++        if (mMaxFreqSetting == null) {
++            mMaxFreqSetting = Settings.Global.getString(mContext.getContentResolver(),
++                     Settings.Global.BATTERY_SAVER_CPU_FREQ_DEFAULT);
++        }
++        if (mMaxFreqSaverSetting == null) {
++            mMaxFreqSaverSetting = mMaxFreqSetting;
++        }
++        if (BatterySaverService.DEBUG) {
++            Log.i(BatterySaverService.TAG, " default maximum cpu freq = " + mMaxFreqSetting);
++        }
++    }
++
++    private void restoreCpuState(boolean restore) {
++        String setCpuFreq = restore ? mMaxFreqSetting : mMaxFreqSaverSetting;
++        if (setCpuFreq != null) {
++            for (int i = 0; i < Helpers.getNumOfCpus(); i++) {
++                 Helpers.writeOneLine(Helpers.MAX_FREQ_PATH.replace("cpu0", "cpu" + i), setCpuFreq);
++            }
++            if (mIsTegra3) {
++                Helpers.writeOneLine(Helpers.TEGRA_MAX_FREQ_PATH, setCpuFreq);
++            }
++            if (mIsDynFreq) {
++                Helpers.writeOneLine(Helpers.DYN_MAX_FREQ_PATH, setCpuFreq);
++            }
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " change maximum cpu freq = " + Helpers.toMHz(setCpuFreq));
++            }
++            if (isShowToast()) {
++                Toast.makeText(mContext,
++                  mContext.getString(R.string.battery_saver_cpu_change) + " "
++                  + Helpers.toMHz(setCpuFreq), Toast.LENGTH_SHORT).show();
++            }
++        } else {
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " change maximum cpu freq = NULL");
++            }
++        }
++    }
++
++    public void setCpuValue(String value) {
++        mMaxFreqSaverSetting = value;
++        updateDefaultCpuValue();
++        if (value != null) {
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " user setup maximum cpu freq = " + Helpers.toMHz(value));
++            }
++        }
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public boolean isSupported() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        restoreCpuState(true);
++    }
++
++    @Override
++    public void stateSaving() {
++        restoreCpuState(false);
++    }
++
++    @Override
++    public boolean checkModes() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/DisableBatterySaverMode.java b/packages/SystemUI/src/com/android/systemui/batterysaver/DisableBatterySaverMode.java
+new file mode 100644
+index 0000000..b1980b8
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/DisableBatterySaverMode.java
+@@ -0,0 +1,45 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.app.NotificationManager;
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++import android.provider.Settings;
++
++import com.android.systemui.R;
++
++public class DisableBatterySaverMode extends BroadcastReceiver {
++
++    @Override
++    public void onReceive(Context context, Intent intent) {
++        boolean checkModeOn = Settings.Global.getInt(context.getContentResolver(),
++                                                Settings.Global.BATTERY_SAVER_OPTION, 0) == 1;
++        Settings.Global.putInt(context.getContentResolver(),
++                                 Settings.Global.BATTERY_SAVER_OPTION, checkModeOn ? 0 : 1);
++
++        Intent scheduleSaver = new Intent();
++        scheduleSaver.setAction(Intent.ACTION_BATTERY_SERVICES);
++        context.sendBroadcast(scheduleSaver);
++
++        // Dismiss the notification that brought us here.
++        NotificationManager notificationManager =
++                (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
++        notificationManager.cancel(BatterySaverService.BATTERY_SAVER_NOTIFICATION_ID);
++    }
++
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/Helpers.java b/packages/SystemUI/src/com/android/systemui/batterysaver/Helpers.java
+new file mode 100644
+index 0000000..f6b25b4
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/Helpers.java
+@@ -0,0 +1,126 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileNotFoundException;
++import java.io.FileOutputStream;
++import java.io.FileReader;
++import java.io.FileWriter;
++import java.io.IOException;
++import java.io.InputStream;
++
++public class Helpers {
++
++    public static final String MAX_FREQ_PATH = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq";
++    public static final String TEGRA_MAX_FREQ_PATH = "/sys/module/cpu_tegra/parameters/cpu_user_cap";
++    public static final String STEPS_PATH = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies";
++    public static final String DYN_MAX_FREQ_PATH = "/sys/power/cpufreq_max_limit";
++    public static final String DYN_MIN_FREQ_PATH = "/sys/power/cpufreq_min_limit";
++    public static final String NUM_OF_CPUS_PATH = "/sys/devices/system/cpu/present";
++
++    /**
++     * Read one line from file
++     *
++     * @param fname
++     * @return line
++     */
++    public static String readOneLine(String fname) {
++        String line = null;
++        if (new File(fname).exists()) {
++            BufferedReader br;
++            try {
++                br = new BufferedReader(new FileReader(fname), 512);
++                try {
++                    line = br.readLine();
++                } finally {
++                    br.close();
++                }
++            } catch (Exception e) {
++                return null;
++            }
++        }
++        return line;
++    }
++
++    /**
++     * Write one line to a file
++     *
++     * @param fname
++     * @param value
++     * @return if line was written
++     */
++    public static boolean writeOneLine(String fname, String value) {
++        if (!new File(fname).exists()) {
++            return false;
++        }
++        try {
++            FileWriter fw = new FileWriter(fname);
++            try {
++                fw.write(value);
++            } finally {
++                fw.close();
++            }
++        } catch (IOException e) {
++            return false;
++        }
++        return true;
++    }
++
++    /**
++     * Get total number of cpus
++     *
++     * @return total number of cpus
++     */
++    public static int getNumOfCpus() {
++        int numOfCpu = 1;
++        String numOfCpus = readOneLine(NUM_OF_CPUS_PATH);
++        String[] cpuCount = numOfCpus.split("-");
++        if (cpuCount.length > 1) {
++            try {
++                int cpuStart = Integer.parseInt(cpuCount[0]);
++                int cpuEnd = Integer.parseInt(cpuCount[1]);
++
++                numOfCpu = cpuEnd - cpuStart + 1;
++
++                if (numOfCpu < 0)
++                    numOfCpu = 1;
++            } catch (NumberFormatException ex) {
++                numOfCpu = 1;
++            }
++        }
++        return numOfCpu;
++    }
++
++    /**
++     * Convert to MHz and append a tag
++     *
++     * @param mhzString
++     * @return tagged and converted String
++     */
++    public static String toMHz(String mhzString) {
++        if (mhzString == null) {
++            return "Unknown";
++        }
++        return String.valueOf(Integer.parseInt(mhzString) / 1000) + " MHz";
++    }
++
++    public static boolean fileExists(String fname) {
++        return new File(fname).exists();
++    }
++
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/InCallChangeMode.java b/packages/SystemUI/src/com/android/systemui/batterysaver/InCallChangeMode.java
+new file mode 100644
+index 0000000..41e1c5ec
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/InCallChangeMode.java
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++
++import com.android.systemui.R;
++import com.android.systemui.batterysaver.BatterySaverService.State;
++
++public class InCallChangeMode implements Runnable {
++
++    private Context mContext;
++    private BatterySaverService mServices;
++    private State mWhatState = State.UNKNOWN;
++    private boolean mForce = false;
++    private boolean mChecks = false;
++
++    public InCallChangeMode(Context context, BatterySaverService services) {
++        mContext = context;
++        mServices = services;
++    }
++
++    public void InCallChangeState(State newState, boolean force, boolean checks) {
++        mWhatState = newState;
++        mForce = force;
++        mChecks = checks;
++    }
++
++    public State getState() {
++        return mWhatState;
++    }
++
++    public boolean isForce() {
++        return mForce;
++    }
++
++    public boolean isChecks() {
++        return mChecks;
++    }
++
++    @Override
++    public void run() {
++        mServices.switchToState(mWhatState, mForce, mChecks);
++    }
++
++    public void callPosted() {
++        run();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/KillAllModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/KillAllModeChanger.java
+new file mode 100644
+index 0000000..599c69f
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/KillAllModeChanger.java
+@@ -0,0 +1,73 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++import android.util.Log;
++import com.android.internal.util.omni.TaskUtils;
++
++import com.android.systemui.R;
++
++public class KillAllModeChanger extends ModeChanger {
++
++    public KillAllModeChanger(Context context) {
++        super(context);
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public boolean isSupported() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++    }
++
++    @Override
++    public void stateSaving() {
++        if (TaskUtils.killActiveTask(mContext)) {
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " kill all task");
++            }
++        }
++    }
++
++    @Override
++    public boolean checkModes() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/LedModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/LedModeChanger.java
+new file mode 100644
+index 0000000..79e23fb
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/LedModeChanger.java
+@@ -0,0 +1,71 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++import android.provider.Settings;
++
++import com.android.systemui.R;
++
++public class LedModeChanger extends ModeChanger {
++
++    public LedModeChanger(Context context) {
++        super(context);
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public boolean isSupported() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        Settings.Global.putInt(mContext.getContentResolver(),
++                    Settings.Global.BATTERY_SAVER_LED_DISABLE, 0);
++    }
++
++    @Override
++    public void stateSaving() {
++        Settings.Global.putInt(mContext.getContentResolver(),
++                    Settings.Global.BATTERY_SAVER_LED_DISABLE, 1);
++    }
++
++    @Override
++    public boolean checkModes() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/LocationModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/LocationModeChanger.java
+new file mode 100644
+index 0000000..a19ae90
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/LocationModeChanger.java
+@@ -0,0 +1,114 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.pm.PackageManager;
++import android.content.Context;
++import android.util.Log;
++
++import com.android.systemui.R;
++import com.android.systemui.statusbar.policy.LocationController;
++
++public class LocationModeChanger extends ModeChanger {
++
++    private int mLocationMode;
++    private int mLocationModeByUser = 0;
++    private LocationController mLocationController;
++
++    public LocationModeChanger(Context context) {
++        super(context);
++    }
++
++    public void setLocationModeByUser(int mode) {
++        mLocationModeByUser = mode;
++    }
++
++    public int getLocationModeByUser() {
++        return mLocationModeByUser;
++    }
++
++    public void setController(LocationController controller) {
++        mLocationController = controller;
++        mLocationMode = isSupported() ? controller.getLocationMode() : 0;
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    public void setLocationMode() {
++        if (mLocationModeByUser != mLocationMode) {
++            mLocationController.setLocationMode(mLocationModeByUser);
++        }
++    }
++
++    @Override
++    public boolean isDelayChanges() {
++        if (!isSupported()) return false;
++        return mLocationController.areActiveHighPowerLocationRequests();
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        if (!isSupported()) return false;
++        return mLocationController.isLocationEnabled();
++    }
++
++    @Override
++    public boolean isSupported() {
++        boolean isSupport = mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS);
++        return isModeEnabled() && isSupport;
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        if (!isStateEnabled()) {
++            mLocationController.setLocationEnabled(true);
++        }
++    }
++
++    @Override
++    public void stateSaving() {
++        if (isStateEnabled()) {
++            mLocationController.setLocationEnabled(false);
++        }
++    }
++
++    @Override
++    public boolean checkModes() {
++        if (isDelayChanges()) {
++            // high request location in progress detected, delay changing mode
++            changeMode(true, false);
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " delayed location changing because high request ");
++            }
++            return false;
++        }
++        return true;
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/MobileDataModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/MobileDataModeChanger.java
+new file mode 100644
+index 0000000..5d41809
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/MobileDataModeChanger.java
+@@ -0,0 +1,90 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++import android.net.ConnectivityManager;
++import android.util.Log;
++
++import com.android.systemui.R;
++
++public class MobileDataModeChanger extends ModeChanger {
++
++    private ConnectivityManager mCM;
++
++    public MobileDataModeChanger(Context context) {
++        super(context);
++    }
++
++    public void setServices(ConnectivityManager cm) {
++        mCM = cm;
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        if (!isSupported()) return false;
++        return (mCM != null) ? mCM.getMobileDataEnabled() : false;
++    }
++
++    @Override
++    public boolean isSupported() {
++        boolean isSupport = (mCM != null) ? mCM.isNetworkSupported(ConnectivityManager.TYPE_MOBILE) : false;
++        return isModeEnabled() && isSupport;
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        if (!isStateEnabled()) {
++            mCM.setMobileDataEnabled(true);
++        }
++    }
++
++    @Override
++    public void stateSaving() {
++        if (isStateEnabled()) {
++            mCM.setMobileDataEnabled(false);
++        }
++    }
++
++    @Override
++    public boolean checkModes() {
++        if (isDelayChanges()) {
++            // download/upload progress detected, delay changing mode
++            changeMode(true, false);
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " delayed mobile data changing because traffic full ");
++            }
++            return false;
++        }
++        return true;
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/ModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/ModeChanger.java
+new file mode 100644
+index 0000000..aa44449
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/ModeChanger.java
+@@ -0,0 +1,236 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++import android.net.TrafficStats;
++import android.os.Handler;
++import android.os.SystemClock;
++
++import com.android.systemui.R;
++import com.android.systemui.batterysaver.BatterySaverService.State;
++
++public class ModeChanger implements Runnable {
++
++    public Context mContext;
++    public Handler mHandler;
++    private State mCurrentState = State.UNKNOWN;
++    private int mNextMode = 0;
++    private int mCurrentMode = 0;
++    private int mDelayed = 0;
++    private boolean mModeEnabled = true;
++    private boolean mWasEnabled = false;
++    private boolean mEnabledByUser = false;
++    private boolean mDisabledByService = false;
++    private boolean mNormalize = false;
++    private boolean mShowToast = false;
++    private long mTrafficBytes;
++    private final long TRAFFIC_BYTES_THRESHOLD = 1 * 1024 * 1024; // 1mb
++    private boolean isFullTraffic = false;
++    private long mIntervalCheck = 0;
++    private final long mIntervalDuration = 30000; //30seconds
++
++    public ModeChanger(Context context) {
++        mContext = context;
++        mHandler = new Handler();
++        mNextMode = getMode();
++        mCurrentMode = getMode();
++    }
++
++    public void setState(State st) {
++        mCurrentState = st;
++    }
++
++    public void onActivity(boolean activityIn, boolean activityOut) {
++        if (activityIn || activityOut) {
++            if ((SystemClock.elapsedRealtime() - mIntervalCheck) < mIntervalDuration) {
++                return;
++            }
++            if (mIntervalCheck != 0) {
++                isFullTraffic = true;
++            }
++            mIntervalCheck = SystemClock.elapsedRealtime();
++        } else {
++            isFullTraffic = false;
++            mIntervalCheck = 0;
++        }
++    }
++
++    public void updateTraffic() {
++        mTrafficBytes = TrafficStats.getTotalRxBytes() + TrafficStats.getTotalTxBytes();
++    }
++
++    // user configuration
++    public void setDelayed(int delay) {
++        mDelayed = delay;
++    }
++
++    // user configuration
++    public void setModeEnabled(boolean enabled) {
++        mModeEnabled = enabled;
++    }
++
++    // user configuration
++    public void setShowToast(boolean enabled) {
++        mShowToast = enabled;
++    }
++
++    public void setWasEnabled(boolean enabled) {
++        // override this if not a user interaction and
++        // add super.setWasEnabled(enabled) to the end of line code here
++        mWasEnabled = enabled;
++    }
++
++    public void setEnabledByUser(boolean user) {
++        mEnabledByUser = user;
++    }
++
++    public void setDisabledByService(boolean svc) {
++        mDisabledByService = svc;
++    }
++
++    public boolean wasEnabled() {
++        return mWasEnabled;
++    }
++
++    public boolean isModeEnabled() {
++        return mModeEnabled;
++    }
++
++    public boolean isShowToast() {
++        return mShowToast;
++    }
++
++    public boolean isEnabledByUser() {
++        return mEnabledByUser;
++    }
++
++    public boolean isDisabledByService() {
++        return mDisabledByService;
++    }
++
++    public boolean isNormalize() {
++        return mNormalize;
++    }
++
++    public int getNextMode() {
++        return mNextMode;
++    }
++
++    public boolean isDelayChanges() {
++        final long traffic = TrafficStats.getTotalRxBytes() + TrafficStats.getTotalTxBytes();
++        return ((traffic - mTrafficBytes) > TRAFFIC_BYTES_THRESHOLD) || isFullTraffic;
++    }
++
++    public boolean isStateEnabled() {
++        // override this
++        return false;
++    }
++
++    public boolean isSupported() {
++        // override this
++        return false;
++    }
++
++    public int getMode() {
++        // override this
++        return 0;
++    }
++
++    public void stateNormal() {
++        // override this
++    }
++
++    public void stateSaving() {
++        // override this
++    }
++
++    public boolean checkModes() {
++        // override this
++        return true;
++    }
++
++    public void setModes() {
++        // override this and
++        // add super.setModes to the end of line code here
++        mCurrentMode = mNextMode;
++    }
++
++    public boolean restoreState() {
++        // override this if needed
++        if (isSupported() && mDisabledByService) {
++            stateNormal();
++            return true;
++        }
++        return false;
++    }
++
++    public void runModes() {
++        if (mCurrentState == State.POWER_SAVING) {
++            if ((mWasEnabled || mEnabledByUser)
++                 && isSupported()) {
++                stateSaving();
++                setDisabledByService(true);
++            }
++        } else if (mCurrentState == State.NORMAL) {
++            if ((mWasEnabled || mDisabledByService)
++                && isSupported()) {
++                stateNormal();
++                setDisabledByService(false);
++            }
++        }
++        setModes();
++    }
++
++    @Override
++    public void run() {
++        if (checkModes()) {
++            runModes();
++        }
++    }
++
++    public void changeMode(boolean delayed, boolean normalize) {
++        if (!isSupported()) return;
++        mNormalize = normalize;
++        mHandler.removeCallbacks(this);
++        if ((mDelayed == 0) && delayed) {
++            mHandler.postDelayed(this, 5000); // 5seconds
++            return;
++        }
++        if (mDelayed == 0 || normalize) {
++            run();
++        } else {
++            mHandler.postDelayed(this, mDelayed * 1000);
++        }
++    }
++
++    public void changeModes(int Mode, boolean delayed, boolean normalize) {
++        if (!isSupported()) return;
++        mNormalize = normalize;
++        mHandler.removeCallbacks(this);
++        if (Mode == getMode() || Mode == mCurrentMode) return;
++        mNextMode = Mode;
++        if ((mDelayed == 0) && delayed) {
++            mHandler.postDelayed(this, 5000); // 5seconds
++            return;
++        }
++        if (mDelayed == 0 || normalize) {
++            run();
++        } else {
++            mHandler.postDelayed(this, mDelayed * 1000);
++        }
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/NetworkModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/NetworkModeChanger.java
+new file mode 100644
+index 0000000..6658675
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/NetworkModeChanger.java
+@@ -0,0 +1,174 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++import android.content.res.Resources;
++import android.net.ConnectivityManager;
++import android.provider.Settings;
++import android.telephony.TelephonyManager;
++import android.util.Log;
++import android.widget.Toast;
++
++import com.android.systemui.R;
++import com.android.internal.telephony.Phone;
++
++public class NetworkModeChanger extends ModeChanger {
++
++    private Resources mResources;
++    private int mDefaultMode;
++    private ConnectivityManager mCM;
++    private TelephonyManager mTM;
++
++    public NetworkModeChanger(Context context) {
++        super(context);
++        mResources = context.getResources();
++    }
++
++    public void setServices(ConnectivityManager cm, TelephonyManager tm) {
++        mCM = cm;
++        mTM = tm;
++        mDefaultMode = getMode();
++    }
++
++    private String getNetworkType(int state, Resources r) {
++        switch (state) {
++            case Phone.NT_MODE_GLOBAL:
++            case Phone.NT_MODE_LTE_CDMA_AND_EVDO:
++            case Phone.NT_MODE_LTE_GSM_WCDMA:
++            case Phone.NT_MODE_LTE_CMDA_EVDO_GSM_WCDMA:
++            case Phone.NT_MODE_LTE_ONLY:
++            case Phone.NT_MODE_LTE_WCDMA:
++                return r.getString(R.string.network_4G);
++            case Phone.NT_MODE_GSM_UMTS:
++                return r.getString(R.string.network_3G_auto);
++            case Phone.NT_MODE_WCDMA_ONLY:
++                return r.getString(R.string.network_3G_only);
++            case Phone.NT_MODE_EVDO_NO_CDMA:
++            case Phone.NT_MODE_CDMA_NO_EVDO:
++            case Phone.NT_MODE_GSM_ONLY:
++                return r.getString(R.string.network_2G);
++            case Phone.NT_MODE_CDMA:
++            case Phone.NT_MODE_WCDMA_PREF:
++                return r.getString(R.string.network_3G);
++        }
++        return r.getString(R.string.quick_settings_network_unknown);
++    }
++
++    private void setMode(int network) {
++        if (!isSupported()) return;
++        if (isShowToast()) {
++            Toast.makeText(mContext,
++                  mResources.getString(R.string.battery_saver_change) + " "
++                  + getNetworkType(network, mResources), Toast.LENGTH_SHORT).show();
++        }
++        switch(network) {
++            case Phone.NT_MODE_GLOBAL:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_GLOBAL);
++                break;
++            case Phone.NT_MODE_CDMA_NO_EVDO:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_CDMA_NO_EVDO);
++                break;
++            case Phone.NT_MODE_EVDO_NO_CDMA:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_EVDO_NO_CDMA);
++                break;
++            case Phone.NT_MODE_CDMA:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_CDMA);
++                break;
++            case Phone.NT_MODE_LTE_CDMA_AND_EVDO:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_LTE_CDMA_AND_EVDO);
++                break;
++            case Phone.NT_MODE_LTE_CMDA_EVDO_GSM_WCDMA:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_LTE_CMDA_EVDO_GSM_WCDMA);
++                break;
++            case Phone.NT_MODE_GSM_UMTS:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_GSM_UMTS);
++                break;
++            case Phone.NT_MODE_WCDMA_ONLY:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_WCDMA_ONLY);
++                break;
++            case Phone.NT_MODE_GSM_ONLY:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_GSM_ONLY);
++                break;
++            case Phone.NT_MODE_WCDMA_PREF:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_WCDMA_PREF);
++                break;
++            case Phone.NT_MODE_LTE_GSM_WCDMA:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_LTE_GSM_WCDMA);
++                break;
++            case Phone.NT_MODE_LTE_ONLY:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_LTE_ONLY);
++                break;
++            case Phone.NT_MODE_LTE_WCDMA:
++                mTM.toggleMobileNetwork(Phone.NT_MODE_LTE_WCDMA);
++                break;
++        }
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        return true;
++    }
++
++    @Override
++    public boolean isSupported() {
++        boolean isSupport = (mCM != null) ? mCM.isNetworkSupported(ConnectivityManager.TYPE_MOBILE) : false;
++        return isModeEnabled() && isSupport;
++    }
++
++    @Override
++    public int getMode() {
++        if (!isSupported()) return 0;
++        return Settings.Global.getInt(mContext.getContentResolver(),
++                    Settings.Global.PREFERRED_NETWORK_MODE, Phone.PREFERRED_NT_MODE);
++    }
++
++    @Override
++    public void stateNormal() {
++    }
++
++    @Override
++    public void stateSaving() {
++    }
++
++    @Override
++    public boolean checkModes() {
++        if (isDelayChanges()) {
++            // download/upload progress detected, delay changing mode
++            changeModes(getNextMode(), true, false);
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " delayed network changing because traffic full ");
++            }
++            return false;
++        }
++        return true;
++    }
++
++    @Override
++    public void setModes() {
++        setMode(getNextMode());
++        super.setModes();
++    }
++
++    @Override
++    public boolean restoreState() {
++        if (isSupported() && (getMode() != mDefaultMode)) {
++            setMode(mDefaultMode);
++            return true;
++        }
++        return false;
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/SyncModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/SyncModeChanger.java
+new file mode 100644
+index 0000000..e8f380f
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/SyncModeChanger.java
+@@ -0,0 +1,82 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.util.Log;
++
++import com.android.systemui.R;
++
++public class SyncModeChanger extends ModeChanger {
++
++    public SyncModeChanger(Context context) {
++        super(context);
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        return ContentResolver.getMasterSyncAutomatically();
++    }
++
++    @Override
++    public boolean isSupported() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        if (!isStateEnabled()) {
++            ContentResolver.setMasterSyncAutomatically(true);
++        }
++    }
++
++    @Override
++    public void stateSaving() {
++        if (isStateEnabled()) {
++            ContentResolver.setMasterSyncAutomatically(false);
++        }
++    }
++
++    @Override
++    public boolean checkModes() {
++        if (isDelayChanges()) {
++            // download/upload progress detected, delay changing mode
++            changeMode(true, false);
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " delayed sync changing because traffic full ");
++            }
++            return false;
++        }
++        return true;
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/VibrateModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/VibrateModeChanger.java
+new file mode 100644
+index 0000000..b144ff7
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/VibrateModeChanger.java
+@@ -0,0 +1,71 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++import android.provider.Settings;
++
++import com.android.systemui.R;
++
++public class VibrateModeChanger extends ModeChanger {
++
++    public VibrateModeChanger(Context context) {
++        super(context);
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public boolean isSupported() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        Settings.Global.putInt(mContext.getContentResolver(),
++                    Settings.Global.BATTERY_SAVER_VIBRATE_DISABLE, 0);
++    }
++
++    @Override
++    public void stateSaving() {
++        Settings.Global.putInt(mContext.getContentResolver(),
++                    Settings.Global.BATTERY_SAVER_VIBRATE_DISABLE, 1);
++    }
++
++    @Override
++    public boolean checkModes() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/batterysaver/WifiModeChanger.java b/packages/SystemUI/src/com/android/systemui/batterysaver/WifiModeChanger.java
+new file mode 100644
+index 0000000..e3f317b
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/batterysaver/WifiModeChanger.java
+@@ -0,0 +1,146 @@
++/*
++ * Copyright (C) 2014 The OmniRom Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package com.android.systemui.batterysaver;
++
++import android.content.Context;
++import android.net.ConnectivityManager;
++import android.net.NetworkInfo;
++import android.net.wifi.WifiManager;
++import android.os.AsyncTask;
++import android.util.Log;
++
++import com.android.systemui.R;
++
++public class WifiModeChanger extends ModeChanger {
++
++    private WifiManager mWM;
++    private ConnectivityManager mCM;
++
++    public WifiModeChanger(Context context) {
++        super(context);
++        mWM = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
++    }
++
++    public void setServices(ConnectivityManager cm) {
++        mCM = cm;
++    }
++
++    @Override
++    public void setModeEnabled(boolean enabled) {
++        super.setModeEnabled(enabled);
++        setWasEnabled(isStateEnabled());
++    }
++
++    public boolean deviceSupportsWifiAp() {
++        return (mCM != null) ? (mCM.getTetherableWifiRegexs().length != 0) : false;
++    }
++
++    public boolean isWifiConnected() {
++        NetworkInfo network = (mCM != null) ? mCM.getNetworkInfo(ConnectivityManager.TYPE_WIFI) : null;
++        return network != null && network.isConnected();
++    }
++
++    public boolean isWifiApEnabled() {
++        if (mWM == null || !deviceSupportsWifiAp()) return false;
++
++        int state = mWM.getWifiApState();
++        switch (state) {
++                case WifiManager.WIFI_AP_STATE_ENABLING:
++                case WifiManager.WIFI_AP_STATE_ENABLED:
++                     return true;
++                case WifiManager.WIFI_AP_STATE_DISABLING:
++                case WifiManager.WIFI_AP_STATE_DISABLED:
++                     return false;
++        }
++        return false;
++    }
++
++    public void updateWifiState(final boolean enable) {
++        if (mWM == null) return;
++
++        new AsyncTask<Void, Void, Void>() {
++               @Override
++               protected Void doInBackground(Void... args) {
++                   // Disable tethering if enabling Wifi
++                   final int wifiApState = mWM.getWifiApState();
++                   if (enable && ((wifiApState == WifiManager.WIFI_AP_STATE_ENABLING) ||
++                                   (wifiApState == WifiManager.WIFI_AP_STATE_ENABLED))) {
++                       mWM.setWifiApEnabled(null, false);
++                   }
++                   mWM.setWifiEnabled(enable);
++                   return null;
++               }
++        }.execute();
++    }
++
++    @Override
++    public boolean isStateEnabled() {
++        if (mWM == null) return false;
++
++        int state = mWM.getWifiState();
++        switch (state) {
++                case WifiManager.WIFI_STATE_ENABLING:
++                case WifiManager.WIFI_STATE_ENABLED:
++                     return true;
++                case WifiManager.WIFI_STATE_DISABLING:
++                case WifiManager.WIFI_STATE_DISABLED:
++                     return false;
++        }
++        return false;
++    }
++
++    @Override
++    public boolean isSupported() {
++        return isModeEnabled();
++    }
++
++    @Override
++    public int getMode() {
++        return 0;
++    }
++
++    @Override
++    public void stateNormal() {
++        if (!isStateEnabled()) {
++            updateWifiState(true);
++        }
++    }
++
++    @Override
++    public void stateSaving() {
++        if (isStateEnabled()) {
++            updateWifiState(false);
++        }
++    }
++
++    @Override
++    public boolean checkModes() {
++        if (isDelayChanges()) {
++            // download/upload progress detected, delay changing mode
++            changeMode(true, false);
++            if (BatterySaverService.DEBUG) {
++                Log.i(BatterySaverService.TAG, " delayed wifi changing because traffic full ");
++            }
++            return false;
++        }
++        return true;
++    }
++
++    @Override
++    public void setModes() {
++        super.setModes();
++    }
++}
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettings.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettings.java
+index 5cb323d..d69a4b6 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettings.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettings.java
+@@ -118,7 +118,8 @@ class QuickSettings {
+         SYNC,
+         USBMODE,
+         TINTED,
+-        TORCH
++        TORCH,
++        BATTERYSAVER
+     }
+ 
+     public static final String NO_TILES = "NO_TILES";
+@@ -129,7 +130,8 @@ class QuickSettings {
+         + DELIMITER + Tile.BATTERY + DELIMITER + Tile.ROTATION+ DELIMITER + Tile.IMMERSIVE
+         + DELIMITER + Tile.LOCATION + DELIMITER + Tile.AIRPLANE + DELIMITER + Tile.QUIETHOUR
+         + DELIMITER + Tile.USBMODE + DELIMITER + Tile.SLEEP + DELIMITER + Tile.SYNC
+-        + DELIMITER + Tile.NFC + DELIMITER + Tile.TINTED;
++        + DELIMITER + Tile.NFC + DELIMITER + Tile.TINTED
++        + DELIMITER + Tile.BATTERYSAVER;
+ 
+     private Context mContext;
+     private PanelBar mBar;
+@@ -919,7 +921,38 @@ class QuickSettings {
+                   });
+                   parent.addView(SyncTile);
+                   if (addMissing) SyncTile.setVisibility(View.GONE);
+-               } else if (Tile.QUIETHOUR.toString().equals(tile.toString())) { // Quiet hours tile
++               } else if (Tile.BATTERYSAVER.toString().equals(tile.toString())) { // battery saver tile
++                  // battery saver tile
++                  final QuickSettingsBasicTile batterySaverTile = new QuickSettingsBasicTile(mContext);
++
++                  batterySaverTile.setTileId(Tile.BATTERYSAVER);
++                  batterySaverTile.setImageResource(R.drawable.ic_qs_battery_saver_off);
++                  batterySaverTile.setTextResource(R.string.quick_settings_battery_saver_off_label);
++                  batterySaverTile.setOnClickListener(new View.OnClickListener() {
++                        @Override
++                        public void onClick(View v) {
++                            collapsePanels();
++                            boolean checkModeOn = Settings.Global.getInt(mContext.getContentResolver(),
++                                                Settings.Global.BATTERY_SAVER_OPTION, 0) == 1;
++                            Settings.Global.putInt(mContext.getContentResolver(),
++                                 Settings.Global.BATTERY_SAVER_OPTION, checkModeOn ? 0 : 1);
++                            Intent scheduleSaver = new Intent();
++                            scheduleSaver.setAction(Intent.ACTION_BATTERY_SERVICES);
++                            mContext.sendBroadcast(scheduleSaver);
++                        }
++                  });
++                  batterySaverTile.setOnLongClickListener(new View.OnLongClickListener() {
++                      @Override
++                      public boolean onLongClick(View v) {
++                          startSettingsActivity(Intent.ACTION_POWER_USAGE_SUMMARY);
++                          return true;
++                      }
++                  });
++                  mModel.addBatterySaverTile(batterySaverTile,
++                         new QuickSettingsModel.BasicRefreshCallback(batterySaverTile));
++                  parent.addView(batterySaverTile);
++                  if (addMissing) batterySaverTile.setVisibility(View.GONE);
++               } else if (Tile.QUIETHOUR.toString().equals(tile.toString())) { // Quite hours tile
+                   // Quiet hours mode
+                   final QuickSettingsBasicTile quietHourTile
+                        = new QuickSettingsBasicTile(mContext);
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettingsModel.java b/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettingsModel.java
+index b476acd..c91ed05 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettingsModel.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/phone/QuickSettingsModel.java
+@@ -136,6 +136,9 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         boolean isForced;
+         boolean isActive;
+     }
++    static class BatterySaverState extends State {
++        boolean isEnabled;
++    }
+     public static class BluetoothState extends State {
+         boolean connected = false;
+         String stateContentDescription;
+@@ -475,6 +478,26 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         }
+     }
+ 
++    /** ContentObserver to watch batterysaver **/
++    private class BatterySaverObserver extends ContentObserver {
++        public BatterySaverObserver(Handler handler) {
++            super(handler);
++        }
++
++        @Override
++        public void onChange(boolean selfChange) {
++            onBatterySaverChanged();
++        }
++
++        public void startObserving() {
++            final ContentResolver cr = mContext.getContentResolver();
++            cr.unregisterContentObserver(this);
++            cr.registerContentObserver(
++                    Settings.Global.getUriFor(Settings.Global.BATTERY_SAVER_OPTION),
++                    false, this);
++        }
++    }
++
+     /** Callback for changes to remote display routes. */
+     private class RemoteDisplayRouteCallback extends MediaRouter.SimpleCallback {
+         @Override
+@@ -508,6 +531,7 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+     private final ImmersiveObserver mImmersiveObserver;
+     private final TintedObserver mTintedObserver;
+     private final QuiteHourObserver mQuietHourObserver;
++    private final BatterySaverObserver mBatterySaverObserver;
+     private final RingerObserver mRingerObserver;
+     private final SleepObserver mSleepObserver;
+     private LocationController mLocationController;
+@@ -664,6 +688,10 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+     private RefreshCallback mQuietHourCallback;
+     private QuiteHourState mQuietHourState = new QuiteHourState();
+ 
++    private QuickSettingsTileView mBatterySaverTile;
++    private RefreshCallback mBatterySaverCallback;
++    private BatterySaverState mBatterySaverState = new BatterySaverState();
++
+     private QuickSettingsTileView mBugreportTile;
+     private RefreshCallback mBugreportCallback;
+     private State mBugreportState = new State();
+@@ -704,6 +732,7 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+                 mImmersiveObserver.startObserving();
+                 mTintedObserver.startObserving();
+                 mQuietHourObserver.startObserving();
++                mBatterySaverObserver.startObserving();
+                 mRingerObserver.startObserving();
+                 mSleepObserver.startObserving();
+                 mMobileNetworkObserver.startObserving();
+@@ -728,6 +757,8 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         mTintedObserver.startObserving();
+         mQuietHourObserver = new QuiteHourObserver(mHandler);
+         mQuietHourObserver.startObserving();
++        mBatterySaverObserver = new BatterySaverObserver(mHandler);
++        mBatterySaverObserver.startObserving();
+         mSleepObserver = new SleepObserver(mHandler);
+         mSleepObserver.startObserving();
+         mRingerObserver = new RingerObserver(mHandler);
+@@ -812,6 +843,7 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         refreshImmersiveFrontTile();
+         refreshImmersiveBackTile();
+         refreshNfcTile();
++        onBatterySaverChanged();
+         refreshRotationLockTile();
+         refreshRssiTile();
+         refreshWifiTile();
+@@ -2267,6 +2299,27 @@ class QuickSettingsModel implements BluetoothStateChangeCallback,
+         }
+     }
+ 
++    // battery saver
++    void addBatterySaverTile(QuickSettingsTileView view, RefreshCallback cb) {
++        mBatterySaverTile = view;
++        mBatterySaverCallback = cb;
++        onBatterySaverChanged();
++    }
++
++    private void onBatterySaverChanged() {
++        Resources r = mContext.getResources();
++        int mode = Settings.Global.getInt(mContext.getContentResolver(),
++                       Settings.Global.BATTERY_SAVER_OPTION, 0);
++        mBatterySaverState.isEnabled = (mode == 1);
++        mBatterySaverState.iconId = mBatterySaverState.isEnabled
++                ? R.drawable.ic_qs_battery_saver_on
++                : R.drawable.ic_qs_battery_saver_off;
++        mBatterySaverState.label = mBatterySaverState.isEnabled
++                ? r.getString(R.string.quick_settings_battery_saver_label)
++                : r.getString(R.string.quick_settings_battery_saver_off_label);
++        mBatterySaverCallback.refreshView(mBatterySaverTile, mBatterySaverState);
++    }
++
+     // SSL CA Cert warning.
+     public void addSslCaCertWarningTile(QuickSettingsTileView view, RefreshCallback cb) {
+         mSslCaCertWarningTile = view;
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/policy/BluetoothController.java b/packages/SystemUI/src/com/android/systemui/statusbar/policy/BluetoothController.java
+index 2180c3f..9de06ee 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/policy/BluetoothController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/policy/BluetoothController.java
+@@ -32,12 +32,20 @@ public class BluetoothController extends BroadcastReceiver {
+     private static final String TAG = "StatusBar.BluetoothController";
+ 
+     private boolean mEnabled = false;
++    private boolean mConnected = false;
+ 
+     private Set<BluetoothDevice> mBondedDevices = new HashSet<BluetoothDevice>();
+ 
+     private ArrayList<BluetoothStateChangeCallback> mChangeCallbacks =
+             new ArrayList<BluetoothStateChangeCallback>();
+ 
++    private ArrayList<BluetoothConnectionChangeCallback> mConnectionCallbacks =
++            new ArrayList<BluetoothConnectionChangeCallback>();
++
++    public interface BluetoothConnectionChangeCallback {
++        public void onBluetoothConnectionChange(boolean on, boolean connected);
++    }
++
+     public BluetoothController(Context context) {
+ 
+         IntentFilter filter = new IntentFilter();
+@@ -62,6 +70,14 @@ public class BluetoothController extends BroadcastReceiver {
+         mChangeCallbacks.remove(cb);
+     }
+ 
++    public void addConnectionStateChangedCallback(BluetoothConnectionChangeCallback cnt) {
++        mConnectionCallbacks.add(cnt);
++    }
++
++    public void removeConnectionStateChangedCallback(BluetoothConnectionChangeCallback cnt) {
++        mConnectionCallbacks.remove(cnt);
++    }
++
+     public Set<BluetoothDevice> getBondedBluetoothDevices() {
+         return mBondedDevices;
+     }
+@@ -77,6 +93,9 @@ public class BluetoothController extends BroadcastReceiver {
+         if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
+             handleAdapterStateChange(
+                     intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR));
++        } else if (action.equals(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)) {
++            handleConnectedStateChange(intent.getIntExtra(BluetoothAdapter.EXTRA_CONNECTION_STATE,
++                        BluetoothAdapter.STATE_DISCONNECTED));
+         }
+         fireCallbacks();
+         updateBondedBluetoothDevices();
+@@ -103,9 +122,16 @@ public class BluetoothController extends BroadcastReceiver {
+         mEnabled = (adapterState == BluetoothAdapter.STATE_ON);
+     }
+ 
++    private void handleConnectedStateChange(int connected) {
++        mConnected = (connected == BluetoothAdapter.STATE_CONNECTED);
++    }
++
+     private void fireCallbacks() {
+         for (BluetoothStateChangeCallback cb : mChangeCallbacks) {
+             cb.onBluetoothStateChange(mEnabled);
+         }
++        for (BluetoothConnectionChangeCallback cnt : mConnectionCallbacks) {
++            cnt.onBluetoothConnectionChange(mEnabled, mConnected);
++        }
+     }
+ }
+diff --git a/packages/SystemUI/src/com/android/systemui/statusbar/policy/LocationController.java b/packages/SystemUI/src/com/android/systemui/statusbar/policy/LocationController.java
+index ffc3cc4..b03fa84 100644
+--- a/packages/SystemUI/src/com/android/systemui/statusbar/policy/LocationController.java
++++ b/packages/SystemUI/src/com/android/systemui/statusbar/policy/LocationController.java
+@@ -226,7 +226,7 @@ public class LocationController extends BroadcastReceiver {
+     /**
+      * Returns true if there currently exist active high power location requests.
+      */
+-    private boolean areActiveHighPowerLocationRequests() {
++    public boolean areActiveHighPowerLocationRequests() {
+         List<AppOpsManager.PackageOps> packages
+             = mAppOpsManager.getPackagesForOps(mHighPowerRequestAppOpArray);
+         // AppOpsManager can return null when there is no requested data.
+diff --git a/services/java/com/android/server/NotificationManagerService.java b/services/java/com/android/server/NotificationManagerService.java
+index 1e0ec49..986e54b 100644
+--- a/services/java/com/android/server/NotificationManagerService.java
++++ b/services/java/com/android/server/NotificationManagerService.java
+@@ -170,6 +170,7 @@ public class NotificationManagerService extends INotificationManager.Stub
+     private boolean mScreenOnNotificationLed = false;
+     private boolean mWasScreenOn = true;
+     private boolean mInCall = false;
++    private boolean mBatterySaverDisableLED = false;
+     private boolean mNotificationPulseEnabled;
+     private HashMap<String, NotificationLedValues> mNotificationPulseCustomLedValues;
+     private Map<String, String> mPackageNameMappings;
+@@ -1361,6 +1362,8 @@ public class NotificationManagerService extends INotificationManager.Stub
+                     Settings.System.QUIET_HOURS_STILL), false, this, UserHandle.USER_ALL);
+             resolver.registerContentObserver(Settings.System.getUriFor(
+                     Settings.System.QUIET_HOURS_DIM), false, this, UserHandle.USER_ALL);
++            resolver.registerContentObserver(Settings.Global.getUriFor(
++                    Settings.Global.BATTERY_SAVER_LED_DISABLE), false, this, UserHandle.USER_ALL);
+             update(null);
+         }
+ 
+@@ -1410,6 +1413,9 @@ public class NotificationManagerService extends INotificationManager.Stub
+             if (uri == null || ENABLED_NOTIFICATION_LISTENERS_URI.equals(uri)) {
+                 rebindListenerServices();
+             }
++
++            mBatterySaverDisableLED = Settings.Global.getInt(resolver,
++                    Settings.Global.BATTERY_SAVER_LED_DISABLE, 0) != 0;
+         }
+     }
+ 
+@@ -2382,8 +2388,7 @@ public class NotificationManagerService extends INotificationManager.Stub
+     }
+ 
+     // lock on mNotificationList
+-    private void updateLightsLocked()
+-    {
++    private void updateLightsLocked() {
+         // handle notification lights
+         if (mLedNotification == null) {
+             // get next notification, if any
+@@ -2393,10 +2398,10 @@ public class NotificationManagerService extends INotificationManager.Stub
+             }
+         }
+ 
+-
+         // Don't flash while we are in a call or screen is on or its disabled
+-        if (mLedNotification == null || mInCall || (mScreenOn && !mScreenOnNotificationLed) || !mNotificationPulseEnabled ||
+-            (QuietHoursHelper.inQuietHours(mContext, Settings.System.QUIET_HOURS_DIM))) {
++        if (mBatterySaverDisableLED || mLedNotification == null || mInCall
++            || (mScreenOn && !mScreenOnNotificationLed) || !mNotificationPulseEnabled ||
++            QuietHoursHelper.inQuietHours(mContext, Settings.System.QUIET_HOURS_DIM)) {
+             mNotificationLight.turnOff();
+         } else if (mNotificationPulseEnabled) {
+             final Notification ledno = mLedNotification.sbn.getNotification();
+diff --git a/services/java/com/android/server/VibratorService.java b/services/java/com/android/server/VibratorService.java
+index abe929f..73d9389 100644
+--- a/services/java/com/android/server/VibratorService.java
++++ b/services/java/com/android/server/VibratorService.java
+@@ -243,6 +243,10 @@ public class VibratorService extends IVibratorService.Stub
+         if (QuietHoursHelper.inQuietHours(mContext, Settings.System.QUIET_HOURS_HAPTIC)) {
+             return;
+         }
++        if (Settings.Global.getInt(mContext.getContentResolver(),
++                    Settings.Global.BATTERY_SAVER_VIBRATE_DISABLE, 0) != 0) {
++            return;
++        }
+         verifyIncomingUid(uid);
+         // so wakelock calls will succeed
+         long identity = Binder.clearCallingIdentity();
+-- 
+1.7.9.5
+

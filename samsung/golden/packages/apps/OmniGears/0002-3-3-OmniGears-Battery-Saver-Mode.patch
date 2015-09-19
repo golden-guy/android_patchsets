@@ -1,0 +1,1688 @@
+From aae7d9fd0ee0b8cb2a5f22aff51cb5bbaf8867f5 Mon Sep 17 00:00:00 2001
+From: Yanuar Harry <ai.the.smarties.physics@gmail.com>
+Date: Fri, 7 Feb 2014 14:47:58 +0700
+Subject: [PATCH 2/4] [3/3] OmniGears: Battery Saver Mode
+
+introduce battery saver mode
+this based from what user want or what user do to saving the battery life
+this include:
+1. Automatically switch mobile network into what user choice and also disable mobile data IF wifi connected to an AP
+2. Automatically switch mobile network and disable mobile data IF battery low (battery level can configure)
+3. Reduce screen brightness based low battery (this feature will disabled if Auto brightness mode enabled)
+4. Not changing network IF on Call or Usb tether enabled or WifiAP enabled
+5. Not changing network IF there is Download/upload progress
+6. Support For Both GSM and CDMA devices (need someone to test for CDMA devices)
+7. every condition has an option :D
+8. Restore all network configuration if battery saver mode disabled
+9. Add Time Range to start battery saver mode
+10. allow device without mobile data support, to using this feature
+11. fix inconsistent battery low level
+12. rewrite to better performance
+13. modified the controller to support battery saver mode
+14. add bluetooth, gps, wifi, and mobile data (if support) to be disabled while power saving activated
+15. fix build QuickSettings because of LocationController change
+16. rewrite to better performance
+17. fix brightness value
+18. rewrite (again) to allow add more saving mode
+19. do delay changing only for POWER SAVING not NORMAL mode
+20. add Cpu power saving mode
+21. fix Cpu freq value
+22. fix call saving state for non user configuration mode
+23. fix NPE
+24. add kill all task
+25. add disable sync
+26. add disable vibrate
+27. add disable led
+
+Conflicts:
+	res/values/custom_arrays.xml
+	res/values/custom_strings.xml
+
+Change-Id: Id289090fa20a38d4fc43c40240148e5f276eb4b6
+---
+ res/layout/battery_cpu_info_item.xml               |   36 ++
+ res/layout/battery_cpu_settings.xml                |  128 ++++++
+ res/values/custom_arrays.xml                       |   88 ++++
+ res/values/custom_strings.xml                      |   70 ++++
+ res/xml/battery_saver_settings.xml                 |  240 +++++++++++
+ .../omnigears/batterysaver/BatterySaverHelper.java |  192 +++++++++
+ .../batterysaver/BatterySaverReceiver.java         |   29 ++
+ .../omnigears/batterysaver/BootReceiver.java       |   29 ++
+ .../interfacesettings/BatterySaverSettings.java    |  426 ++++++++++++++++++++
+ .../interfacesettings/MoreInterfaceSettings.java   |    1 +
+ .../omnirom/omnigears/ui/BatteryCpuSettings.java   |  302 ++++++++++++++
+ 11 files changed, 1541 insertions(+)
+ create mode 100644 res/layout/battery_cpu_info_item.xml
+ create mode 100644 res/layout/battery_cpu_settings.xml
+ create mode 100644 res/xml/battery_saver_settings.xml
+ create mode 100644 src/org/omnirom/omnigears/batterysaver/BatterySaverHelper.java
+ create mode 100644 src/org/omnirom/omnigears/batterysaver/BatterySaverReceiver.java
+ create mode 100644 src/org/omnirom/omnigears/batterysaver/BootReceiver.java
+ create mode 100644 src/org/omnirom/omnigears/interfacesettings/BatterySaverSettings.java
+ create mode 100644 src/org/omnirom/omnigears/ui/BatteryCpuSettings.java
+
+diff --git a/res/layout/battery_cpu_info_item.xml b/res/layout/battery_cpu_info_item.xml
+new file mode 100644
+index 0000000..7077de3
+--- /dev/null
++++ b/res/layout/battery_cpu_info_item.xml
+@@ -0,0 +1,36 @@
++<?xml version="1.0" encoding="utf-8"?><!--  Copyright (C) 2013 The OmniROM Project
++
++This program is free software: you can redistribute it and/or modify
++it under the terms of the GNU General Public License as published by
++the Free Software Foundation, either version 3 of the License, or
++(at your option) any later version.
++
++This program is distributed in the hope that it will be useful,
++but WITHOUT ANY WARRANTY; without even the implied warranty of
++MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++GNU General Public License for more details.
++
++You should have received a copy of the GNU General Public License
++along with this program.  If not, see <http://www.gnu.org/licenses/>.
++-->
++
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="fill_parent"
++    android:layout_height="wrap_content">
++
++    <TextView
++        android:id="@+id/battery_saver_mode_cpu_info_core"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:textAppearance="?android:attr/textAppearanceMedium"
++        android:focusable="false" />
++
++    <TextView
++        android:id="@+id/battery_saver_mode_cpu_info_freq"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_gravity="right"
++        android:textAppearance="?android:attr/textAppearanceMedium"
++        android:focusable="false" />
++
++</LinearLayout>
+diff --git a/res/layout/battery_cpu_settings.xml b/res/layout/battery_cpu_settings.xml
+new file mode 100644
+index 0000000..81d0a08
+--- /dev/null
++++ b/res/layout/battery_cpu_settings.xml
+@@ -0,0 +1,128 @@
++<?xml version="1.0" encoding="utf-8"?><!--
++Performance Control - An Android CPU Control application
++Copyright (C) 2012  James Roberts
++
++    This program is free software: you can redistribute it and/or modify
++    it under the terms of the GNU General Public License as published by
++    the Free Software Foundation, either version 3 of the License, or
++    (at your option) any later version.
++
++    This program is distributed in the hope that it will be useful,
++    but WITHOUT ANY WARRANTY; without even the implied warranty of
++    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++    GNU General Public License for more details.
++
++    You should have received a copy of the GNU General Public License
++    along with this program.  If not, see <http://www.gnu.org/licenses/>.
++-->
++<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="fill_parent"
++    android:layout_height="fill_parent"
++    android:fillViewport="true">
++
++    <RelativeLayout
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:orientation="vertical"
++        android:paddingRight="10dp"
++        android:paddingLeft="10dp">
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:gravity="center_horizontal"
++            android:orientation="vertical"
++            android:layout_alignParentTop="true"
++            android:id="@+id/battery_saver_mode_speed">
++
++            <TextView
++                android:text="@string/battery_saver_mode_cpu_info_list_header"
++                style="?android:attr/listSeparatorTextViewStyle" />
++
++            <ListView
++                android:id="@+id/battery_saver_mode_cpu_info_list"
++                android:layout_width="match_parent"
++                android:layout_height="fill_parent"
++                android:paddingLeft="10dp"
++                android:divider="@null" />
++
++        </LinearLayout>
++
++        <LinearLayout
++            android:id="@+id/battery_saver_mode_speed_set"
++            android:orientation="vertical"
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:layout_below="@id/battery_saver_mode_speed"
++            android:gravity="center_horizontal">
++
++            <TextView
++                android:text="@string/battery_saver_mode_cpu_speed_header"
++                style="?android:attr/listSeparatorTextViewStyle" />
++
++            <LinearLayout
++                android:layout_width="match_parent"
++                android:layout_height="wrap_content"
++                android:gravity="center_horizontal"
++                android:orientation="vertical"
++                android:layout_marginBottom="10dp">
++
++                <LinearLayout
++                    android:layout_width="wrap_content"
++                    android:layout_height="wrap_content"
++                    android:layout_marginTop="10dip"
++                    android:orientation="horizontal">
++
++                    <TextView
++                        android:id="@+id/battery_saver_mode_current_max_label"
++                        android:layout_width="wrap_content"
++                        android:layout_height="wrap_content"
++                        android:text="@string/battery_saver_mode_current_max"
++                        android:textSize="16sp" />
++
++                    <TextView
++                        android:id="@+id/battery_saver_mode_max_speed_text"
++                        android:layout_width="wrap_content"
++                        android:layout_height="wrap_content"
++                        android:textSize="16sp" />
++
++                </LinearLayout>
++
++                <SeekBar
++                    android:id="@+id/battery_saver_mode_max_slider"
++                    style="?android:attr/progressBarStyleHorizontal"
++                    android:layout_width="match_parent"
++                    android:layout_height="wrap_content"
++                    android:layout_marginLeft="17dp"
++                    android:layout_marginRight="17dp" />
++
++            </LinearLayout>
++
++        </LinearLayout>
++
++        <LinearLayout
++            android:layout_width="match_parent"
++            android:layout_height="wrap_content"
++            android:orientation="horizontal"
++            android:gravity="center_horizontal"
++            android:id="@+id/battery_saver_mode_sob"
++            android:layout_below="@id/battery_saver_mode_speed_set"
++            android:layout_alignParentBottom="true"
++            android:paddingTop="30dip">
++
++            <TextView
++                android:id="@+id/battery_saver_cpu_mode"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:layout_marginRight="10dip"
++                android:text="@string/battery_saver_cpu_mode_title"
++                android:textSize="14sp" />
++
++            <Switch
++                android:id="@+id/battery_saver_cpu_switch"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content" />
++
++        </LinearLayout>
++    </RelativeLayout>
++</ScrollView>
+diff --git a/res/values/custom_arrays.xml b/res/values/custom_arrays.xml
+index c561f6a..e4768d4 100644
+--- a/res/values/custom_arrays.xml
++++ b/res/values/custom_arrays.xml
+@@ -531,6 +531,94 @@
+         <item>EEEE MM/dd</item>
+     </string-array>
+ 
++    <!-- Battery saver mode -->
++    <string-array name="enabled_networks_gsm_choices" translatable="false">
++        <item>@string/network_3G</item>
++        <item>@string/network_3G_auto</item>
++        <item>@string/network_3G_only</item>
++        <item>@string/network_2G</item>
++    </string-array>
++
++    <string-array name="enabled_networks_gsm_values" translatable="false">
++        <item>0</item>
++        <item>3</item>
++        <item>2</item>
++        <item>1</item>
++    </string-array>
++
++    <string-array name="enabled_networks_cdma_choices" translatable="false">
++        <item>@string/network_3G</item>
++        <item>@string/network_1x</item>
++        <item>@string/network_global</item>
++    </string-array>
++
++    <string-array name="enabled_networks_cdma_values" translatable="false">
++        <item>4</item>
++        <item>5</item>
++        <item>10</item>
++    </string-array>
++
++    <string-array name="enabled_networks_lte_choices" translatable="false">
++        <item>@string/network_lte</item>
++        <item>@string/network_3G</item>
++        <item>@string/network_3G_auto</item>
++        <item>@string/network_3G_only</item>
++        <item>@string/network_2G</item>
++    </string-array>
++
++    <string-array name="enabled_networks_4g_choices" translatable="false">
++        <item>@string/network_4G</item>
++        <item>@string/network_3G</item>
++        <item>@string/network_3G_auto</item>
++        <item>@string/network_3G_only</item>
++        <item>@string/network_2G</item>
++    </string-array>
++
++    <string-array name="enabled_networks_4g_lte_values" translatable="false">
++        <item>9</item>
++        <item>0</item>
++        <item>3</item>
++        <item>2</item>
++        <item>1</item>
++    </string-array>
++
++    <string-array name="enabled_networks_except_gsm_lte_choices" translatable="false">
++        <item>@string/network_3G</item>
++    </string-array>
++
++    <string-array name="enabled_networks_except_gsm_lte_values" translatable="false">
++        <item>0</item>
++    </string-array>
++
++    <string-array name="enabled_networks_except_gsm_choices" translatable="false">
++        <item>@string/network_lte</item>
++        <item>@string/network_3G</item>
++    </string-array>
++
++    <string-array name="enabled_networks_except_gsm_4g_choices" translatable="false">
++        <item>@string/network_4G</item>
++        <item>@string/network_3G</item>
++    </string-array>
++
++    <string-array name="enabled_networks_except_gsm_values" translatable="false">
++        <item>9</item>
++        <item>0</item>
++    </string-array>
++
++    <string-array name="enabled_networks_cdma_lte_choices" translatable="false">
++        <item>@string/network_lte</item>
++        <item>@string/network_3G</item>
++        <item>@string/network_1x</item>
++        <item>@string/network_global</item>
++    </string-array>
++
++    <string-array name="enabled_networks_cdma_lte_values" translatable="false">
++        <item>8</item>
++        <item>4</item>
++        <item>5</item>
++        <item>10</item>
++    </string-array>
++
+     <!-- Network Traffic Display States -->
+     <string-array name="show_network_traffic_state_entries" translatable="false">
+         <item>@string/show_network_traffic_disable</item>
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 7852ffa..3616fac 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -603,6 +603,76 @@
+     <string name="omniswitch_first_time_title">Information</string>
+     <string name="omniswitch_first_time_message">Make sure you have enabled OmniSwitch. You can do this by using \"Settings\" below</string>
+ 
++    <!-- Battery saver mode -->
++    <string name="network_lte">LTE (recommended)</string>
++    <string name="network_4G">4G (recommended)</string>
++    <string name="network_3G_only">3G Only</string>
++    <string name="network_3G_auto">2G/3G Auto</string>
++    <string name="network_3G">2G/3G Preferred</string>
++    <string name="network_2G">2G Only</string>
++    <string name="network_1x">1x</string>
++    <string name="network_global">Global</string>
++    <string name="battery_saver_action_undefined">Undefined</string>
++    <string name="battery_saver_title">Battery saver mode</string>
++    <string name="pref_battery_saver_enable_title">Battery saver</string>
++    <string name="pref_battery_saver_enable_summary">This will automatically manage your device battery usage and switch your network to user-defined power saving mode or normal mode depending on mobile data and Wi-Fi connection states</string>
++    <string name="pref_battery_saver_enable_no_mobiledata_summary">This will automatically manage your device battery usage to user-defined</string>
++    <string name="pref_battery_saver_normal_mode_title">Normal network mode</string>
++    <string name="pref_battery_saver_power_saving_mode_title">Power saving network mode</string>
++    <string name="pref_battery_saver_screen_off_title">When screen turns off</string>
++    <string name="pref_battery_saver_screen_off_summary">Activate power saving mode when screen turns off</string>
++    <string name="pref_battery_saver_ignore_locked_title">Ignore while locked</string>
++    <string name="pref_battery_saver_ignore_locked_summary">When screen turns on, power saving mode won\'t be deactivated until keyguard is unlocked</string>
++    <string name="pref_battery_saver_mode_change_delay_title">Change mode delay</string>
++    <string name="pref_battery_saver_mode_change_delay_summary">Delays changing of power saving mode by specified number of seconds</string>
++    <string name="pref_battery_saver_battery_title">When battery low</string>
++    <string name="pref_battery_saver_battery_summary">Activate power saving mode when battery low</string>
++    <string name="pref_battery_saver_mode_battery_level_title">Battery level</string>
++    <string name="pref_battery_saver_mode_battery_level_summary">Activate power saving mode or changing screen brightness by specified battery level</string>
++    <string name="pref_battery_saver_bluetooth_title">Disable bluetooth</string>
++    <string name="pref_battery_saver_bluetooth_summary">Disable bluetooth connection when power saving activated</string>
++    <string name="pref_battery_saver_data_title">Disable mobile data</string>
++    <string name="pref_battery_saver_data_summary">Disable mobile data connection when power saving activated</string>
++    <string name="pref_battery_saver_location_title">Disable gps</string>
++    <string name="pref_battery_saver_location_summary">Disable gps connection when power saving activated</string>
++    <string name="pref_battery_saver_wifi_title">Disable Wi-Fi</string>
++    <string name="pref_battery_saver_wifi_summary">Disable Wi-Fi connection when power saving activated</string>
++    <string name="pref_battery_saver_led_title">Disable LED</string>
++    <string name="pref_battery_saver_led_summary">Disable LED notification when power saving activated</string>
++    <string name="pref_battery_saver_vibrate_title">Disable vibrate</string>
++    <string name="pref_battery_saver_vibrate_summary">Disable vibration when power saving activated</string>
++    <string name="pref_battery_saver_brightness_title">Brightness mode</string>
++    <string name="pref_battery_saver_brightness_summary">Activates brightness level change when battery low</string>
++    <string name="pref_battery_saver_mode_brightness_level_title">Brightness level</string>
++    <string name="pref_battery_saver_mode_brightness_level_summary">Changing brightness level when power saver activated</string>
++    <string name="pref_battery_saver_cpu_title">CPU power saving mode</string>
++    <string name="pref_battery_saver_cpu_summary">This will automatically switch your maximum cpu frequency to user-defined power saving mode</string>
++    <string name="battery_saver_mode_current_speed">Current Speed</string>
++    <string name="battery_saver_mode_current_max">Maximum speed: </string>
++    <string name="battery_saver_mode_cpu_info_list_header">Core Status</string>
++    <string name="battery_saver_mode_cpu_speed_header">Core Limits</string>
++    <string name="battery_saver_mode_core_offline">Offline</string>
++    <string name="battery_saver_mode_core">Core</string>
++    <string name="battery_saver_cpu_mode_title">Activate CPU power saving mode</string>
++    <string name="pref_battery_saver_cpu_warning_title">Attention:</string>
++    <string name="pref_battery_saver_cpu_warning_summary">we never can guarantee this will work on device</string>
++    <string name="pref_battery_saver_network_title">Smart network change</string>
++    <string name="pref_battery_saver_network_summary">Allow changing network to normal mode with specific interval time after screen turn off and power saving mode enabled</string>
++    <string name="pref_battery_saver_nosignal_title">Smart network signal</string>
++    <string name="pref_battery_saver_nosignal_summary">Activate power saving mode when no network signal after 5 minutes</string>
++    <string name="pref_battery_saver_sync_title">Disable sync</string>
++    <string name="pref_battery_saver_sync_summary">Disable sync connection when power saving activated</string>
++    <string name="pref_battery_saver_killall_title">Kill all task</string>
++    <string name="pref_battery_saver_killall_summary">Allow to kill all task when power saving activated</string>
++    <string name="pref_battery_saver_toast_title">Show toast</string>
++    <string name="pref_battery_saver_toast_summary">Allow to showing toast message when battery saver changing device configuration</string>
++    <string name="battery_saver_battery_title">Battery options</string>
++    <string name="battery_saver_radio_title">Radio options</string>
++    <string name="battery_saver_network_title">Other Network options</string>
++    <string name="battery_saver_network_gsm_title">GSM Networks</string>
++    <string name="battery_saver_network_cdma_title">CDMA Networks</string>
++    <string name="battery_saver_system_title">System options</string>
++
+     <string name="emulate_menu_key_title">Emulate hardware menu key</string>
+     <string name="emulate_menu_key_summary">Force hide the three-dot overflow menu in applications. Require restart of application</string>
+ 
+diff --git a/res/xml/battery_saver_settings.xml b/res/xml/battery_saver_settings.xml
+new file mode 100644
+index 0000000..b148891
+--- /dev/null
++++ b/res/xml/battery_saver_settings.xml
+@@ -0,0 +1,240 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--  Copyright (C) 2013 The OmniROM Project
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:key="interface_battery_saver_key"
++        android:title="@string/battery_saver_title"
++        xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
++
++    <SwitchPreference
++        android:key="pref_battery_saver_enable"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_enable_title"
++        android:summary="@string/pref_battery_saver_enable_summary"  />
++
++    <com.android.settings.slim.TimeRangePreference
++        android:key="pref_battery_saver_timerange"
++        android:dependency="pref_battery_saver_enable" />
++
++    <org.omnirom.omnigears.chameleonos.SeekBarPreference
++        android:key="pref_battery_saver_mode_change_delay"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_mode_change_delay_title"
++        android:summary="@string/pref_battery_saver_mode_change_delay_summary"
++        android:max="60"
++        settings:min="0"
++        settings:interval="1"
++        settings:unitsLeft=""
++        settings:unitsRight="@string/unit_sec"
++        android:defaultValue="5"
++        android:dependency="pref_battery_saver_enable" />
++
++    <org.omnirom.omnigears.preference.GlobalCheckBoxPreference
++        android:key="battery_saver_show_toast"
++        android:title="@string/pref_battery_saver_toast_title"
++        android:summary="@string/pref_battery_saver_toast_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <org.omnirom.omnigears.preference.GlobalCheckBoxPreference
++        android:key="battery_saver_screen_off"
++        android:defaultValue="true"
++        android:title="@string/pref_battery_saver_screen_off_title"
++        android:summary="@string/pref_battery_saver_screen_off_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <org.omnirom.omnigears.preference.GlobalCheckBoxPreference
++        android:key="battery_saver_ignore_locked"
++        android:defaultValue="true"
++        android:title="@string/pref_battery_saver_ignore_locked_title"
++        android:summary="@string/pref_battery_saver_ignore_locked_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <PreferenceCategory
++            android:key="category_battery_saver_battery"
++            android:title="@string/battery_saver_battery_title" />
++
++    <org.omnirom.omnigears.preference.GlobalCheckBoxPreference
++        android:key="battery_saver_battery_mode"
++        android:title="@string/pref_battery_saver_battery_title"
++        android:summary="@string/pref_battery_saver_battery_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <org.omnirom.omnigears.chameleonos.SeekBarPreference
++        android:key="pref_battery_saver_mode_battery_level"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_mode_battery_level_title"
++        android:summary="@string/pref_battery_saver_mode_battery_level_summary"
++        android:max="100"
++        settings:min="0"
++        settings:interval="5"
++        settings:unitsLeft=""
++        settings:unitsRight="%"
++        android:defaultValue="20"
++        android:dependency="pref_battery_saver_enable" />
++
++    <PreferenceCategory
++            android:key="category_battery_saver_radio"
++            android:title="@string/battery_saver_radio_title" >
++
++        <CheckBoxPreference
++             android:key="pref_battery_saver_mode_data"
++             android:persistent="false"
++             android:title="@string/pref_battery_saver_data_title"
++             android:summary="@string/pref_battery_saver_data_summary"
++             android:dependency="pref_battery_saver_enable"/>
++
++        <CheckBoxPreference
++             android:key="pref_battery_saver_mode_nosignal"
++             android:persistent="false"
++             android:title="@string/pref_battery_saver_nosignal_title"
++             android:summary="@string/pref_battery_saver_nosignal_summary"
++             android:dependency="pref_battery_saver_enable"/>
++
++    </PreferenceCategory>
++
++    <PreferenceCategory
++            android:key="category_battery_saver_network_gsm"
++            android:title="@string/battery_saver_network_gsm_title" >
++
++        <ListPreference
++             android:key="pref_battery_saver_normal_gsm_mode"
++             android:dependency="pref_battery_saver_enable"
++             android:title="@string/pref_battery_saver_normal_mode_title"
++             android:entries="@array/enabled_networks_gsm_choices"
++             android:entryValues="@array/enabled_networks_gsm_values"
++             android:persistent="false" />
++
++        <ListPreference
++             android:key="pref_battery_saver_power_saving_gsm_mode"
++             android:dependency="pref_battery_saver_enable"
++             android:title="@string/pref_battery_saver_power_saving_mode_title"
++             android:entries="@array/enabled_networks_gsm_choices"
++             android:entryValues="@array/enabled_networks_gsm_values"
++             android:persistent="false" />
++
++    </PreferenceCategory>
++
++    <PreferenceCategory
++            android:key="category_battery_saver_network_cdma"
++            android:title="@string/battery_saver_network_cdma_title" >
++
++        <ListPreference
++             android:key="pref_battery_saver_normal_cdma_mode"
++             android:dependency="pref_battery_saver_enable"
++             android:title="@string/pref_battery_saver_normal_mode_title"
++             android:entries="@array/enabled_networks_cdma_choices"
++             android:entryValues="@array/enabled_networks_cdma_values"
++             android:persistent="false" />
++
++        <ListPreference
++             android:key="pref_battery_saver_power_saving_cdma_mode"
++             android:dependency="pref_battery_saver_enable"
++             android:title="@string/pref_battery_saver_power_saving_mode_title"
++             android:entries="@array/enabled_networks_cdma_choices"
++             android:entryValues="@array/enabled_networks_cdma_values"
++             android:persistent="false" />
++
++    </PreferenceCategory>
++
++    <PreferenceCategory
++            android:key="category_battery_saver_network"
++            android:title="@string/battery_saver_network_title" >
++
++        <ListPreference
++             android:key="pref_battery_saver_mode_network"
++             android:dependency="pref_battery_saver_enable"
++             android:title="@string/pref_battery_saver_network_title"
++             android:summary="@string/pref_battery_saver_network_summary"
++             android:entries="@array/ad_redisplay_entries"
++             android:entryValues="@array/ad_redisplay_values"
++             android:persistent="false" />
++
++    </PreferenceCategory>
++
++    <PreferenceCategory
++            android:key="category_battery_saver_system"
++            android:title="@string/battery_saver_system_title"/>
++
++    <PreferenceScreen
++        android:key="pref_battery_saver_mode_cpu"
++        android:dependency="pref_battery_saver_enable"
++        android:title="@string/pref_battery_saver_cpu_title"
++        android:summary="@string/pref_battery_saver_cpu_summary"
++        android:fragment="org.omnirom.omnigears.ui.BatteryCpuSettings" />
++
++    <CheckBoxPreference
++        android:key="pref_battery_saver_mode_bluetooth"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_bluetooth_title"
++        android:summary="@string/pref_battery_saver_bluetooth_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <CheckBoxPreference
++        android:key="pref_battery_saver_mode_location"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_location_title"
++        android:summary="@string/pref_battery_saver_location_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <org.omnirom.omnigears.preference.GlobalCheckBoxPreference
++        android:key="battery_saver_wifi_mode"
++        android:title="@string/pref_battery_saver_wifi_title"
++        android:summary="@string/pref_battery_saver_wifi_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <org.omnirom.omnigears.preference.GlobalCheckBoxPreference
++        android:key="battery_saver_sync_mode"
++        android:title="@string/pref_battery_saver_sync_title"
++        android:summary="@string/pref_battery_saver_sync_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <org.omnirom.omnigears.preference.GlobalCheckBoxPreference
++        android:key="battery_saver_killall_mode"
++        android:title="@string/pref_battery_saver_killall_title"
++        android:summary="@string/pref_battery_saver_killall_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <CheckBoxPreference
++        android:key="pref_battery_saver_mode_led"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_led_title"
++        android:summary="@string/pref_battery_saver_led_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <CheckBoxPreference
++        android:key="pref_battery_saver_mode_vibrate"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_vibrate_title"
++        android:summary="@string/pref_battery_saver_vibrate_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <CheckBoxPreference
++        android:key="pref_battery_saver_mode_brightness"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_brightness_title"
++        android:summary="@string/pref_battery_saver_brightness_summary"
++        android:dependency="pref_battery_saver_enable"/>
++
++    <org.omnirom.omnigears.chameleonos.SeekBarPreference
++        android:key="pref_battery_saver_mode_brightness_level"
++        android:persistent="false"
++        android:title="@string/pref_battery_saver_mode_brightness_level_title"
++        android:summary="@string/pref_battery_saver_mode_brightness_level_summary"
++        settings:unitsLeft=""
++        settings:unitsRight="%"
++        android:dependency="pref_battery_saver_mode_brightness" />
++</PreferenceScreen>
+diff --git a/src/org/omnirom/omnigears/batterysaver/BatterySaverHelper.java b/src/org/omnirom/omnigears/batterysaver/BatterySaverHelper.java
+new file mode 100644
+index 0000000..e9871d4
+--- /dev/null
++++ b/src/org/omnirom/omnigears/batterysaver/BatterySaverHelper.java
+@@ -0,0 +1,192 @@
++/*
++ * Copyright (C) 2014 The OmniROM Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.omnirom.omnigears.batterysaver;
++
++import android.app.AlarmManager;
++import android.app.PendingIntent;
++import android.bluetooth.BluetoothAdapter;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.pm.PackageManager;
++import android.net.ConnectivityManager;
++import android.os.Vibrator;
++import android.provider.Settings;
++import android.telephony.TelephonyManager;
++import com.android.internal.telephony.PhoneConstants;
++
++import java.util.Calendar;
++
++public class BatterySaverHelper {
++
++    private final static String TAG = "BatterySaverHelper";
++
++    private static final String SCHEDULE_BATTERY_SAVER =
++            "org.omnirom.omnigears.batterysaver.SCHEDULE_BATTERY_SAVER";
++
++    private static final int FULL_DAY = 1440; // 1440 minutes in a day
++
++    // Pending intent to start/stop service
++    private static PendingIntent makeServiceIntent(Context context,
++            String action, int requestCode) {
++        Intent intent = new Intent(context, BatterySaverReceiver.class);
++        intent.setAction(action);
++        return PendingIntent.getBroadcast(
++                context, requestCode, intent, PendingIntent.FLAG_CANCEL_CURRENT);
++    }
++
++    public static boolean deviceSupportsBluetooth() {
++        return (BluetoothAdapter.getDefaultAdapter() != null);
++    }
++
++    public static boolean deviceSupportsMobileData(Context context) {
++        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
++        return cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE);
++    }
++
++    public static boolean deviceSupportsGps(Context context) {
++        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS);
++    }
++
++    public static boolean deviceSupportsLteCdma(Context context) {
++        final TelephonyManager tm =
++            (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
++        return (tm.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE);
++    }
++
++    public static boolean deviceSupportsLteGsm(Context context) {
++        final TelephonyManager tm =
++            (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
++        return (tm.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) || (tm.getLteOnGsmMode() != 0);
++    }
++
++    public static boolean deviceSupportsVibrator(Context ctx) {
++        Vibrator vibrator = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
++        return vibrator.hasVibrator();
++    }
++
++    public static boolean deviceSupportsLed(Context ctx) {
++        boolean notifLed = ctx.getResources().getBoolean(
++                        com.android.internal.R.bool.config_intrusiveNotificationLed);
++        boolean chargeLed = ctx.getResources().getBoolean(
++                        com.android.internal.R.bool.config_intrusiveBatteryLed);
++        return (notifLed || chargeLed);
++    }
++
++    public static void setBatterySaverActive(Context context, int value) {
++        final ContentResolver resolver = context.getContentResolver();
++        Settings.Global.putInt(resolver,
++                     Settings.Global.BATTERY_SAVER_OPTION, value);
++    }
++
++    public static void scheduleService(Context context) {
++        final ContentResolver resolver = context.getContentResolver();
++        final int batterySaverActive = Settings.Global.getInt(resolver,
++                Settings.Global.BATTERY_SAVER_OPTION, 0);
++        final boolean batterySaverEnabled = batterySaverActive != 0;
++        final boolean batterySaverStopped = batterySaverActive == 2;
++        final int batterySaverStart = Settings.Global.getInt(resolver,
++                Settings.Global.BATTERY_SAVER_START, 0);
++        final int batterySaverEnd = Settings.Global.getInt(resolver,
++                Settings.Global.BATTERY_SAVER_END, 0);
++        Intent serviceTriggerIntent = (new Intent())
++                   .setClassName("com.android.systemui", "com.android.systemui.batterysaver.BatterySaverService");
++        PendingIntent startIntent = makeServiceIntent(context, SCHEDULE_BATTERY_SAVER, 1);
++        PendingIntent stopIntent = makeServiceIntent(context, SCHEDULE_BATTERY_SAVER, 2);
++        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
++
++        am.cancel(startIntent);
++        am.cancel(stopIntent);
++
++        if (!batterySaverEnabled) {
++            context.stopService(serviceTriggerIntent);
++            return;
++        }
++
++        if (batterySaverStart == batterySaverEnd) {
++            // 24 hours, start without stop
++            if (batterySaverStopped) {
++                setBatterySaverActive(context, 1);
++            }
++            context.startService(serviceTriggerIntent);
++            return;
++        }
++
++        Calendar calendar = Calendar.getInstance();
++        int currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE);
++
++        boolean inBatterySaver = false;
++        // time from now on (in minutes) when the service start/stop should be scheduled
++        int serviceStartMinutes = -1, serviceStopMinutes = -1;
++
++        if (batterySaverEnd < batterySaverStart) {
++            // Starts at night, ends in the morning.
++            if (currentMinutes >= batterySaverStart) {
++                inBatterySaver = true;
++                serviceStopMinutes = FULL_DAY - currentMinutes + batterySaverEnd;
++            } else if (currentMinutes <= batterySaverEnd) {
++                inBatterySaver = true;
++                serviceStopMinutes = batterySaverEnd - currentMinutes;
++            } else {
++                inBatterySaver = false;
++                serviceStartMinutes = batterySaverStart - currentMinutes;
++                serviceStopMinutes = FULL_DAY - currentMinutes + batterySaverEnd;
++            }
++        } else {
++            // Starts in the morning, ends at night.
++            if (currentMinutes >= batterySaverStart && currentMinutes <= batterySaverEnd) {
++                inBatterySaver = true;
++                serviceStopMinutes = batterySaverEnd - currentMinutes;
++            } else {
++                inBatterySaver = false;
++                if (currentMinutes <= batterySaverStart) {
++                    serviceStartMinutes = batterySaverStart - currentMinutes;
++                    serviceStopMinutes = batterySaverEnd - currentMinutes;
++                } else {
++                    serviceStartMinutes = FULL_DAY - currentMinutes + batterySaverStart;
++                    serviceStopMinutes = FULL_DAY - currentMinutes + batterySaverEnd;
++                }
++            }
++        }
++
++        if (inBatterySaver) {
++            if (batterySaverStopped) {
++                setBatterySaverActive(context, 1);
++            }
++            context.startService(serviceTriggerIntent);
++        } else if (!batterySaverStopped) {
++            context.stopService(serviceTriggerIntent);
++            setBatterySaverActive(context, 2);
++        }
++
++        if (serviceStartMinutes >= 0) {
++            // Start service a minute early
++            serviceStartMinutes--;
++            calendar.add(Calendar.MINUTE, serviceStartMinutes);
++            am.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), startIntent);
++            calendar.add(Calendar.MINUTE, -serviceStartMinutes);
++        }
++
++        if (serviceStopMinutes >= 0) {
++            // Stop service a minute late
++            serviceStopMinutes++;
++            calendar.add(Calendar.MINUTE, serviceStopMinutes);
++            am.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), stopIntent);
++            calendar.add(Calendar.MINUTE, -serviceStopMinutes);
++        }
++    }
++}
+diff --git a/src/org/omnirom/omnigears/batterysaver/BatterySaverReceiver.java b/src/org/omnirom/omnigears/batterysaver/BatterySaverReceiver.java
+new file mode 100644
+index 0000000..53da1e2
+--- /dev/null
++++ b/src/org/omnirom/omnigears/batterysaver/BatterySaverReceiver.java
+@@ -0,0 +1,29 @@
++/*
++ * Copyright (C) 2014 The OmniROM Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.omnirom.omnigears.batterysaver;
++
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++
++public class BatterySaverReceiver extends BroadcastReceiver {
++
++    @Override
++    public void onReceive(Context context, Intent intent) {
++        BatterySaverHelper.scheduleService(context);
++    }
++}
+diff --git a/src/org/omnirom/omnigears/batterysaver/BootReceiver.java b/src/org/omnirom/omnigears/batterysaver/BootReceiver.java
+new file mode 100644
+index 0000000..f68a6d5
+--- /dev/null
++++ b/src/org/omnirom/omnigears/batterysaver/BootReceiver.java
+@@ -0,0 +1,29 @@
++/*
++ * Copyright (C) 2014 The OmniROM Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.omnirom.omnigears.batterysaver;
++
++import android.content.BroadcastReceiver;
++import android.content.Context;
++import android.content.Intent;
++
++public class BootReceiver extends BroadcastReceiver {
++
++    @Override
++    public void onReceive(Context context, Intent intent) {
++        BatterySaverHelper.scheduleService(context);
++    }
++}
+diff --git a/src/org/omnirom/omnigears/interfacesettings/BatterySaverSettings.java b/src/org/omnirom/omnigears/interfacesettings/BatterySaverSettings.java
+new file mode 100644
+index 0000000..b5d8b87
+--- /dev/null
++++ b/src/org/omnirom/omnigears/interfacesettings/BatterySaverSettings.java
+@@ -0,0 +1,426 @@
++/*
++ * Copyright (C) 2014 The OmniROM Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.omnirom.omnigears.interfacesettings;
++
++import android.app.Activity;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.Intent;
++import android.content.pm.PackageManager;
++import android.content.res.Resources;
++import android.content.res.Resources.NotFoundException;
++import android.os.Bundle;
++import android.os.PowerManager;
++import android.preference.CheckBoxPreference;
++import android.preference.ListPreference;
++import android.preference.Preference;
++import android.preference.Preference.OnPreferenceChangeListener;
++import android.preference.PreferenceScreen;
++import android.preference.SwitchPreference;
++import android.provider.Settings;
++import android.provider.Settings.SettingNotFoundException;
++import android.telephony.TelephonyManager;
++import com.android.internal.telephony.Phone;
++
++import org.omnirom.omnigears.chameleonos.SeekBarPreference;
++import org.omnirom.omnigears.batterysaver.BatterySaverHelper;
++import com.android.settings.slim.TimeRangePreference;
++import com.android.settings.SettingsPreferenceFragment;
++import com.android.settings.R;
++
++public class BatterySaverSettings extends SettingsPreferenceFragment implements
++        OnPreferenceChangeListener {
++
++    private static final String PREF_KEY_BATTERY_SAVER_ENABLE = "pref_battery_saver_enable";
++    private static final String PREF_KEY_BATTERY_SAVER_NORMAL_GSM_MODE = "pref_battery_saver_normal_gsm_mode";
++    private static final String PREF_KEY_BATTERY_SAVER_POWER_SAVING_GSM_MODE = "pref_battery_saver_power_saving_gsm_mode";
++    private static final String PREF_KEY_BATTERY_SAVER_NORMAL_CDMA_MODE = "pref_battery_saver_normal_cdma_mode";
++    private static final String PREF_KEY_BATTERY_SAVER_POWER_SAVING_CDMA_MODE = "pref_battery_saver_power_saving_cdma_mode";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_CHANGE_DELAY = "pref_battery_saver_mode_change_delay";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_BATTERY_LEVEL = "pref_battery_saver_mode_battery_level";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_BLUETOOTH = "pref_battery_saver_mode_bluetooth";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_LOCATION = "pref_battery_saver_mode_location";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_DATA = "pref_battery_saver_mode_data";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_NETWORK = "pref_battery_saver_mode_network";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_NOSIGNAL = "pref_battery_saver_mode_nosignal";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_LED = "pref_battery_saver_mode_led";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_VIBRATE = "pref_battery_saver_mode_vibrate";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_BRIGHTNESS = "pref_battery_saver_mode_brightness";
++    private static final String PREF_KEY_BATTERY_SAVER_MODE_BRIGHTNESS_LEVEL = "pref_battery_saver_mode_brightness_level";
++    private static final String PREF_KEY_BATTERY_SAVER_TIMERANGE = "pref_battery_saver_timerange";
++
++    private static final String CATEGORY_RADIO = "category_battery_saver_radio";
++    private static final String CATEGORY_NETWORK = "category_battery_saver_network";
++    private static final String CATEGORY_NETWORK_GSM = "category_battery_saver_network_gsm";
++    private static final String CATEGORY_NETWORK_CDMA = "category_battery_saver_network_cdma";
++
++    private ContentResolver mResolver;
++    private Context mContext;
++    private boolean mShow4GForLTE;
++    private boolean mIsShowCdma;
++    private boolean mIs2gSupport;
++    private boolean mIsEnabledLte;
++
++    private ListPreference mNormalGsmPreferredNetworkMode;
++    private ListPreference mPowerSavingGsmPreferredNetworkMode;
++    private ListPreference mNormalCdmaPreferredNetworkMode;
++    private ListPreference mPowerSavingCdmaPreferredNetworkMode;
++    private SwitchPreference mBatterySaverEnabled;
++    private SeekBarPreference mBatterySaverDelay;
++    private SeekBarPreference mLowBatteryLevel;
++    private CheckBoxPreference mSmartBluetoothEnabled;
++    private CheckBoxPreference mSmartLocationEnabled;
++    private CheckBoxPreference mSmartBrightnessEnabled;
++    private CheckBoxPreference mSmartDataEnabled;
++    private CheckBoxPreference mSmartLedEnabled;
++    private CheckBoxPreference mSmartVibrateEnabled;
++    private CheckBoxPreference mSmartNoSignalEnabled;
++    private ListPreference mUserCheckIntervalTime;
++    private SeekBarPreference mInitialBrightness;
++    private TimeRangePreference mBatterySaverTimeRange;
++    private int mMinimumBacklight;
++    private int mMaximumBacklight;
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.battery_saver_settings);
++
++        mContext = getActivity().getApplicationContext();
++        mResolver = mContext.getContentResolver();
++
++        mShow4GForLTE = getItemFromApplications("com.android.systemui", "config_show4GForLTE", "bool", false);
++        mIsShowCdma = getItemFromApplications("com.android.phone", "config_show_cdma", "bool", false);
++        mIs2gSupport = getItemFromApplications("com.android.phone", "config_prefer_2g", "bool", true);
++        mIsEnabledLte = getItemFromApplications("com.android.phone", "config_enabled_lte", "bool", true);
++
++        PreferenceScreen prefSet = getPreferenceScreen();
++
++        mBatterySaverEnabled = (SwitchPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_ENABLE);
++        mBatterySaverEnabled.setChecked(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_OPTION, 0) != 0);
++        mBatterySaverEnabled.setOnPreferenceChangeListener(this);
++
++        mBatterySaverTimeRange = (TimeRangePreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_TIMERANGE);
++        mBatterySaverTimeRange.setTimeRange(
++                    Settings.Global.getInt(mResolver, Settings.Global.BATTERY_SAVER_START, 0),
++                    Settings.Global.getInt(mResolver, Settings.Global.BATTERY_SAVER_END, 0));
++        mBatterySaverTimeRange.setOnPreferenceChangeListener(this);
++
++        mBatterySaverDelay = (SeekBarPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_CHANGE_DELAY);
++        mBatterySaverDelay.setValue(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_MODE_CHANGE_DELAY, 5));
++        mBatterySaverDelay.setOnPreferenceChangeListener(this);
++
++        mLowBatteryLevel = (SeekBarPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_BATTERY_LEVEL);
++        int lowBatteryLevels = mContext.getResources().getInteger(
++                        com.android.internal.R.integer.config_lowBatteryWarningLevel);
++        mLowBatteryLevel.setValue(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_BATTERY_LEVEL, lowBatteryLevels));
++        mLowBatteryLevel.setOnPreferenceChangeListener(this);
++
++        if (BatterySaverHelper.deviceSupportsMobileData(mContext)) {
++            TelephonyManager telephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
++            int phoneType = telephonyManager.getPhoneType();
++            int defaultNetwork = Settings.Global.getInt(mResolver,
++                    Settings.Global.PREFERRED_NETWORK_MODE, Phone.PREFERRED_NT_MODE);
++
++            mSmartDataEnabled = (CheckBoxPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_DATA);
++            mSmartDataEnabled.setChecked(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_DATA_MODE, 1) == 1);
++            mSmartDataEnabled.setOnPreferenceChangeListener(this);
++
++            mUserCheckIntervalTime = (ListPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_NETWORK);
++            long intervalTime = Settings.Global.getLong(mResolver,
++                         Settings.Global.BATTERY_SAVER_NETWORK_INTERVAL_MODE, 0);
++            mUserCheckIntervalTime.setValue(String.valueOf(intervalTime));
++            mUserCheckIntervalTime.setSummary(mUserCheckIntervalTime.getEntry());
++            mUserCheckIntervalTime.setOnPreferenceChangeListener(this);
++
++            mSmartNoSignalEnabled = (CheckBoxPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_NOSIGNAL);
++            mSmartNoSignalEnabled.setChecked(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_NOSIGNAL_MODE, 0) == 1);
++            mSmartNoSignalEnabled.setOnPreferenceChangeListener(this);
++
++            if (phoneType == TelephonyManager.PHONE_TYPE_CDMA) {
++                prefSet.removePreference(findPreference(CATEGORY_NETWORK_GSM));
++                mNormalCdmaPreferredNetworkMode = (ListPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_NORMAL_CDMA_MODE);
++                mPowerSavingCdmaPreferredNetworkMode = (ListPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_POWER_SAVING_CDMA_MODE);
++                if (BatterySaverHelper.deviceSupportsLteCdma(mContext)) {
++                    mNormalCdmaPreferredNetworkMode.setEntries(
++                            R.array.enabled_networks_cdma_lte_choices);
++                    mNormalCdmaPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_cdma_lte_values);
++                    mPowerSavingCdmaPreferredNetworkMode.setEntries(
++                            R.array.enabled_networks_cdma_lte_choices);
++                    mPowerSavingCdmaPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_cdma_lte_values);
++                }
++                int normalNetwork = Settings.Global.getInt(mResolver,
++                         Settings.Global.BATTERY_SAVER_NORMAL_MODE, defaultNetwork);
++                mNormalCdmaPreferredNetworkMode.setValue(String.valueOf(normalNetwork));
++                mNormalCdmaPreferredNetworkMode.setSummary(mNormalCdmaPreferredNetworkMode.getEntry());
++                mNormalCdmaPreferredNetworkMode.setOnPreferenceChangeListener(this);
++                int savingNetwork = Settings.Global.getInt(mResolver,
++                         Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE, defaultNetwork);
++                mPowerSavingCdmaPreferredNetworkMode.setValue(String.valueOf(savingNetwork));
++                mPowerSavingCdmaPreferredNetworkMode.setSummary(mPowerSavingCdmaPreferredNetworkMode.getEntry());
++                mPowerSavingCdmaPreferredNetworkMode.setOnPreferenceChangeListener(this);
++            } else if (phoneType == TelephonyManager.PHONE_TYPE_GSM) {
++                mNormalGsmPreferredNetworkMode = (ListPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_NORMAL_GSM_MODE);
++                mPowerSavingGsmPreferredNetworkMode = (ListPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_POWER_SAVING_GSM_MODE);
++                if (!mIs2gSupport && !mIsEnabledLte) {
++                    mNormalGsmPreferredNetworkMode.setEntries(
++                            R.array.enabled_networks_except_gsm_lte_choices);
++                    mNormalGsmPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_except_gsm_lte_values);
++                    mPowerSavingGsmPreferredNetworkMode.setEntries(
++                            R.array.enabled_networks_except_gsm_lte_choices);
++                    mPowerSavingGsmPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_except_gsm_lte_values);
++                } else if (!mIs2gSupport) {
++                    int select = (mShow4GForLTE == true) ?
++                        R.array.enabled_networks_except_gsm_4g_choices
++                        : R.array.enabled_networks_except_gsm_choices;
++                    mNormalGsmPreferredNetworkMode.setEntries(select);
++                    mNormalGsmPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_except_gsm_values);
++                    mPowerSavingGsmPreferredNetworkMode.setEntries(select);
++                    mPowerSavingGsmPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_except_gsm_values);
++                } else if (mIsShowCdma && BatterySaverHelper.deviceSupportsLteCdma(mContext)) {
++                    mNormalGsmPreferredNetworkMode.setEntries(
++                            R.array.enabled_networks_cdma_lte_choices);
++                    mNormalGsmPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_cdma_lte_values);
++                    mPowerSavingGsmPreferredNetworkMode.setEntries(
++                            R.array.enabled_networks_cdma_lte_choices);
++                    mPowerSavingGsmPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_cdma_lte_values);
++                } else if (!mIsShowCdma && BatterySaverHelper.deviceSupportsLteGsm(mContext)) {
++                    int select = (mShow4GForLTE == true) ?
++                        R.array.enabled_networks_4g_choices
++                        : R.array.enabled_networks_lte_choices;
++                    mNormalGsmPreferredNetworkMode.setEntries(select);
++                    mNormalGsmPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_4g_lte_values);
++                    mPowerSavingGsmPreferredNetworkMode.setEntries(select);
++                    mPowerSavingGsmPreferredNetworkMode.setEntryValues(
++                            R.array.enabled_networks_4g_lte_values);
++                }
++                int normalNetwork = Settings.Global.getInt(mResolver,
++                         Settings.Global.BATTERY_SAVER_NORMAL_MODE, defaultNetwork);
++                mNormalGsmPreferredNetworkMode.setValue(String.valueOf(normalNetwork));
++                mNormalGsmPreferredNetworkMode.setSummary(mNormalGsmPreferredNetworkMode.getEntry());
++                mNormalGsmPreferredNetworkMode.setOnPreferenceChangeListener(this);
++                int savingNetwork = Settings.Global.getInt(mResolver,
++                         Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE, defaultNetwork);
++                mPowerSavingGsmPreferredNetworkMode.setValue(String.valueOf(savingNetwork));
++                mPowerSavingGsmPreferredNetworkMode.setSummary(mPowerSavingGsmPreferredNetworkMode.getEntry());
++                mPowerSavingGsmPreferredNetworkMode.setOnPreferenceChangeListener(this);
++                prefSet.removePreference(findPreference(CATEGORY_NETWORK_CDMA));
++            }
++        } else {
++            mBatterySaverEnabled.setSummary(R.string.pref_battery_saver_enable_no_mobiledata_summary);
++            prefSet.removePreference(findPreference(CATEGORY_RADIO));
++            prefSet.removePreference(findPreference(CATEGORY_NETWORK_GSM));
++            prefSet.removePreference(findPreference(CATEGORY_NETWORK_CDMA));
++            prefSet.removePreference(findPreference(CATEGORY_NETWORK));
++        }
++
++        mSmartBluetoothEnabled = (CheckBoxPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_BLUETOOTH);
++        if (BatterySaverHelper.deviceSupportsBluetooth()) {
++            mSmartBluetoothEnabled.setChecked(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_BLUETOOTH_MODE, 0) == 1);
++            mSmartBluetoothEnabled.setOnPreferenceChangeListener(this);
++        } else {
++            prefSet.removePreference(mSmartBluetoothEnabled);
++        }
++
++        mSmartLocationEnabled = (CheckBoxPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_LOCATION);
++        if (BatterySaverHelper.deviceSupportsGps(mContext)) {
++            mSmartLocationEnabled.setChecked(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_LOCATION_MODE, 0) == 1);
++            mSmartLocationEnabled.setOnPreferenceChangeListener(this);
++        } else {
++            prefSet.removePreference(mSmartLocationEnabled);
++        }
++
++        mSmartLedEnabled = (CheckBoxPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_LED);
++        if (BatterySaverHelper.deviceSupportsLed(mContext)) {
++            mSmartLedEnabled.setChecked(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_LED_MODE, 0) == 1);
++            mSmartLedEnabled.setOnPreferenceChangeListener(this);
++        } else {
++            prefSet.removePreference(mSmartLedEnabled);
++        }
++
++        mSmartVibrateEnabled = (CheckBoxPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_VIBRATE);
++        if (BatterySaverHelper.deviceSupportsVibrator(mContext)) {
++            mSmartVibrateEnabled.setChecked(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_VIBRATE_MODE, 0) == 1);
++            mSmartVibrateEnabled.setOnPreferenceChangeListener(this);
++        } else {
++            prefSet.removePreference(mSmartVibrateEnabled);
++        }
++
++        mSmartBrightnessEnabled = (CheckBoxPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_BRIGHTNESS);
++        mSmartBrightnessEnabled.setChecked(Settings.Global.getInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_BRIGHTNESS_MODE, 0) == 1);
++        mSmartBrightnessEnabled.setOnPreferenceChangeListener(this);
++
++        PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
++        mMinimumBacklight = pm.getMinimumScreenBrightnessSetting();
++        mMaximumBacklight = pm.getMaximumScreenBrightnessSetting();
++
++        mInitialBrightness = (SeekBarPreference) prefSet.findPreference(PREF_KEY_BATTERY_SAVER_MODE_BRIGHTNESS_LEVEL);
++        int brightness = Settings.Global.getInt(mResolver,
++                Settings.Global.BATTERY_SAVER_BRIGHTNESS_LEVEL, mMinimumBacklight);
++        int realBrightness = (int)(((float)brightness / (float)mMaximumBacklight) * 100);
++        mInitialBrightness.setValue(realBrightness);
++        mInitialBrightness.setOnPreferenceChangeListener(this);
++
++        try {
++            if (Settings.System.getInt(mResolver,
++                    Settings.System.SCREEN_BRIGHTNESS_MODE) == Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC) {
++                mSmartBrightnessEnabled.setEnabled(false);
++                mSmartBrightnessEnabled.setSummary(R.string.status_bar_toggle_info);
++                mInitialBrightness.setEnabled(false);
++            }
++        } catch (SettingNotFoundException e) {
++        }
++    }
++
++    private boolean getItemFromApplications(String packagename, String name, String type, boolean val) {
++        PackageManager pm = mContext.getPackageManager();
++        Resources appResources = null;
++        if (pm != null) {
++            try {
++                appResources = pm.getResourcesForApplication(packagename);
++            } catch (Exception e) {
++                appResources = null;
++            }
++        }
++        if (appResources != null) {
++            int resId = (int) appResources.getIdentifier(name, type, packagename);
++            if (resId > 0) {
++                try {
++                    return appResources.getBoolean(resId);
++                } catch (NotFoundException e) {
++                }
++            }
++        }
++        return val;
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object newValue) {
++        if (preference == mBatterySaverEnabled) {
++            boolean value = (Boolean) newValue;
++            BatterySaverHelper.setBatterySaverActive(mContext, value ? 1 : 0);
++            BatterySaverHelper.scheduleService(mContext);
++        } else if (preference == mBatterySaverTimeRange) {
++            Settings.Global.putInt(mResolver, Settings.Global.BATTERY_SAVER_START,
++                    mBatterySaverTimeRange.getStartTime());
++            Settings.Global.putInt(mResolver, Settings.Global.BATTERY_SAVER_END,
++                    mBatterySaverTimeRange.getEndTime());
++            BatterySaverHelper.scheduleService(mContext);
++        } else if (preference == mSmartDataEnabled) {
++            boolean value = (Boolean) newValue;
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_DATA_MODE, value ? 1 : 0);
++        } else if (preference == mSmartNoSignalEnabled) {
++            boolean value = (Boolean) newValue;
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_NOSIGNAL_MODE, value ? 1 : 0);
++        } else if (preference == mSmartLedEnabled) {
++            boolean value = (Boolean) newValue;
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_LED_MODE, value ? 1 : 0);
++        } else if (preference == mSmartVibrateEnabled) {
++            boolean value = (Boolean) newValue;
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_VIBRATE_MODE, value ? 1 : 0);
++        } else if (preference == mBatterySaverDelay) {
++            int val = ((Integer)newValue).intValue();
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_MODE_CHANGE_DELAY, val);
++        } else if (preference == mUserCheckIntervalTime) {
++            int val = Integer.parseInt((String) newValue);
++            int index = mUserCheckIntervalTime.findIndexOfValue((String) newValue);
++            Settings.Global.putInt(mResolver,
++                Settings.Global.BATTERY_SAVER_NETWORK_INTERVAL_MODE, val);
++            mUserCheckIntervalTime.setSummary(mUserCheckIntervalTime.getEntries()[index]);
++        } else if (preference == mNormalGsmPreferredNetworkMode) {
++            int val = Integer.parseInt((String) newValue);
++            int index = mNormalGsmPreferredNetworkMode.findIndexOfValue((String) newValue);
++            Settings.Global.putInt(mResolver,
++                Settings.Global.BATTERY_SAVER_NORMAL_MODE, val);
++            mNormalGsmPreferredNetworkMode.setSummary(mNormalGsmPreferredNetworkMode.getEntries()[index]);
++        } else if (preference == mPowerSavingGsmPreferredNetworkMode) {
++            int val = Integer.parseInt((String) newValue);
++            int index = mPowerSavingGsmPreferredNetworkMode.findIndexOfValue((String) newValue);
++            Settings.Global.putInt(mResolver,
++                Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE, val);
++            mPowerSavingGsmPreferredNetworkMode.setSummary(mPowerSavingGsmPreferredNetworkMode.getEntries()[index]);
++        } else if (preference == mNormalCdmaPreferredNetworkMode) {
++            int val = Integer.parseInt((String) newValue);
++            int index = mNormalCdmaPreferredNetworkMode.findIndexOfValue((String) newValue);
++            Settings.Global.putInt(mResolver,
++                Settings.Global.BATTERY_SAVER_NORMAL_MODE, val);
++            mNormalCdmaPreferredNetworkMode.setSummary(mNormalCdmaPreferredNetworkMode.getEntries()[index]);
++        } else if (preference == mPowerSavingCdmaPreferredNetworkMode) {
++            int val = Integer.parseInt((String) newValue);
++            int index = mPowerSavingCdmaPreferredNetworkMode.findIndexOfValue((String) newValue);
++            Settings.Global.putInt(mResolver,
++                Settings.Global.BATTERY_SAVER_POWER_SAVING_MODE, val);
++            mPowerSavingCdmaPreferredNetworkMode.setSummary(mPowerSavingCdmaPreferredNetworkMode.getEntries()[index]);
++        } else if (preference == mLowBatteryLevel) {
++            int val = ((Integer)newValue).intValue();
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_BATTERY_LEVEL, val);
++        } else if (preference == mSmartBluetoothEnabled) {
++            boolean value = (Boolean) newValue;
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_BLUETOOTH_MODE, value ? 1 : 0);
++        } else if (preference == mSmartLocationEnabled) {
++            boolean value = (Boolean) newValue;
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_LOCATION_MODE, value ? 1 : 0);
++        } else if (preference == mSmartBrightnessEnabled) {
++            boolean value = (Boolean) newValue;
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_BRIGHTNESS_MODE, value ? 1 : 0);
++        } else if (preference == mInitialBrightness) {
++            int brightness = ((Integer)newValue).intValue();
++            int realBrightness = Math.max(mMinimumBacklight,
++                    (int)(((float)brightness / (float)100) * mMaximumBacklight));
++            Settings.Global.putInt(mResolver,
++                     Settings.Global.BATTERY_SAVER_BRIGHTNESS_LEVEL, realBrightness);
++        } else {
++            return false;
++        }
++
++        return true;
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
++        // If we didn't handle it, let preferences handle it.
++        return super.onPreferenceTreeClick(preferenceScreen, preference);
++    }
++}
+diff --git a/src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java b/src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java
+index 68fdcad..3b76425 100644
+--- a/src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java
++++ b/src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java
+@@ -125,6 +125,7 @@ public class MoreInterfaceSettings extends SettingsPreferenceFragment implements
+             startActivity(INTENT_OMNISWITCH_SETTINGS);
+             return true;
+         }
++        // If we didn't handle it, let preferences handle it.
+         return super.onPreferenceTreeClick(preferenceScreen, preference);
+     }
+ 
+diff --git a/src/org/omnirom/omnigears/ui/BatteryCpuSettings.java b/src/org/omnirom/omnigears/ui/BatteryCpuSettings.java
+new file mode 100644
+index 0000000..afd123f
+--- /dev/null
++++ b/src/org/omnirom/omnigears/ui/BatteryCpuSettings.java
+@@ -0,0 +1,302 @@
++/*
++ * Performance Control - An Android CPU Control application Copyright (C) 2012
++ * James Roberts
++ * 
++ * This program is free software: you can redistribute it and/or modify it under
++ * the terms of the GNU General Public License as published by the Free Software
++ * Foundation, either version 3 of the License, or (at your option) any later
++ * version.
++ * 
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
++ * FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
++ * details.
++ * 
++ * You should have received a copy of the GNU General Public License along with
++ * this program. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++package org.omnirom.omnigears.ui;
++
++import android.app.AlertDialog;
++import android.app.Fragment;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.os.Bundle;
++import android.os.Handler;
++import android.os.Message;
++import android.provider.Settings;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.ArrayAdapter;
++import android.widget.CompoundButton;
++import android.widget.ListView;
++import android.widget.SeekBar;
++import android.widget.Switch;
++import android.widget.TextView;
++
++import com.android.settings.R;
++import com.brewcrewfoo.performance.util.Constants;
++import com.brewcrewfoo.performance.util.Helpers;
++
++import java.io.File;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.Comparator;
++import java.util.List;
++
++public class BatteryCpuSettings extends Fragment
++        implements SeekBar.OnSeekBarChangeListener, Constants {
++
++    private static final String TAG = "BatteryCPUmode";
++
++    private SeekBar mMaxSlider;
++    private TextView mMaxSpeedText;
++    private String[] mAvailableFrequencies;
++    private String mMaxFreqSetting;
++    private String mCurMaxSpeed;
++    private CurCPUThread mCurCPUThread;
++    private boolean mIsTegra3 = false;
++    private boolean mIsDynFreq = false;
++
++    private Context context;
++    private AlertDialog alertDialog;
++    private int mCpuNum = 1;
++    private CpuInfoListAdapter mCpuInfoListAdapter;
++    private List<String> mCpuInfoListData;
++    private LayoutInflater mInflater;
++
++    public class CpuInfoListAdapter extends ArrayAdapter<String> {
++
++        public CpuInfoListAdapter(Context context, int resource, List<String> values) {
++            super(context, R.layout.battery_cpu_info_item, resource, values);
++        }
++
++        @Override
++        public View getView(int position, View convertView, ViewGroup parent) {
++            View rowView = mInflater.inflate(R.layout.battery_cpu_info_item, parent, false);
++            TextView cpuInfoCore = (TextView) rowView.findViewById(R.id.battery_saver_mode_cpu_info_core);
++            TextView cpuInfoFreq = (TextView) rowView.findViewById(R.id.battery_saver_mode_cpu_info_freq);
++            cpuInfoCore.setText(getString(R.string.battery_saver_mode_core) + " " + String.valueOf(position) + ": ");
++            cpuInfoFreq.setText(mCpuInfoListData.get(position));
++            return rowView;
++        }
++    }
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        context = getActivity();
++        if (Settings.Global.getInt(context.getContentResolver(),
++                     Settings.Global.BATTERY_SAVER_CPU_MODE, 0) == 0) {
++            showWarning();
++        }
++    }
++
++    private void showWarning() {
++        alertDialog = new AlertDialog.Builder(context).create();
++        alertDialog.setTitle(R.string.pref_battery_saver_cpu_warning_title);
++        alertDialog.setMessage(context.getString(R.string.pref_battery_saver_cpu_warning_summary));
++        alertDialog.setButton(DialogInterface.BUTTON_POSITIVE,
++                 context.getString(R.string.ok), new DialogInterface.OnClickListener() {
++              public void onClick(DialogInterface dialog, int id) {
++                  return;
++              }
++        });
++        alertDialog.show();
++    }
++
++    @Override
++    public View onCreateView(LayoutInflater inflater, ViewGroup root, Bundle savedInstanceState) {
++        mInflater = inflater;
++        View view = mInflater.inflate(R.layout.battery_cpu_settings, root, false);
++
++        mCpuNum = Helpers.getNumOfCpus();
++
++        mCpuInfoListData = new ArrayList<String>(mCpuNum);
++        for (int i = 0; i < mCpuNum; i++) {
++            mCpuInfoListData.add("Core " + String.valueOf(i) + ": ");
++        }
++
++        mCpuInfoListAdapter = new CpuInfoListAdapter(
++                context, android.R.layout.simple_list_item_1, mCpuInfoListData);
++
++        ListView mCpuInfoList = (ListView) view.findViewById(R.id.battery_saver_mode_cpu_info_list);
++        mCpuInfoList.setAdapter(mCpuInfoListAdapter);
++
++        mIsTegra3 = new File(TEGRA_MAX_FREQ_PATH).exists();
++        mIsDynFreq = new File(DYN_MAX_FREQ_PATH).exists() && new File(DYN_MIN_FREQ_PATH).exists();
++        mAvailableFrequencies = new String[0];
++
++        String availableFrequenciesLine = Helpers.readOneLine(STEPS_PATH);
++        if (availableFrequenciesLine != null) {
++            mAvailableFrequencies = availableFrequenciesLine.split(" ");
++            Arrays.sort(mAvailableFrequencies, new Comparator<String>() {
++                @Override
++                public int compare(String object1, String object2) {
++                    return Integer.valueOf(object1).compareTo(Integer.valueOf(object2));
++                }
++            });
++        }
++
++        int mFrequenciesNum = mAvailableFrequencies.length - 1;
++        String getDefaultCpuValue = null;
++        if (new File(DYN_MAX_FREQ_PATH).exists()) {
++            getDefaultCpuValue = Helpers.readOneLine(DYN_MAX_FREQ_PATH);
++        } else {
++            getDefaultCpuValue = Helpers.readOneLine(MAX_FREQ_PATH);
++        }
++
++        if (mIsTegra3) {
++            String curTegraMaxSpeed = Helpers.readOneLine(TEGRA_MAX_FREQ_PATH);
++            int curTegraMax;
++            try {
++                curTegraMax = Integer.parseInt(curTegraMaxSpeed);
++                if (curTegraMax > 0) {
++                    getDefaultCpuValue = Integer.toString(curTegraMax);
++                }
++            } catch (NumberFormatException ignored) {
++                // Nothing to do
++            }
++        }
++        String getCpuValue = Settings.Global.getString(context.getContentResolver(),
++                     Settings.Global.BATTERY_SAVER_CPU_FREQ);
++        if (getCpuValue != null) {
++            mCurMaxSpeed = getCpuValue;
++        } else {
++            mCurMaxSpeed = getDefaultCpuValue;
++        }
++        Settings.Global.putString(context.getContentResolver(),
++                     Settings.Global.BATTERY_SAVER_CPU_FREQ_DEFAULT, getDefaultCpuValue);
++        mMaxSlider = (SeekBar) view.findViewById(R.id.battery_saver_mode_max_slider);
++        mMaxSlider.setMax(mFrequenciesNum);
++        mMaxSpeedText = (TextView) view.findViewById(R.id.battery_saver_mode_max_speed_text);
++        mMaxSpeedText.setText(Helpers.toMHz(mCurMaxSpeed));
++        mMaxSlider.setProgress(Arrays.asList(mAvailableFrequencies).indexOf(mCurMaxSpeed));
++        mMaxFreqSetting = mCurMaxSpeed;
++        mMaxSlider.setOnSeekBarChangeListener(this);
++
++        Switch mCpuEnabled = (Switch) view.findViewById(R.id.battery_saver_cpu_switch);
++        mCpuEnabled.setChecked(Settings.Global.getInt(context.getContentResolver(),
++                     Settings.Global.BATTERY_SAVER_CPU_MODE, 0) != 0);
++        mCpuEnabled.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
++            @Override
++            public void onCheckedChanged(CompoundButton v, boolean checked) {
++                Settings.Global.putInt(context.getContentResolver(),
++                     Settings.Global.BATTERY_SAVER_CPU_MODE, checked ? 1 : 0);
++            }
++        });
++
++        return view;
++    }
++
++    @Override
++    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
++        if (fromUser) {
++            if (seekBar.getId() == R.id.battery_saver_mode_max_slider) {
++                setMaxSpeed(seekBar, progress);
++            }
++        }
++    }
++
++    @Override
++    public void onStartTrackingTouch(SeekBar seekBar) {
++    }
++
++    @Override
++    public void onStopTrackingTouch(SeekBar seekBar) {
++    }
++
++    @Override
++    public void onResume() {
++        if (mCurCPUThread == null) {
++            mCurCPUThread = new CurCPUThread();
++            mCurCPUThread.start();
++        }
++        super.onResume();
++    }
++
++    @Override
++    public void onPause() {
++        Helpers.updateAppWidget(context);
++        super.onPause();
++
++        if (mCurCPUThread != null) {
++            if (mCurCPUThread.isAlive()) {
++                mCurCPUThread.interrupt();
++                try {
++                    mCurCPUThread.join();
++                } catch (InterruptedException e) {
++                }
++            }
++
++            mCurCPUThread = null;
++        }
++    }
++
++    public void setMaxSpeed(SeekBar seekBar, int progress) {
++        String current = mAvailableFrequencies[progress];
++        mMaxSpeedText.setText(Helpers.toMHz(current));
++        mMaxFreqSetting = current;
++        updateSettingsValue(current);
++    }
++
++    protected class CurCPUThread extends Thread {
++        private boolean mInterrupt = false;
++
++        public void interrupt() {
++            mInterrupt = true;
++        }
++
++        @Override
++        public void run() {
++            try {
++                while (!mInterrupt) {
++                    sleep(500);
++                    List<String> freqs = new ArrayList<String>();
++                    for (int i = 0; i < mCpuNum; i++) {
++                        String cpuFreq = CPU_PATH + String.valueOf(i) + CPU_FREQ_TAIL;
++                        String curFreq = "0";
++                        if (Helpers.fileExists(cpuFreq)) {
++                            curFreq = Helpers.readOneLine(cpuFreq);
++                        }
++                        freqs.add(curFreq);
++                    }
++                    String[] freqArray = freqs.toArray(new String[freqs.size()]);
++                    mCurCPUHandler.sendMessage(mCurCPUHandler.obtainMessage(0, freqArray));
++                }
++            } catch (InterruptedException e) {
++                //return;
++            }
++        }
++    }
++
++    protected Handler mCurCPUHandler = new Handler() {
++        public void handleMessage(Message msg) {
++            String[] freqArray = (String[]) msg.obj;
++            for (int i = 0; i < freqArray.length; i++) {
++                // Convert freq in MHz
++                try {
++                    int freqHz = Integer.parseInt(freqArray[i]);
++
++                    if (freqHz == 0) {
++                        mCpuInfoListData.set(i, getString(R.string.battery_saver_mode_core_offline));
++                    } else {
++                        mCpuInfoListData.set(i, Integer.toString(freqHz / 1000) + " MHz");
++                    }
++                } catch (Exception e) {
++                    // Do nothing
++                }
++            }
++            mCpuInfoListAdapter.notifyDataSetChanged();
++        }
++    };
++
++    private void updateSettingsValue(String value) {
++        Settings.Global.putString(context.getContentResolver(),
++                     Settings.Global.BATTERY_SAVER_CPU_FREQ, value);
++    }
++}
++
+-- 
+1.7.9.5
+

@@ -1,0 +1,68 @@
+From db024aa607949bb68b27179c80e2634d2d8fcfb8 Mon Sep 17 00:00:00 2001
+From: Yanuar Harry <ai.the.smarties.physics@gmail.com>
+Date: Wed, 2 Apr 2014 12:40:30 +0700
+Subject: [PATCH 7/8] Base: App Circle sidebar (add support floating window)
+
+PS.8 : rebased
+PS.9 : add support minimize/maximize window
+PS10 : rebased
+PS11 : rebased
+
+Change-Id: Ied388a0a4054dfaf1d3e6fcdc33dd5aab28565a9
+
+Conflicts:
+
+	packages/SystemUI/res/values/custom_strings.xml
+	packages/SystemUI/src/com/android/systemui/appcirclesidebar/AppCircleSidebar.java
+---
+ .../appcirclesidebar/AppCircleSidebar.java         |   30 +++++++++++---------
+ 1 file changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/appcirclesidebar/AppCircleSidebar.java b/packages/SystemUI/src/com/android/systemui/appcirclesidebar/AppCircleSidebar.java
+index 7c878f4..4b7fa48 100644
+--- a/packages/SystemUI/src/com/android/systemui/appcirclesidebar/AppCircleSidebar.java
++++ b/packages/SystemUI/src/com/android/systemui/appcirclesidebar/AppCircleSidebar.java
+@@ -388,24 +388,26 @@ public class AppCircleSidebar extends FrameLayout implements PackageAdapter.OnCi
+             } else if (action.equals(Intent.ACTION_ACTIVITY_LAUNCH_DETECTOR)) {
+                 String packageName = intent.getStringExtra("packagename");
+                 IBinder packageToken = (IBinder) intent.getExtra("packagetoken");
+-                if (packageName != null) {
+-                    if (!getAppFloatingInfo(packageName)) {
+-                        FloatingTaskInfo taskInfo = new FloatingTaskInfo();
+-                        taskInfo.packageName = packageName;
+-                        taskInfo.packageToken = packageToken;
+-                        mAppRunning.add(taskInfo);
+-                    }
++                if (packageName == null) {
++                    return;
+                 }
++                if (!getAppFloatingInfo(packageName)) {
++                    FloatingTaskInfo taskInfo = new FloatingTaskInfo();
++                    taskInfo.packageName = packageName;
++                    taskInfo.packageToken = packageToken;
++                    mAppRunning.add(taskInfo);
++                }                
+             } else if (action.equals(Intent.ACTION_ACTIVITY_END_DETECTOR)) {
+                 String packageName = intent.getStringExtra("packagename");
+-                if (packageName != null) {
+-                    if (getAppFloatingInfo(packageName)) {
+-                        FloatingTaskInfo taskInfo = getFloatingInfo(packageName);
+-                        if (taskInfo != null) {
+-                            mAppRunning.remove(taskInfo);
+-                        }
+-                    }
++                if (packageName == null) {
++                    return;
+                 }
++                if (getAppFloatingInfo(packageName)) {
++                    FloatingTaskInfo taskInfo = getFloatingInfo(packageName);
++                    if (taskInfo != null) {
++                        mAppRunning.remove(taskInfo);
++                    }
++                }           
+             }
+         }
+     };
+-- 
+1.7.9.5
+

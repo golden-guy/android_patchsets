@@ -1,0 +1,150 @@
+From 958b91696fdba14dd4c8d5dea463327a40be2c1c Mon Sep 17 00:00:00 2001
+From: Yanuar Harry <ai.the.smarties.physics@gmail.com>
+Date: Thu, 20 Mar 2014 20:53:48 +0700
+Subject: [PATCH 4/4] [2/2] OmniGears: Implement App circle sidebar
+
+add whitelist app to include
+fix Fcs
+
+Conflicts:
+	src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java
+
+Change-Id: Ie4a5e970c1119c2812668de584a19453083139b9
+---
+ res/values/custom_strings.xml                      |    6 +++
+ res/xml/more_interface_settings.xml                |   16 ++++++++
+ .../interfacesettings/MoreInterfaceSettings.java   |   41 +++++++++++++++++++-
+ 3 files changed, 62 insertions(+), 1 deletion(-)
+
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 4f4c358..0a4ad1d 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -681,6 +681,12 @@
+     <string name="force_show_overflow_menu_title">Show overflow menu</string>
+     <string name="force_show_overflow_menu_summary">Force show the three-dot overflow menu in applications. Require restart of application</string>
+ 
++    <string name="category_app_circle_bar_title">App launcher</string>
++    <string name="app_circle_bar_title">App circle bar</string>
++    <string name="app_circle_bar_summary">Show circle app launcher after touching right side of screen</string>
++    <string name="app_circle_bar_included_apps_title">Included apps</string>
++    <string name="app_circle_bar_included_apps_summary">Apps will show in app circle bar</string>
++
+     <!-- Clock -->
+     <string name="status_bar_clock">Clock and date</string>
+     <string name="status_bar_clock_title">Clock and date style</string>
+diff --git a/res/xml/more_interface_settings.xml b/res/xml/more_interface_settings.xml
+index f0c1a0c..121d874 100644
+--- a/res/xml/more_interface_settings.xml
++++ b/res/xml/more_interface_settings.xml
+@@ -20,6 +20,22 @@
+         android:title="@string/interface_more_title"
+         xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
+ 
++    <PreferenceCategory
++            android:key="category_app_circle_bar"
++            android:title="@string/category_app_circle_bar_title"/>
++
++    <org.omnirom.omnigears.preference.SystemCheckBoxPreference
++        android:key="enable_app_circle_bar"
++        android:title="@string/app_circle_bar_title"
++        android:summary="@string/app_circle_bar_summary" />
++
++    <org.omnirom.omnigears.chameleonos.AppMultiSelectListPreference
++        android:key="app_circle_bar_included_apps"
++        android:persistent="false"
++        android:title="@string/app_circle_bar_included_apps_title"
++        android:summary="@string/app_circle_bar_included_apps_summary"
++        android:dependency="enable_app_circle_bar" />
++
+     <!-- Recents panel -->
+     <PreferenceCategory
+             android:key="category_recent_panel"
+diff --git a/src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java b/src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java
+index 3b76425..6dc77e3 100644
+--- a/src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java
++++ b/src/org/omnirom/omnigears/interfacesettings/MoreInterfaceSettings.java
+@@ -37,7 +37,14 @@ import android.preference.PreferenceScreen;
+ import android.preference.PreferenceCategory;
+ import android.provider.Settings;
+ import android.provider.Settings.SettingNotFoundException;
+-import android.util.Log;
++import android.text.TextUtils;
++
++import org.omnirom.omnigears.chameleonos.AppMultiSelectListPreference;
++import com.android.internal.util.omni.DeviceUtils;
++
++import java.util.Arrays;
++import java.util.HashSet;
++import java.util.Set;
+ 
+ public class MoreInterfaceSettings extends SettingsPreferenceFragment implements
+         Preference.OnPreferenceChangeListener {
+@@ -58,6 +65,8 @@ public class MoreInterfaceSettings extends SettingsPreferenceFragment implements
+     public static Intent INTENT_OMNISWITCH_SETTINGS = new Intent(Intent.ACTION_MAIN)
+             .setClassName(OMNISWITCH_PACKAGE_NAME, OMNISWITCH_PACKAGE_NAME + ".SettingsActivity");
+ 
++    private static final String PREF_INCLUDE_APP_CIRCLE_BAR_KEY = "app_circle_bar_included_apps";
++
+     private CheckBoxPreference mRecentClearAll;
+     private ListPreference mRecentClearAllPosition;
+     private CheckBoxPreference mShowRecentsMemoryIndicator;
+@@ -67,6 +76,8 @@ public class MoreInterfaceSettings extends SettingsPreferenceFragment implements
+     private boolean mOmniSwitchInitCalled;
+     private PreferenceCategory mOmniSwitchCategory;
+ 
++    private AppMultiSelectListPreference mIncludedAppCircleBar;
++
+     @Override
+     public void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+@@ -75,6 +86,11 @@ public class MoreInterfaceSettings extends SettingsPreferenceFragment implements
+         PreferenceScreen prefSet = getPreferenceScreen();
+         ContentResolver resolver = getActivity().getContentResolver();
+ 
++        mIncludedAppCircleBar = (AppMultiSelectListPreference) prefSet.findPreference(PREF_INCLUDE_APP_CIRCLE_BAR_KEY);
++        Set<String> includedApps = getIncludedApps();
++        if (includedApps != null) mIncludedAppCircleBar.setValues(includedApps);
++        mIncludedAppCircleBar.setOnPreferenceChangeListener(this);
++
+         mRecentClearAll = (CheckBoxPreference) prefSet.findPreference(RECENT_MENU_CLEAR_ALL);
+         mRecentClearAll.setChecked(Settings.System.getInt(resolver,
+                 Settings.System.SHOW_CLEAR_RECENTS_BUTTON, 0) == 1);
+@@ -146,6 +162,8 @@ public class MoreInterfaceSettings extends SettingsPreferenceFragment implements
+             String value = (String) objValue;
+             Settings.System.putString(
+                     resolver, Settings.System.RECENTS_MEMORY_INDICATOR_LOCATION, value);
++        } else if (preference == mIncludedAppCircleBar) {
++            storeIncludedApps((Set<String>) objValue);
+         } else if (preference == mRecentsUseOmniSwitch) {
+             boolean value = (Boolean) objValue;
+ 
+@@ -186,4 +204,25 @@ public class MoreInterfaceSettings extends SettingsPreferenceFragment implements
+             return false;
+         }
+     }
++
++    private Set<String> getIncludedApps() {
++        String included = Settings.System.getString(getActivity().getContentResolver(),
++                Settings.System.WHITELIST_APP_CIRCLE_BAR);
++        if (TextUtils.isEmpty(included)) {
++            return null;
++        }
++        return new HashSet<String>(Arrays.asList(included.split("\\|")));
++    }
++
++    private void storeIncludedApps(Set<String> values) {
++        StringBuilder builder = new StringBuilder();
++        String delimiter = "";
++        for (String value : values) {
++            builder.append(delimiter);
++            builder.append(value);
++            delimiter = "|";
++        }
++        Settings.System.putString(getActivity().getContentResolver(),
++                Settings.System.WHITELIST_APP_CIRCLE_BAR, builder.toString());
++    }
+ }
+-- 
+1.7.9.5
+

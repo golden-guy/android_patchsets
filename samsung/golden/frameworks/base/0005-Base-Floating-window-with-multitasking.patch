@@ -1,0 +1,2964 @@
+From bb97d96a85cb03cf8e70d214ad4a4e30e693f261 Mon Sep 17 00:00:00 2001
+From: D4rKn3sSyS <jesdga95@gmail.com>
+Date: Thu, 20 Mar 2014 21:06:55 +0700
+Subject: [PATCH 5/8] Base: Floating window with multitasking
+
+basic floating window are taken from AOSPA (HALO) by @D4rKn3sSyS
+
+Drawables courtesy of @Alex Cruz thanks to him :)
+
+with heavy change to get this work for multitasking
+
+this feature, has ability to:
+1. Moveable window to various position
+2. Scaling window with 2 finger like zoom in/out
+3. Double tap in actionbar or above window to fullscreen or back to floating window
+4. Automatically resize when Snapping into one of side (Top, Bottom, Left, Right)
+   (taken from xhalofloatingwindow by @zst123)
+5. Automatically switch focus from other app (taken from multiwindow by @xplodwild)
+6. Unlimited floating window app (depends on RAM)
+
+this is still under testing, to make fully works
+so if there any bug because of this, DO NOT REPORT INTO OMNIROM JIRA
+
+to make app launch using Floating window feature
+
+you must add Intent.FLAG_FLOATING_WINDOW
+before start an activity
+
+for example you can look at https://gerrit.omnirom.org/6515
+
+need https://gerrit.omnirom.org/#/c/6561
+
+PS.17 : fix scaling
+PS.18 : fix layout calculation when rotate
+PS.19 : support minimize/maximize window (see App circle sidebar)
+PS.20 : fix previouse app
+PS.21 : rebased due to changes in 4.4.3_r1.1
+PS.26 : rebased
+PS.27 : rebased
+PS.30 : a little touch :)
+PS.31 : fix FCs because package manager has died
+
+Change-Id: Iad00c239de7d66e8bb45205ce626d4f08417b7cd
+
+Conflicts:
+
+	core/java/android/content/Intent.java
+	core/res/res/values/custom_symbols.xml
+---
+ core/java/android/app/Activity.java                |  823 +++++++++++++++++++-
+ core/java/android/app/ActivityManagerNative.java   |   24 +
+ core/java/android/app/ActivityThread.java          |   16 +-
+ core/java/android/app/IActivityManager.java        |    4 +
+ core/java/android/app/Instrumentation.java         |    8 +
+ core/java/android/app/TaskStackBuilder.java        |   18 +-
+ core/java/android/content/Intent.java              |   27 +
+ core/java/android/text/Layout.java                 |    7 +-
+ core/java/android/view/IWindowManager.aidl         |    6 +
+ core/java/android/view/View.java                   |    4 +-
+ core/java/android/view/Window.java                 |    4 +-
+ .../com/android/internal/app/ActionBarImpl.java    |   11 +
+ .../com/android/internal/widget/ActionBarView.java |    8 +-
+ .../internal/widget/FloatingWindowView.java        |  260 +++++++
+ .../res/drawable-hdpi/ic_floating_window_close.png |  Bin 0 -> 984 bytes
+ .../res/drawable-hdpi/ic_floating_window_max.png   |  Bin 0 -> 837 bytes
+ .../res/drawable-hdpi/ic_floating_window_min.png   |  Bin 0 -> 845 bytes
+ .../res/drawable-hdpi/ic_floating_window_more.png  |  Bin 0 -> 581 bytes
+ .../res/drawable-mdpi/ic_floating_window_close.png |  Bin 0 -> 709 bytes
+ .../res/drawable-mdpi/ic_floating_window_max.png   |  Bin 0 -> 611 bytes
+ .../res/drawable-mdpi/ic_floating_window_min.png   |  Bin 0 -> 625 bytes
+ .../res/drawable-mdpi/ic_floating_window_more.png  |  Bin 0 -> 486 bytes
+ .../drawable-xhdpi/ic_floating_window_close.png    |  Bin 0 -> 1306 bytes
+ .../res/drawable-xhdpi/ic_floating_window_max.png  |  Bin 0 -> 1077 bytes
+ .../res/drawable-xhdpi/ic_floating_window_min.png  |  Bin 0 -> 1091 bytes
+ .../res/drawable-xhdpi/ic_floating_window_more.png |  Bin 0 -> 659 bytes
+ .../drawable-xxhdpi/ic_floating_window_close.png   |  Bin 0 -> 2095 bytes
+ .../res/drawable-xxhdpi/ic_floating_window_max.png |  Bin 0 -> 1755 bytes
+ .../res/drawable-xxhdpi/ic_floating_window_min.png |  Bin 0 -> 1724 bytes
+ .../drawable-xxhdpi/ic_floating_window_more.png    |  Bin 0 -> 854 bytes
+ core/res/res/layout/floating_window_layout.xml     |  100 +++
+ core/res/res/values/custom_strings.xml             |    7 +
+ core/res/res/values/custom_symbols.xml             |   26 +
+ core/res/res/values/symbols.xml                    |    2 +
+ core/res/res/values/themes_device_defaults.xml     |   25 +
+ .../android/internal/policy/impl/PhoneWindow.java  |    3 +-
+ .../internal/policy/impl/PhoneWindowManager.java   |    4 +
+ services/input/InputWindow.cpp                     |    3 +-
+ .../java/com/android/server/am/ActiveServices.java |    1 +
+ .../android/server/am/ActivityManagerService.java  |   19 +
+ .../java/com/android/server/am/ActivityRecord.java |   52 +-
+ .../java/com/android/server/am/ActivityStack.java  |   42 +-
+ .../android/server/am/ActivityStackSupervisor.java |   10 +
+ .../android/server/wm/WindowManagerService.java    |  128 ++-
+ 44 files changed, 1598 insertions(+), 44 deletions(-)
+ create mode 100644 core/java/com/android/internal/widget/FloatingWindowView.java
+ create mode 100644 core/res/res/drawable-hdpi/ic_floating_window_close.png
+ create mode 100644 core/res/res/drawable-hdpi/ic_floating_window_max.png
+ create mode 100644 core/res/res/drawable-hdpi/ic_floating_window_min.png
+ create mode 100644 core/res/res/drawable-hdpi/ic_floating_window_more.png
+ create mode 100644 core/res/res/drawable-mdpi/ic_floating_window_close.png
+ create mode 100644 core/res/res/drawable-mdpi/ic_floating_window_max.png
+ create mode 100644 core/res/res/drawable-mdpi/ic_floating_window_min.png
+ create mode 100644 core/res/res/drawable-mdpi/ic_floating_window_more.png
+ create mode 100644 core/res/res/drawable-xhdpi/ic_floating_window_close.png
+ create mode 100644 core/res/res/drawable-xhdpi/ic_floating_window_max.png
+ create mode 100644 core/res/res/drawable-xhdpi/ic_floating_window_min.png
+ create mode 100644 core/res/res/drawable-xhdpi/ic_floating_window_more.png
+ create mode 100644 core/res/res/drawable-xxhdpi/ic_floating_window_close.png
+ create mode 100644 core/res/res/drawable-xxhdpi/ic_floating_window_max.png
+ create mode 100644 core/res/res/drawable-xxhdpi/ic_floating_window_min.png
+ create mode 100644 core/res/res/drawable-xxhdpi/ic_floating_window_more.png
+ create mode 100644 core/res/res/layout/floating_window_layout.xml
+
+diff --git a/core/java/android/app/Activity.java b/core/java/android/app/Activity.java
+index 55de18e..c7a6704 100644
+--- a/core/java/android/app/Activity.java
++++ b/core/java/android/app/Activity.java
+@@ -19,8 +19,10 @@ package android.app;
+ import android.util.ArrayMap;
+ import android.util.SuperNotCalledException;
+ import com.android.internal.app.ActionBarImpl;
++import com.android.internal.widget.FloatingWindowView;
+ import com.android.internal.policy.PolicyManager;
+ 
++import android.app.ActivityManager;
+ import android.content.ComponentCallbacks2;
+ import android.content.ComponentName;
+ import android.content.ContentResolver;
+@@ -61,12 +63,14 @@ import android.util.AttributeSet;
+ import android.util.EventLog;
+ import android.util.Log;
+ import android.util.PrintWriterPrinter;
++import android.util.TypedValue;
+ import android.util.Slog;
+ import android.util.SparseArray;
+ import android.view.ActionMode;
+ import android.view.ContextMenu;
+ import android.view.ContextMenu.ContextMenuInfo;
+ import android.view.ContextThemeWrapper;
++import android.view.Gravity;
+ import android.view.IWindowManager;
+ import android.view.KeyEvent;
+ import android.view.LayoutInflater;
+@@ -74,6 +78,7 @@ import android.view.Menu;
+ import android.view.MenuInflater;
+ import android.view.MenuItem;
+ import android.view.MotionEvent;
++import android.view.ScaleGestureDetector;
+ import android.view.View;
+ import android.view.View.OnCreateContextMenuListener;
+ import android.view.ViewGroup;
+@@ -84,6 +89,7 @@ import android.view.WindowManager;
+ import android.view.WindowManagerGlobal;
+ import android.view.accessibility.AccessibilityEvent;
+ import android.widget.AdapterView;
++import android.widget.FrameLayout;
+ 
+ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
+@@ -667,6 +673,9 @@ public class Activity extends ContextThemeWrapper
+     private static final String SAVED_DIALOG_KEY_PREFIX = "android:dialog_";
+     private static final String SAVED_DIALOG_ARGS_KEY_PREFIX = "android:dialog_args_";
+ 
++    private static final String SAVED_WINDOW_LAYOUT_IDS_KEY = "android:savedWindowLayoutIds";
++    private static final String SAVED_WINDOW_LAYOUT_TAG = "android:savedWindowLayout";
++
+     private static class ManagedDialog {
+         Dialog mDialog;
+         Bundle mArgs;
+@@ -770,6 +779,52 @@ public class Activity extends ContextThemeWrapper
+     private Thread mUiThread;
+     final Handler mHandler = new Handler();
+ 
++    private Rect mOriginalBounds;
++    private boolean mIsSplitView;
++
++    private final int UNKNOWN = -10000;
++    private final int SNAP_NONE = 0;
++    private final int SNAP_LEFT = 1;
++    private final int SNAP_TOP = 2;
++    private final int SNAP_RIGHT = 3;
++    private final int SNAP_BOTTOM = 4;
++    private final int MOVE_MAX_RANGE = 10;
++
++    private Runnable mRunnable;
++    private Runnable mLayoutRunnable;
++    private int mRange = 100;
++    private int mSensitivity = 50;
++    private int mSnap = SNAP_NONE;
++    private int[] mSnapParam = new int[3]; // w,h,g
++    private int[] mOldParam = new int[2]; // w,h
++    private boolean mSnapped;
++    private int[] mOldLayout;
++    private int[] mLastLayout;
++    private boolean mTimeoutRunning;
++    private boolean mTimeoutDone;
++    private boolean mRestorePosition;
++    private boolean mChangedPreviousRange;
++    private float[] mPreviousRange = new float[2];
++
++    private Float screenX ;
++    private Float screenY ;
++    private Float viewX ;
++    private Float viewY ;
++    private Float leftFromScreen ;
++    private Float topFromScreen ;
++    private int mCurrentScreenHeight;
++    private int mCurrentScreenWidth;
++    private int mPreviousOrientation;
++    private int mAppMinimumWidth;
++    private int mAppMinimumHeight;
++    private int mAppFloatViewWidth;
++    private int mAppFloatViewHeight;
++    private boolean mChangedFlags = false;
++    private boolean isAlreadyAttachToWindow = false;
++    private boolean mIsFullscreenApp = false;
++    private ScaleGestureDetector mScaleGestureDetector;
++    private FloatingWindowView mFloatingWindowView;
++
+     /** Return the intent that started this activity. */
+     public Intent getIntent() {
+         return mIntent;
+@@ -908,6 +963,9 @@ public class Activity extends ContextThemeWrapper
+         mFragments.dispatchCreate();
+         getApplication().dispatchActivityCreated(this, savedInstanceState);
+         mCalled = true;
++        mPreviousOrientation = getResources().getConfiguration().orientation;
++        mScaleGestureDetector = new ScaleGestureDetector(getApplicationContext(), mScaleGestureListener);
++        mScaleGestureDetector.setQuickScaleEnabled(false);
+     }
+ 
+     /**
+@@ -921,6 +979,7 @@ public class Activity extends ContextThemeWrapper
+     final void performRestoreInstanceState(Bundle savedInstanceState) {
+         onRestoreInstanceState(savedInstanceState);
+         restoreManagedDialogs(savedInstanceState);
++        restoreManagedWindowLayout(savedInstanceState);
+     }
+ 
+     /**
+@@ -984,6 +1043,54 @@ public class Activity extends ContextThemeWrapper
+         }
+     }
+ 
++    private void restoreManagedWindowLayout(Bundle savedInstanceState) {
++        final Bundle b = savedInstanceState.getBundle(SAVED_WINDOW_LAYOUT_TAG);
++        if (b == null) {
++            return;
++        }
++
++        if (mWindow == null) {
++            return;
++        }
++
++        if (!mWindow.mIsFloatingWindow) {
++            return;
++        }
++
++        final int[] ids = b.getIntArray(SAVED_WINDOW_LAYOUT_IDS_KEY);
++        final int x = ids[0];
++        final int y = ids[1];
++        final int width = ids[2];
++        final int height = ids[3];
++        mSnap = ids[4];
++        WindowManager.LayoutParams params = mWindow.getAttributes();
++        params.x = x;
++        params.y = y;
++        switch (mSnap) {
++              case SNAP_LEFT:
++                   params.width = (mCurrentScreenWidth / 2);
++                   params.height = ViewGroup.LayoutParams.MATCH_PARENT;
++                   break;
++              case SNAP_RIGHT:
++                   params.width = (mCurrentScreenWidth / 2);
++                   params.height = ViewGroup.LayoutParams.MATCH_PARENT;
++                   break;
++              case SNAP_TOP:
++                   params.width = ViewGroup.LayoutParams.MATCH_PARENT;
++                   params.height = (mCurrentScreenHeight / 2);
++                   break;
++              case SNAP_BOTTOM:
++                   params.width = ViewGroup.LayoutParams.MATCH_PARENT;
++                   params.height = (mCurrentScreenHeight / 2);
++                   break;
++              case SNAP_NONE:
++                   params.width = width;
++                   params.height = height;
++                   break;
++        }
++        mWindow.setAttributes(params);
++    }
++
+     private Dialog createDialog(Integer dialogId, Bundle state, Bundle args) {
+         final Dialog dialog = onCreateDialog(dialogId, args);
+         if (dialog == null) {
+@@ -1039,7 +1146,7 @@ public class Activity extends ContextThemeWrapper
+      */
+     protected void onStart() {
+         if (DEBUG_LIFECYCLE) Slog.v(TAG, "onStart " + this);
+-        setupColorActionBar(false);
++        setupFloatingActionBar(false);
+         mCalled = true;
+ 
+         if (!mLoadersStarted) {
+@@ -1055,7 +1162,39 @@ public class Activity extends ContextThemeWrapper
+         getApplication().dispatchActivityStarted(this);
+     }
+ 
+-    private void setupColorActionBar(boolean reload) {
++    private void setupFloatingActionBar(boolean reload) {
++        if (mWindow == null) {
++            return;
++        }
++
++        if (!mWindow.mIsFloatingWindow) {
++            reloadAppColor(reload);
++            return;
++        }
++
++        if (mWindow.peekDecorView() == null) {
++            return;
++        }
++
++        FrameLayout decorFloatingView = (FrameLayout) mWindow.peekDecorView().getRootView();
++        if (decorFloatingView == null) {
++            return;
++        }
++
++        if (!reload) {
++            decorFloatingView.setFitsSystemWindows(true);
++            decorFloatingView.hackTurnOffWindowResizeAnim(true);
++            mFloatingWindowView = new FloatingWindowView(this, getActionBarHeight(true));
++            decorFloatingView.addView(mFloatingWindowView, -1, FloatingWindowView.getParams());
++            decorFloatingView.setTagInternal(android.R.id.extractArea, mFloatingWindowView);
++        } else {
++            mFloatingWindowView = (FloatingWindowView) decorFloatingView.getTag(android.R.id.extractArea);
++            decorFloatingView.bringChildToFront(mFloatingWindowView);
++        }
++        reloadAppColor(reload);
++    }
++
++    private void reloadAppColor(boolean reload) {
+         if (getAppColorEnabled()) {
+             if (mActionBar != null) {
+                 mActionBar.setEnabledAppColor(getActionbarColorEnabled());
+@@ -1085,6 +1224,16 @@ public class Activity extends ContextThemeWrapper
+     }
+ 
+     /**
++     * @hide
++     */
++    public void changeFloatingWindowColor(int bg_color, int ic_color) {
++        if (mFloatingWindowView != null) {
++            mFloatingWindowView.setFloatingBackgroundColor(bg_color);
++            mFloatingWindowView.setFloatingColorFilter(ic_color);
++        }
++    }
++
++    /**
+      * Called after {@link #onStop} when the current activity is being
+      * re-displayed to the user (the user has navigated back to it).  It will
+      * be followed by {@link #onStart} and then {@link #onResume}.
+@@ -1150,7 +1299,7 @@ public class Activity extends ContextThemeWrapper
+         final Window win = getWindow();
+         if (win != null) win.makeActive();
+         if (mActionBar != null) mActionBar.setShowHideAnimationEnabled(true);
+-        setupColorActionBar(true);
++        setupFloatingActionBar(true);
+         mCalled = true;
+     }
+ 
+@@ -1189,6 +1338,7 @@ public class Activity extends ContextThemeWrapper
+     final void performSaveInstanceState(Bundle outState) {
+         onSaveInstanceState(outState);
+         saveManagedDialogs(outState);
++        saveManagedWindowLayout(outState);
+         if (DEBUG_LIFECYCLE) Slog.v(TAG, "onSaveInstanceState " + this + ": " + outState);
+     }
+ 
+@@ -1280,6 +1430,27 @@ public class Activity extends ContextThemeWrapper
+         outState.putBundle(SAVED_DIALOGS_TAG, dialogState);
+     }
+ 
++    private void saveManagedWindowLayout(Bundle outState) {
++        if (mWindow == null) {
++            return;
++        }
++
++        if (!mWindow.mIsFloatingWindow) {
++            return;
++        }
++
++        Bundle windowLayoutState = new Bundle();
++
++        int[] ids = new int[5];
++        WindowManager.LayoutParams params = mWindow.getAttributes();
++        ids[0] = params.x;
++        ids[1] = params.y;
++        ids[2] = params.width;
++        ids[3] = params.height;
++        ids[4] = mSnap;
++        windowLayoutState.putIntArray(SAVED_WINDOW_LAYOUT_IDS_KEY, ids);
++        outState.putBundle(SAVED_WINDOW_LAYOUT_TAG, windowLayoutState);
++    }
+ 
+     /**
+      * Called as part of the activity lifecycle when an activity is going into
+@@ -1458,8 +1629,8 @@ public class Activity extends ContextThemeWrapper
+      */
+     protected void onDestroy() {
+         if (DEBUG_LIFECYCLE) Slog.v(TAG, "onDestroy " + this);
++        sendAppEndBroadcast();
+         mCalled = true;
+-
+         // dismiss any dialogs we are managing.
+         if (mManagedDialogs != null) {
+             final int numDialogs = mManagedDialogs.size();
+@@ -1540,6 +1711,51 @@ public class Activity extends ContextThemeWrapper
+         if (mWindow != null) {
+             // Pass the configuration changed event to the window
+             mWindow.onConfigurationChanged(newConfig);
++            if (mWindow.mIsFloatingWindow) {
++                refreshAppLayoutSize();
++                Configuration config = getResources().getConfiguration();
++                if (config.orientation != mPreviousOrientation) {
++                    mWindow.setGravity(Gravity.LEFT | Gravity.TOP);
++                    if (!isUnSnap()) {
++                        requestChangingFlagsLayout();
++                    }
++                    WindowManager.LayoutParams params = mWindow.getAttributes();
++                    switch (mSnap) {
++                        case SNAP_LEFT:
++                             params.width = (mCurrentScreenWidth / 2);
++                             params.height = ViewGroup.LayoutParams.MATCH_PARENT;
++	                     params.x = 0;
++	                     params.y = 0;
++                             break;
++                        case SNAP_RIGHT:
++                             params.width = (mCurrentScreenWidth / 2);
++                             params.height = ViewGroup.LayoutParams.MATCH_PARENT;
++	                     params.x = (mCurrentScreenWidth / 2);
++	                     params.y = 0;
++                             break;
++                        case SNAP_TOP:
++                             params.width = ViewGroup.LayoutParams.MATCH_PARENT;
++                             params.height = (mCurrentScreenHeight / 2);
++	                     params.x = 0;
++	                     params.y = 0;
++                             break;
++                        case SNAP_BOTTOM:
++                             params.width = ViewGroup.LayoutParams.MATCH_PARENT;
++                             params.height = (mCurrentScreenHeight / 2);
++	                     params.x = 0;
++	                     params.y = (mCurrentScreenHeight / 2);
++                             break;
++                        case SNAP_NONE:
++                             int width = params.width;
++                             int height = params.height;
++                             params.width = height;
++                             params.height = width;
++                             break;
++                    }
++                    mWindow.setAttributes(params);
++                    mPreviousOrientation = config.orientation;
++                }
++            }
+         }
+ 
+         if (mActionBar != null) {
+@@ -2488,8 +2704,46 @@ public class Activity extends ContextThemeWrapper
+      * @return boolean Return true if this event was consumed.
+      */
+     public boolean dispatchTouchEvent(MotionEvent ev) {
+-        if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+-            onUserInteraction();
++        if (mWindow.mIsFloatingWindow) {
++            if (isUnSnap()) {
++                mScaleGestureDetector.onTouchEvent(ev);
++            }
++            int actionBarHeight = getActionBarHeight(false);
++            switch (ev.getAction()) {
++                  case MotionEvent.ACTION_DOWN:
++                       setTouchViewDown(ev.getX(), ev.getY());
++                       onUserInteraction();
++                       updateFocusApp();
++                       if (viewY < actionBarHeight) {
++                           if (!mChangedPreviousRange) {
++                               setPreviousTouchRange(ev.getRawX(), ev.getRawY());
++                               mChangedPreviousRange = true;
++                           }
++                       }
++                       break;
++                  case MotionEvent.ACTION_MOVE:
++                       if (viewY < actionBarHeight) {
++                           changeFlagsLayoutParams();
++                           setTouchViewMove(ev.getRawX(), ev.getRawY());
++                           if (mRestorePosition && moveRangeAboveLimit(ev)) {
++                               restoreOldPosition();
++                           }
++                           showSnap((int) ev.getRawX(), (int) ev.getRawY());
++                       }
++                       break;
++                  case MotionEvent.ACTION_UP:
++                       if (viewY < actionBarHeight) {
++                           mChangedFlags = false;
++                           finishSnap(isValidSnap() && mTimeoutDone);
++                           discardTimeout();
++                           mChangedPreviousRange = false;
++                       }
++                       break;
++             }
++        } else {
++             if (ev.getAction() == MotionEvent.ACTION_DOWN) {
++                 onUserInteraction();
++             }
+         }
+ 
+         if (getWindow().superDispatchTouchEvent(ev)) {
+@@ -2502,6 +2756,371 @@ public class Activity extends ContextThemeWrapper
+     /**
+      * @hide
+      */
++    public void setTouchViewDown(float x , float y) {
++        viewX = x;
++        viewY = y;
++    }
++
++    /**
++     * @hide
++     */
++    public void setPreviousTouchRange(float x , float y) {
++        mPreviousRange[0] = x;
++        mPreviousRange[1] = y;
++    }
++
++    /**
++     * @hide
++     */
++    public void setTouchViewMove(float x , float y) {
++        screenX = x;
++        screenY = y;
++        leftFromScreen = (screenX - viewX);
++        topFromScreen = (screenY - viewY);
++        initLayoutParams(leftFromScreen, topFromScreen);
++    }
++
++    /**
++     * @hide
++     */
++    public void setChangedPreviousRange(boolean needed) {
++        mChangedPreviousRange = needed;
++    }
++
++    /**
++     * @hide
++     */
++    public boolean getChangedPreviousRange() {
++        return mChangedPreviousRange;
++    }
++
++    private int getActionBarHeight(boolean smaller) {
++        ActionBar actionBar = getActionBar();
++        int actionBarHeight = (actionBar != null) ? actionBar.getHeight()
++                          : getAppDimensionPixel(smaller);
++        return (smaller ? getAppDimensionPixel(smaller) : actionBarHeight);
++    }
++
++    /**
++     * @hide
++     */
++    public void updateFocusApp() {
++        IWindowManager wm = (IWindowManager) WindowManagerGlobal.getWindowManagerService();
++        try {
++             wm.notifyFloatActivityTouched(mToken, false);
++        } catch (RemoteException e) {
++             Log.e(TAG, "Cannot notify activity touched", e);
++        }
++    }
++
++    private void initLayoutParams(float x , float y) {
++        WindowManager.LayoutParams param = mWindow.getAttributes();
++        param.x = (int) x;
++        param.y = (int) y;
++        mWindow.setAttributes(param);
++    }
++
++    /**
++     * @hide
++     */
++    public void changeFlagsLayoutParams() {
++        mWindow.setGravity(Gravity.LEFT | Gravity.TOP);
++        if (!mChangedFlags) {
++            mChangedFlags = true;
++            requestChangingFlagsLayout();
++        }
++    }
++
++    private void requestChangingFlagsLayout() {
++        mWindow.setCloseOnTouchOutside(false);
++        mWindow.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
++        mWindow.addFlags(WindowManager.LayoutParams.FLAG_SPLIT_TOUCH);
++        if (ActivityManager.isHighEndGfx()) {
++            mWindow.addFlags(WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
++        }
++    }
++
++    /**
++     * @hide
++     */
++    public void setChangedFlags(boolean changed) {
++        mChangedFlags = changed;
++    }
++
++    /**
++     * @hide
++     */
++    public boolean moveRangeAboveLimit(MotionEvent event) {
++        final float x = event.getRawX();
++        final float y = event.getRawY();
++
++        boolean returnValue = false;
++        if (Math.abs(mPreviousRange[0] - x) > MOVE_MAX_RANGE) {
++            returnValue = true;
++        } else if (Math.abs(mPreviousRange[1] - y) > MOVE_MAX_RANGE) {
++            returnValue = true;
++        }
++        return returnValue;
++    }
++
++    /**
++     * @hide
++     */
++    public void showSnap(int x, int y) {
++        initSnappable(x, y);
++        calculateSnap();
++        if (isValidSnap()) {
++            setupTimeout();
++        }
++    }
++
++    /**
++     * @hide
++     */
++    public void finishSnap(boolean apply) {
++        if (apply) {
++            if (saveOldPosition()) {
++                mRestorePosition = true;
++            }
++	    WindowManager.LayoutParams lpp = mWindow.getAttributes();
++	    lpp.width = mSnapParam[0];
++	    lpp.height = mSnapParam[1];
++	    int gravity = mSnapParam[2];
++	    lpp.x = (gravity == Gravity.RIGHT) ? (mCurrentScreenWidth / 2) : 0;
++	    lpp.y = (gravity == Gravity.BOTTOM) ? (mCurrentScreenHeight / 2) : 0;
++	    mWindow.setAttributes(lpp);
++        } else {
++	    mSnap = SNAP_NONE;
++        }
++    }
++
++    /**
++     * @hide
++     */
++    public boolean isValidSnap() {
++        return (mSnapParam[0] != UNKNOWN) &&
++                (mSnapParam[1] != UNKNOWN) &&
++                 (mSnapParam[2] != UNKNOWN);
++    }
++
++    private boolean saveOldPosition() {
++        if (mRestorePosition) return true;
++        if (mSnapped) {
++            return (isUnSnap() || mTimeoutRunning);
++        }
++        mSnapped = true;
++        final WindowManager.LayoutParams params = mWindow.getAttributes();
++        int[] layout = { params.x, params.y, params.width, params.height };
++        mOldLayout = layout;
++        return true;
++    }
++
++    private boolean isUnSnap() {
++        return (mSnap == SNAP_NONE);
++    }
++
++    /**
++     * @hide
++     */
++    public boolean restoreOldPosition() {
++        if (!mSnapped) return false;
++        restoreOldPositionWithoutRefresh();
++        return true;
++    }
++
++    private void restoreOldPositionWithoutRefresh() {
++        if (!mSnapped) return;
++        WindowManager.LayoutParams params = mWindow.getAttributes();
++        params.x = mOldLayout[0];
++        params.y = mOldLayout[1];
++        params.width = mOldLayout[2];
++        params.height = mOldLayout[3];
++        mWindow.setAttributes(params);
++        mSnapped = false;
++        mRestorePosition = false;
++    }
++
++    /**
++     * @hide
++     */
++    public boolean getRestorePosition() {
++        return mRestorePosition;
++    }
++
++    private boolean initSnappable(int x, int y) {
++        if ((Math.abs(mOldParam[0] - x) > mSensitivity) ||
++              (Math.abs(mOldParam[1] - y) > mSensitivity)) {
++            mOldParam[0] = x;
++            mOldParam[1] = y;
++            return false;
++        }
++        mOldParam[0] = x;
++        mOldParam[1] = y;
++
++        if (x < mRange) {
++            mSnap = SNAP_LEFT;
++        } else if (x > (mCurrentScreenWidth - mRange)) {
++            mSnap = SNAP_RIGHT;
++        } else if (y < mRange) {
++            mSnap = SNAP_TOP;
++        } else if (y > (mCurrentScreenHeight - mRange)) {
++            mSnap = SNAP_BOTTOM;
++        } else {
++            mSnap = SNAP_NONE;
++            return false;
++        }
++        return true;
++    }
++
++    private void refreshAppLayoutSize() {
++        final IWindowManager wm = (IWindowManager) WindowManagerGlobal.getWindowManagerService();
++
++        try {
++            Rect windowFloatViewBounds = wm.getFloatViewRect();
++            mAppFloatViewWidth = (windowFloatViewBounds.right - windowFloatViewBounds.left);
++            mAppFloatViewHeight = (windowFloatViewBounds.bottom - windowFloatViewBounds.top);
++
++            Rect windowCurrentScreenBounds = wm.getAppFullscreenViewRect();
++            mCurrentScreenWidth = (windowCurrentScreenBounds.right - windowCurrentScreenBounds.left);
++            mCurrentScreenHeight = (windowCurrentScreenBounds.bottom - windowCurrentScreenBounds.top);
++
++            Rect windowMinimumBounds = wm.getAppMinimumViewRect();
++            mAppMinimumWidth = (windowMinimumBounds.right - windowMinimumBounds.left);
++            mAppMinimumHeight = (windowMinimumBounds.bottom - windowMinimumBounds.top);
++
++        } catch (RemoteException e) {
++            Log.e(TAG, "Could not perform get size view layout", e);
++        }
++    }
++
++    private void refreshAppFloatViewSize() {
++        final IWindowManager wm = (IWindowManager) WindowManagerGlobal.getWindowManagerService();
++
++        try {
++            Rect windowBounds = wm.getFloatViewRect();
++            mAppFloatViewWidth = (windowBounds.right - windowBounds.left);
++            mAppFloatViewHeight = (windowBounds.bottom - windowBounds.top);
++        } catch (RemoteException e) {
++            Log.e(TAG, "Could not perform float view layout", e);
++        }
++    }
++
++    private void refreshCurrentScreenSize() {
++        final IWindowManager wm = (IWindowManager) WindowManagerGlobal.getWindowManagerService();
++
++        try {
++            Rect windowBounds = wm.getAppFullscreenViewRect();
++            mCurrentScreenWidth = (windowBounds.right - windowBounds.left);
++            mCurrentScreenHeight = (windowBounds.bottom - windowBounds.top);
++        } catch (RemoteException e) {
++            Log.e(TAG, "Could not perform get app fullscreen view layout", e);
++        }
++    }
++
++    /**
++     * @hide
++     */
++    public void forceSnap(int side) {
++        if (side == SNAP_NONE) {
++            restoreOldPosition();
++            return;
++        }
++        if (mSnapped) {
++            restoreOldPositionWithoutRefresh();
++        }
++        mSnap = side;
++        calculateSnap();
++        finishSnap(true);
++    }
++
++    private void calculateSnap() {
++        switch (mSnap) {
++              case SNAP_LEFT:
++                   mSnapParam[0] = (mCurrentScreenWidth / 2);
++                   mSnapParam[1] = ViewGroup.LayoutParams.MATCH_PARENT;
++                   mSnapParam[2] = Gravity.TOP | Gravity.LEFT;
++                   break;
++              case SNAP_RIGHT:
++                   mSnapParam[0] = (mCurrentScreenWidth / 2);
++                   mSnapParam[1] = ViewGroup.LayoutParams.MATCH_PARENT;
++                   mSnapParam[2] = Gravity.RIGHT;
++                   break;
++              case SNAP_TOP:
++                   mSnapParam[0] = ViewGroup.LayoutParams.MATCH_PARENT;
++                   mSnapParam[1] = (mCurrentScreenHeight / 2);
++                   mSnapParam[2] = Gravity.TOP;
++                   break;
++              case SNAP_BOTTOM:
++                   mSnapParam[0] = ViewGroup.LayoutParams.MATCH_PARENT;
++                   mSnapParam[1] = (mCurrentScreenHeight / 2);
++                   mSnapParam[2] = Gravity.BOTTOM;
++                   break;
++              case SNAP_NONE:
++                   mSnapParam[0] = UNKNOWN;
++                   mSnapParam[1] = UNKNOWN;
++                   mSnapParam[2] = UNKNOWN;
++                   break;
++        }
++    }
++
++    /**
++     * @hide
++     */
++    public boolean getTimeoutDone() {
++        return mTimeoutDone;
++    }
++
++    /**
++     * @hide
++     */
++    public void discardTimeout() {
++        mTimeoutDone = false;
++        mTimeoutRunning = false;
++        mHandler.removeCallbacks(mRunnable);
++    }
++
++    private void setupTimeout() {
++        if (mTimeoutRunning) return;
++        if (mRunnable == null) {
++            mRunnable = new Runnable() {
++                  @Override
++                  public void run() {
++                      mHandler.postDelayed(new Runnable() {
++                               @Override
++                               public void run() {
++                                   mTimeoutRunning = false;
++                                   mTimeoutDone = true;
++                               }
++                      }, 250);
++                  }
++            };
++        }
++        mTimeoutRunning = true;
++        mHandler.postDelayed(mRunnable, 750);
++    }
++
++    private int getAppDimensionPixel(boolean smaller) {
++        float scale = getResources().getDisplayMetrics().density;
++        int sized = smaller ? 32 : 48;
++        int pixel = (int) (sized * scale + 0.5f);
++        return pixel;
++    }
++
++    private void refreshAppMinimumSize() {
++        final IWindowManager wm = (IWindowManager) WindowManagerGlobal.getWindowManagerService();
++
++        try {
++            Rect windowBounds = wm.getAppMinimumViewRect();
++            mAppMinimumWidth = (windowBounds.right - windowBounds.left);
++            mAppMinimumHeight = (windowBounds.bottom - windowBounds.top);
++        } catch (RemoteException e) {
++            Log.e(TAG, "Could not perform get app minimum view layout", e);
++        }
++    }
++
++    /**
++     * @hide
++     */
+     public void sendActionColorBroadcast(int st_color, int ic_color) {
+         final IWindowManager wm = (IWindowManager) WindowManagerGlobal.getWindowManagerService();
+ 
+@@ -2514,6 +3133,131 @@ public class Activity extends ContextThemeWrapper
+     }
+ 
+     /**
++     * @hide
++     */
++    public void sendAppLaunchBroadcast() {
++        Intent appIntent = new Intent(Intent.ACTION_ACTIVITY_LAUNCH_DETECTOR);
++        appIntent.putExtra("packagename", getPackageName());
++        appIntent.putExtra("packagetoken", mToken);
++        appIntent.addFlags(
++                Intent.FLAG_RECEIVER_REGISTERED_ONLY | Intent.FLAG_RECEIVER_FOREGROUND);
++        sendBroadcastAsUser(appIntent, UserHandle.CURRENT_OR_SELF);
++        moveTaskToBack(true);
++    }
++
++    private void sendAppEndBroadcast() {
++        Intent endIntent = new Intent(Intent.ACTION_ACTIVITY_END_DETECTOR);
++        endIntent.putExtra("packagename", getPackageName());
++        endIntent.addFlags(
++                Intent.FLAG_RECEIVER_REGISTERED_ONLY | Intent.FLAG_RECEIVER_FOREGROUND);
++        sendBroadcastAsUser(endIntent, UserHandle.CURRENT_OR_SELF);
++    }
++
++    private void setProgressLayoutApp() {
++        if (mLayoutRunnable == null) {
++            mLayoutRunnable = new Runnable() {
++                  @Override
++                  public void run() {
++                      setCurrentLayoutApp();
++                  }
++            };
++        }
++        mHandler.postDelayed(mLayoutRunnable, 500);
++    }
++
++    private void discardLayoutProgress() {
++        mHandler.removeCallbacks(mLayoutRunnable);
++    }
++
++    private void setCurrentLayoutApp() {
++        if (isUnSnap()) {
++            final WindowManager.LayoutParams params = mWindow.getAttributes();
++            final int width = params.width;
++            final int height = params.height;
++            if (width >= mCurrentScreenWidth) {
++                params.width = ViewGroup.LayoutParams.MATCH_PARENT;
++            } else if (width <= mAppMinimumWidth) {
++                params.width = mAppMinimumWidth;
++            }
++            if (height >= mCurrentScreenHeight) {
++                params.height = ViewGroup.LayoutParams.MATCH_PARENT;
++            } else if (height <= mAppMinimumHeight) {
++                params.height = mAppMinimumHeight;
++            }
++            mWindow.setAttributes(params);
++        }
++        mHandler.removeCallbacks(mLayoutRunnable);
++    }
++
++    /**
++     * @hide
++     */
++    public void setFullscreenApp() {
++        if (mIsFullscreenApp) {
++            return;
++        }
++        WindowManager.LayoutParams params = mWindow.getAttributes();
++        int[] layout = { params.x, params.y, params.width, params.height };
++        mLastLayout = layout;
++        params.width = ViewGroup.LayoutParams.MATCH_PARENT;
++        params.height = ViewGroup.LayoutParams.MATCH_PARENT;
++        mWindow.setAttributes(params);
++        mIsFullscreenApp = true;
++    }
++
++    /**
++     * @hide
++     */
++    public void restorePreviousLayoutApp() {
++        if (!mIsFullscreenApp) {
++            return;
++        }
++        WindowManager.LayoutParams params = mWindow.getAttributes();
++        params.x = mLastLayout[0];
++        params.y = mLastLayout[1];
++        params.width = mLastLayout[2];
++        params.height = mLastLayout[3];
++        mWindow.setAttributes(params);
++        mIsFullscreenApp = false;
++    }
++
++    private final ScaleGestureDetector.OnScaleGestureListener mScaleGestureListener
++            = new ScaleGestureDetector.SimpleOnScaleGestureListener() {
++
++        private float lastSpanX;
++        private float lastSpanY;
++        private WindowManager.LayoutParams params;
++
++        @Override
++        public boolean onScaleBegin(ScaleGestureDetector scaleGestureDetector) {
++            discardLayoutProgress();
++            lastSpanX = scaleGestureDetector.getCurrentSpanX();
++            lastSpanY = scaleGestureDetector.getCurrentSpanY();
++            params = mWindow.getAttributes();
++            return true;
++        }
++
++        @Override
++        public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
++            float spanX = scaleGestureDetector.getCurrentSpanX();
++            float spanY = scaleGestureDetector.getCurrentSpanY();
++            float newWidth = spanX / lastSpanX * (float) params.width;
++            float newHeight = spanY / lastSpanY * (float) params.height;
++            params.width = (int) newWidth;
++            params.height = (int) newHeight;
++            mWindow.setAttributes(params);
++            lastSpanX = spanX;
++            lastSpanY = spanY;
++            return true;
++        }
++
++        @Override
++        public void onScaleEnd(ScaleGestureDetector detector) {
++            setProgressLayoutApp();
++        }
++    };
++
++    /**
+      * Called to process trackball events.  You can override this to
+      * intercept all trackball events before they are dispatched to the
+      * window.  Be sure to call this implementation for trackball events
+@@ -4277,6 +5021,10 @@ public class Activity extends ContextThemeWrapper
+         }
+     }
+ 
++    public void finishFloating() {
++        mMainThread.performFinishFloating();
++    }
++
+     /**
+      * Finish this activity as well as all activities immediately below it
+      * in the current task that have the same affinity.  This is typically
+@@ -5239,7 +5987,10 @@ public class Activity extends ContextThemeWrapper
+ 
+         mFragments.attachActivity(this, mContainer, null);
+ 
+-        mWindow = PolicyManager.makeNewWindow(this);
++        if (makeNewWindow(context, intent, info)) {
++            parent = null;
++        }
++
+         mWindow.setCallback(this);
+         mWindow.getLayoutInflater().setPrivateFactory(this);
+         if (info.softInputMode != WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED) {
+@@ -5274,6 +6025,64 @@ public class Activity extends ContextThemeWrapper
+         mCurrentConfig = config;
+     }
+ 
++    private boolean makeNewWindow(Context context, Intent intent, ActivityInfo info) {
++        boolean floating = (intent.getFlags() & Intent.FLAG_FLOATING_WINDOW) == Intent.FLAG_FLOATING_WINDOW;
++        if (intent != null && floating) {
++
++            TypedArray styleArray = context.obtainStyledAttributes(info.theme, com.android.internal.R.styleable.Window);
++            TypedValue backgroundValue = styleArray.peekValue(com.android.internal.R.styleable.Window_windowBackground);
++
++            // Apps that have no title don't need no title bar
++            TypedValue outValue = new TypedValue();
++            boolean result = styleArray.getValue(com.android.internal.R.styleable.Window_windowNoTitle, outValue);
++
++            if (backgroundValue != null && backgroundValue.toString().contains("light")) {
++                context.getTheme().applyStyle(com.android.internal.R.style.Theme_DeviceDefault_FloatingWindowLight, true);
++            } else {
++                context.getTheme().applyStyle(com.android.internal.R.style.Theme_DeviceDefault_FloatingWindow, true);
++            }
++
++            // Create our new window
++            mWindow = PolicyManager.makeNewWindow(this);
++            mWindow.mIsFloatingWindow = true;
++            if (!isAlreadyAttachToWindow) {
++                isAlreadyAttachToWindow = true;
++                mWindow.setCloseOnTouchOutsideIfNotSet(true);
++                mWindow.setGravity(Gravity.CENTER);
++                // Scale it
++                scaleFloatingWindow();
++            }
++
++            WindowManager.LayoutParams params = mWindow.getAttributes();
++            params.privateFlags |= WindowManager.LayoutParams.PRIVATE_FLAG_NO_MOVE_ANIMATION;
++            if (android.os.Process.myUid() == android.os.Process.SYSTEM_UID) {
++                mWindow.setFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND,
++                        WindowManager.LayoutParams.FLAG_DIM_BEHIND);
++                params.alpha = 1f;
++                params.dimAmount = 0.25f;
++            }
++            mWindow.setAttributes(params);
++
++            refreshAppLayoutSize();
++            return true;
++        } else {
++            mWindow = PolicyManager.makeNewWindow(this);
++            return false;
++        }
++    }
++
++    private void scaleFloatingWindow() {
++        final IWindowManager wm = (IWindowManager) WindowManagerGlobal.getWindowManagerService();
++
++        try {
++            Rect windowBounds = wm.getFloatViewRect();
++            mWindow.setLayout(windowBounds.right - windowBounds.left,
++                    windowBounds.bottom - windowBounds.top);
++        } catch (RemoteException e) {
++            Log.e(TAG, "Could not perform float view layout", e);
++        }
++    }
++
+     /** @hide */
+     public final IBinder getActivityToken() {
+         return mParent != null ? mParent.getActivityToken() : mToken;
+diff --git a/core/java/android/app/ActivityManagerNative.java b/core/java/android/app/ActivityManagerNative.java
+index 02f7f31..26dac8e 100644
+--- a/core/java/android/app/ActivityManagerNative.java
++++ b/core/java/android/app/ActivityManagerNative.java
+@@ -683,6 +683,16 @@ public abstract class ActivityManagerNative extends Binder implements IActivityM
+             return true;
+         }
+ 
++        case GET_ACTIVITY_FOR_TASK_TRANSACTION: {
++            data.enforceInterface(IActivityManager.descriptor);
++            int task = data.readInt();
++            boolean onlyRoot = data.readInt() != 0;
++            IBinder res = getActivityForTask(task, onlyRoot);
++            reply.writeNoException();
++            reply.writeStrongBinder(res);
++            return true;
++        }
++
+         case REPORT_THUMBNAIL_TRANSACTION: {
+             data.enforceInterface(IActivityManager.descriptor);
+             IBinder token = data.readStrongBinder();
+@@ -2820,6 +2830,20 @@ class ActivityManagerProxy implements IActivityManager
+         reply.recycle();
+         return res;
+     }
++    public IBinder getActivityForTask(int task, boolean onlyRoot) throws RemoteException
++    {
++        Parcel data = Parcel.obtain();
++        Parcel reply = Parcel.obtain();
++        data.writeInterfaceToken(IActivityManager.descriptor);
++        data.writeInt(task);
++        data.writeInt(onlyRoot ? 1 : 0);
++        mRemote.transact(GET_ACTIVITY_FOR_TASK_TRANSACTION, data, reply, 0);
++        reply.readException();
++        IBinder res = reply.readStrongBinder();
++        data.recycle();
++        reply.recycle();
++        return res;
++    }
+     public void reportThumbnail(IBinder token,
+                                 Bitmap thumbnail, CharSequence description) throws RemoteException
+     {
+diff --git a/core/java/android/app/ActivityThread.java b/core/java/android/app/ActivityThread.java
+index 4825c56..09ff555 100644
+--- a/core/java/android/app/ActivityThread.java
++++ b/core/java/android/app/ActivityThread.java
+@@ -2028,6 +2028,18 @@ public final class ActivityThread {
+         return mActivities.get(token).activity;
+     }
+ 
++    protected void performFinishFloating() {
++        synchronized (mPackages) {
++            Activity a = null;
++            for (ActivityClientRecord ar : mActivities.values()) {
++                a = ar.activity;
++                if (a != null && !a.mFinished && a.getWindow() != null && a.getWindow().mIsFloatingWindow) {
++                    a.finish();
++                }
++            }
++        }
++    }
++
+     public final void sendActivityResult(
+             IBinder token, String id, int requestCode,
+             int resultCode, Intent data) {
+@@ -2770,12 +2782,12 @@ public final class ActivityThread {
+                 r.stopped = false;
+                 r.state = null;
+             } catch (Exception e) {
+-                if (!mInstrumentation.onException(r.activity, e)) {
++                /*if (!mInstrumentation.onException(r.activity, e)) {
+                     throw new RuntimeException(
+                         "Unable to resume activity "
+                         + r.intent.getComponent().toShortString()
+                         + ": " + e.toString(), e);
+-                }
++                }*/
+             }
+         }
+         return r;
+diff --git a/core/java/android/app/IActivityManager.java b/core/java/android/app/IActivityManager.java
+index 77c2ea0..235559b 100644
+--- a/core/java/android/app/IActivityManager.java
++++ b/core/java/android/app/IActivityManager.java
+@@ -125,6 +125,7 @@ public interface IActivityManager extends IInterface {
+     public StackBoxInfo getStackBoxInfo(int stackBoxId) throws RemoteException;
+     public void setFocusedStack(int stackId) throws RemoteException;
+     public int getTaskForActivity(IBinder token, boolean onlyRoot) throws RemoteException;
++    public IBinder getActivityForTask(int task, boolean onlyRoot) throws RemoteException;
+     /* oneway */
+     public void reportThumbnail(IBinder token,
+             Bitmap thumbnail, CharSequence description) throws RemoteException;
+@@ -694,4 +695,7 @@ public interface IActivityManager extends IInterface {
+     int RELEASE_PERSISTABLE_URI_PERMISSION_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION+180;
+     int GET_PERSISTED_URI_PERMISSIONS_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION+181;
+     int APP_NOT_RESPONDING_VIA_PROVIDER_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION+182;
++
++    /* FLOAT VIEW */
++    int GET_ACTIVITY_FOR_TASK_TRANSACTION = IBinder.FIRST_CALL_TRANSACTION+200;
+ }
+diff --git a/core/java/android/app/Instrumentation.java b/core/java/android/app/Instrumentation.java
+index a307a73..803a37c 100644
+--- a/core/java/android/app/Instrumentation.java
++++ b/core/java/android/app/Instrumentation.java
+@@ -1469,10 +1469,18 @@ public class Instrumentation {
+             }
+         }
+         try {
++            // we must resolve if the last intent in the stack is floating to give the flag to the previous
++            boolean floating = false;
++            if (intents.length > 0) {
++                floating = (intents[intents.length - 1].getFlags()&Intent.FLAG_FLOATING_WINDOW) == Intent.FLAG_FLOATING_WINDOW;
++            }
+             String[] resolvedTypes = new String[intents.length];
+             for (int i=0; i<intents.length; i++) {
+                 intents[i].migrateExtraStreamToClipData();
+                 intents[i].prepareToLeaveProcess();
++                if (floating) {
++                    intents[i].addFlags(Intent.FLAG_FLOATING_WINDOW);
++                }
+                 resolvedTypes[i] = intents[i].resolveTypeIfNeeded(who.getContentResolver());
+             }
+             int result = ActivityManagerNative.getDefault()
+diff --git a/core/java/android/app/TaskStackBuilder.java b/core/java/android/app/TaskStackBuilder.java
+index 3e0ac7e..f3d07cc 100644
+--- a/core/java/android/app/TaskStackBuilder.java
++++ b/core/java/android/app/TaskStackBuilder.java
+@@ -62,6 +62,7 @@ public class TaskStackBuilder {
+ 
+     private final ArrayList<Intent> mIntents = new ArrayList<Intent>();
+     private final Context mSourceContext;
++    private boolean mFirstTaskOnHome = true;
+ 
+     private TaskStackBuilder(Context a) {
+         mSourceContext = a;
+@@ -78,6 +79,10 @@ public class TaskStackBuilder {
+         return new TaskStackBuilder(context);
+     }
+ 
++    public void setTaskOnHome(boolean firstTaskOnHome) {
++        mFirstTaskOnHome = firstTaskOnHome;
++    }
++
+     /**
+      * Add a new Intent to the task stack. The most recently added Intent will invoke
+      * the Activity at the top of the final task stack.
+@@ -298,9 +303,16 @@ public class TaskStackBuilder {
+         Intent[] intents = new Intent[mIntents.size()];
+         if (intents.length == 0) return intents;
+ 
+-        intents[0] = new Intent(mIntents.get(0)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK |
+-                Intent.FLAG_ACTIVITY_CLEAR_TASK |
+-                Intent.FLAG_ACTIVITY_TASK_ON_HOME);
++        Intent newIntent = new Intent(mIntents.get(0));
++        newIntent.addFlags(
++                Intent.FLAG_ACTIVITY_NEW_TASK |
++                Intent.FLAG_ACTIVITY_CLEAR_TASK);
++
++        if (mFirstTaskOnHome) {
++            newIntent.addFlags(Intent.FLAG_ACTIVITY_TASK_ON_HOME);
++        }
++
++        intents[0] = newIntent;
+         for (int i = 1; i < intents.length; i++) {
+             intents[i] = new Intent(mIntents.get(i));
+         }
+diff --git a/core/java/android/content/Intent.java b/core/java/android/content/Intent.java
+index 99e3390..51cfd68 100644
+--- a/core/java/android/content/Intent.java
++++ b/core/java/android/content/Intent.java
+@@ -680,6 +680,19 @@ public class Intent implements Parcelable, Cloneable {
+     public static final String ACTION_POWERMENU = "android.intent.action.POWERMENU";
+ 
+     /**
++     * Registered and foreground services only
++     * @hide
++     */
++    public static final String ACTION_ACTIVITY_LAUNCH_DETECTOR =
++            "android.intent.action.ACTIVITY_LAUNCH_DETECTOR";
++
++    /**
++     * Registered and foreground services only
++     * @hide
++     */
++    public static final String ACTION_ACTIVITY_END_DETECTOR =
++            "android.intent.action.ACTIVITY_END_DETECTOR";
++    /**
+      * Global Action: Battery services start/stop
+      * @hide
+      */
+@@ -3625,6 +3638,20 @@ public class Intent implements Parcelable, Cloneable {
+      */
+     public static final int FLAG_ACTIVITY_TASK_ON_HOME = 0X00004000;
+     /**
++     * If set, this intent will always match start up as a floating window
++     * in multi window scenarios.
++     * @hide
++     */
++    public static final int FLAG_FLOATING_WINDOW = 0x00002000;
++    /**
++     * If set in an Intent passed to {@link Context#startActivity Context.startActivity()},
++     * this flag will cause a newly launching task to be resized according to the split
++     * view metrics, making it running alongside another app.
++     * @hide
++     */
++    public static final int FLAG_ACTIVITY_SPLIT_VIEW = 0x00001000;
++
++    /**
+      * If set, when sending a broadcast only registered receivers will be
+      * called -- no BroadcastReceiver components will be launched.
+      */
+diff --git a/core/java/android/text/Layout.java b/core/java/android/text/Layout.java
+index 9dfd383..1520fc3 100644
+--- a/core/java/android/text/Layout.java
++++ b/core/java/android/text/Layout.java
+@@ -134,8 +134,9 @@ public abstract class Layout {
+                      int width, Alignment align, TextDirectionHeuristic textDir,
+                      float spacingMult, float spacingAdd) {
+ 
+-        if (width < 0)
+-            throw new IllegalArgumentException("Layout: " + width + " < 0");
++        if (width < 0) {
++            width = 0;
++        }
+ 
+         // Ensure paint doesn't have baselineShift set.
+         // While normally we don't modify the paint the user passed in,
+@@ -164,7 +165,7 @@ public abstract class Layout {
+                               int width, Alignment align,
+                               float spacingmult, float spacingadd) {
+         if (width < 0) {
+-            throw new IllegalArgumentException("Layout: " + width + " < 0");
++            width = 0;
+         }
+ 
+         mText = text;
+diff --git a/core/java/android/view/IWindowManager.aidl b/core/java/android/view/IWindowManager.aidl
+index 09943df..e654ee9 100644
+--- a/core/java/android/view/IWindowManager.aidl
++++ b/core/java/android/view/IWindowManager.aidl
+@@ -283,6 +283,12 @@ interface IWindowManager
+      */
+     void setTouchExplorationEnabled(boolean enabled);
+ 
++    /** FLOAT VIEW **/
++    Rect getAppFullscreenViewRect();
++    Rect getAppMinimumViewRect();
++    Rect getFloatViewRect();
++    void notifyFloatActivityTouched(IBinder token, boolean force);
++
+     /**
+      * Tinted statusbar
+      */
+diff --git a/core/java/android/view/View.java b/core/java/android/view/View.java
+index d57a811..b092c84 100644
+--- a/core/java/android/view/View.java
++++ b/core/java/android/view/View.java
+@@ -18432,7 +18432,9 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+ 
+     /** @hide */
+     public void hackTurnOffWindowResizeAnim(boolean off) {
+-        mAttachInfo.mTurnOffWindowResizeAnim = off;
++        if (mAttachInfo != null) {
++            mAttachInfo.mTurnOffWindowResizeAnim = off;
++        }
+     }
+ 
+     /**
+diff --git a/core/java/android/view/Window.java b/core/java/android/view/Window.java
+index b3a0699..ac0bc67 100644
+--- a/core/java/android/view/Window.java
++++ b/core/java/android/view/Window.java
+@@ -149,9 +149,11 @@ public abstract class Window {
+     private int mDefaultWindowFormat = PixelFormat.OPAQUE;
+ 
+     private boolean mHasSoftInputMode = false;
+-    
++
+     private boolean mDestroyed;
+ 
++    public boolean mIsFloatingWindow = false;
++
+     // The current window attributes.
+     private final WindowManager.LayoutParams mWindowAttributes =
+         new WindowManager.LayoutParams();
+diff --git a/core/java/com/android/internal/app/ActionBarImpl.java b/core/java/com/android/internal/app/ActionBarImpl.java
+index ee993b7..18b3e94 100644
+--- a/core/java/com/android/internal/app/ActionBarImpl.java
++++ b/core/java/com/android/internal/app/ActionBarImpl.java
+@@ -428,6 +428,7 @@ public class ActionBarImpl extends ActionBar {
+     public void changeColorFromActionBar(Drawable drawable) {
+         if (!mAppColorEnabled) {
+             mActivity.sendActionColorBroadcast(-3, -3);
++            mActivity.changeFloatingWindowColor(Color.TRANSPARENT, Color.WHITE);
+             return;
+         }
+ 
+@@ -483,6 +484,16 @@ public class ActionBarImpl extends ActionBar {
+         }
+ 
+         mActivity.sendActionColorBroadcast(color, iconTint);
++
++        if (color != -3) {
++            mActivity.changeFloatingWindowColor(color, iconTint);
++        } else {
++            if (iconTint != -3) {
++                mActivity.changeFloatingWindowColor(Color.TRANSPARENT, iconTint);
++            } else {
++                mActivity.changeFloatingWindowColor(Color.TRANSPARENT, Color.WHITE);
++            }
++        }
+     }
+ 
+     public void setBackgroundDrawable(Drawable d) {
+diff --git a/core/java/com/android/internal/widget/ActionBarView.java b/core/java/com/android/internal/widget/ActionBarView.java
+index e912559..a827f6b 100644
+--- a/core/java/com/android/internal/widget/ActionBarView.java
++++ b/core/java/com/android/internal/widget/ActionBarView.java
+@@ -936,14 +936,14 @@ public class ActionBarView extends AbsActionBarView {
+ 
+         int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+         if (widthMode != MeasureSpec.EXACTLY) {
+-            throw new IllegalStateException(getClass().getSimpleName() + " can only be used " +
+-                    "with android:layout_width=\"match_parent\" (or fill_parent)");
++            //throw new IllegalStateException(getClass().getSimpleName() + " can only be used " +
++            //        "with android:layout_width=\"match_parent\" (or fill_parent)");
+         }
+ 
+         int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+         if (heightMode != MeasureSpec.AT_MOST) {
+-            throw new IllegalStateException(getClass().getSimpleName() + " can only be used " +
+-                    "with android:layout_height=\"wrap_content\"");
++            //throw new IllegalStateException(getClass().getSimpleName() + " can only be used " +
++            //        "with android:layout_height=\"wrap_content\"");
+         }
+ 
+         int contentWidth = MeasureSpec.getSize(widthMeasureSpec);
+diff --git a/core/java/com/android/internal/widget/FloatingWindowView.java b/core/java/com/android/internal/widget/FloatingWindowView.java
+new file mode 100644
+index 0000000..d34ee90
+--- /dev/null
++++ b/core/java/com/android/internal/widget/FloatingWindowView.java
+@@ -0,0 +1,260 @@
++package com.android.internal.widget;
++
++import android.annotation.SuppressLint;
++import android.app.Activity;
++import android.content.res.Resources;
++import android.content.res.XmlResourceParser;
++import android.graphics.drawable.ShapeDrawable;
++import android.graphics.drawable.shapes.RectShape;
++import android.graphics.Paint;
++import android.graphics.PorterDuff.Mode;
++import android.view.Menu;
++import android.view.MenuItem;
++import android.view.MotionEvent;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.FrameLayout;
++import android.widget.ImageButton;
++import android.widget.PopupMenu;
++import android.widget.RelativeLayout;
++
++import com.android.internal.R;
++
++@SuppressLint("ViewConstructor")
++/**
++ * @hide
++ */
++public class FloatingWindowView extends RelativeLayout {
++
++    private static final int ID_OVERLAY_VIEW = 1000000;
++
++    private final int SNAP_LEFT = 1;
++    private final int SNAP_TOP = 2;
++    private final int SNAP_RIGHT = 3;
++    private final int SNAP_BOTTOM = 4;
++
++    private Resources mResource;
++    private RelativeLayout mTitleBarHeader;
++    private ImageButton mTitleBarMin;
++    private ImageButton mTitleBarMax;
++    private ImageButton mTitleBarClose;
++    private ImageButton mTitleBarMore;
++    private View mContentViews;
++    private View mDividerViews;
++
++    public FloatingWindowView(final Activity activity, int height) {
++        super(activity);
++        mResource = activity.getResources();
++
++	XmlResourceParser parser = mResource.getLayout(R.layout.floating_window_layout);
++        activity.getLayoutInflater().inflate(parser, this);
++
++        setId(ID_OVERLAY_VIEW);
++        setIsRootNamespace(false);
++
++        mContentViews = findViewById(R.id.floating_window_background);
++        mContentViews.bringToFront();
++
++	setIsRootNamespace(true);
++
++	final FrameLayout decorView =
++                    (FrameLayout) activity.getWindow().peekDecorView().getRootView();
++
++        View child = decorView.getChildAt(0);
++        FrameLayout.LayoutParams params =
++                                 (FrameLayout.LayoutParams) child.getLayoutParams();
++        params.setMargins(0, height, 0, 0);
++        child.setLayoutParams(params);
++
++        mTitleBarHeader = (RelativeLayout) findViewByIdHelper(this, R.id.floating_window_titlebar,
++                                               "floating_window_titlebar");
++        mTitleBarMore = (ImageButton) findViewByIdHelper(mTitleBarHeader, R.id.floating_window_more,
++                                               "floating_window_more");
++        mTitleBarClose = (ImageButton) findViewByIdHelper(mTitleBarHeader, R.id.floating_window_close,
++                                               "floating_window_close");
++        mTitleBarMax = (ImageButton) findViewByIdHelper(mTitleBarHeader, R.id.floating_window_max,
++                                               "floating_window_max");
++        mTitleBarMin = (ImageButton) findViewByIdHelper(mTitleBarHeader, R.id.floating_window_min,
++                                               "floating_window_min");
++        mDividerViews = findViewByIdHelper(mTitleBarHeader, R.id.floating_window_line,
++                                               "floating_window_line");
++
++        if (mTitleBarHeader == null
++            || mTitleBarClose == null
++            || mTitleBarMore == null
++            || mTitleBarMax == null
++            || mTitleBarMin == null
++            || mDividerViews == null) {
++            return;
++        }
++
++        mTitleBarClose.setImageDrawable(mResource.getDrawable(R.drawable.ic_floating_window_close));
++        mTitleBarClose.setOnClickListener(new OnClickListener() {
++            public void onClick(View v) {
++                activity.finish();
++            }
++        });
++
++        mTitleBarMax.setImageDrawable(mResource.getDrawable(R.drawable.ic_floating_window_max));
++        mTitleBarMax.setOnClickListener(new OnClickListener() {
++            public void onClick(View v) {
++                activity.setFullscreenApp();
++            }
++        });
++
++        mTitleBarMin.setImageDrawable(mResource.getDrawable(R.drawable.ic_floating_window_min));
++        mTitleBarMin.setOnClickListener(new OnClickListener() {
++            public void onClick(View v) {
++                activity.restorePreviousLayoutApp();
++            }
++        });
++
++        mTitleBarMore.setImageDrawable(mResource.getDrawable(R.drawable.ic_floating_window_more));
++
++        final String menu_item1 = mResource.getString(R.string.floating_window_snap_top);
++        final String menu_item2 = mResource.getString(R.string.floating_window_snap_bottom);
++        final String menu_item3 = mResource.getString(R.string.floating_window_snap_left);
++        final String menu_item4 = mResource.getString(R.string.floating_window_snap_right);
++        final String menu_item5 = mResource.getString(R.string.floating_window_minimize);
++
++        final PopupMenu popupMenu = new PopupMenu(mTitleBarMore.getContext(), mTitleBarMore);
++        Menu menu = popupMenu.getMenu();
++        menu.add(menu_item1);
++        menu.add(menu_item2);
++        menu.add(menu_item3);
++        menu.add(menu_item4);
++        menu.add(menu_item5);
++
++        mTitleBarMore.setOnClickListener(new OnClickListener() {
++            public void onClick(View v) {
++                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
++                      @Override
++                      public boolean onMenuItemClick(MenuItem item) {
++                          if (item.getTitle().equals(menu_item1)) {
++                              activity.forceSnap(SNAP_TOP);
++                          } else if (item.getTitle().equals(menu_item2)) {
++                              activity.forceSnap(SNAP_BOTTOM);
++                          } else if (item.getTitle().equals(menu_item3)) {
++                              activity.forceSnap(SNAP_LEFT);
++                          } else if (item.getTitle().equals(menu_item4)) {
++                              activity.forceSnap(SNAP_RIGHT);
++                          } else if (item.getTitle().equals(menu_item5)) {
++                              activity.sendAppLaunchBroadcast();
++                          }
++                          return false;
++                      }
++                });
++                popupMenu.show();
++            }
++        });
++
++        RelativeLayout.LayoutParams header_param =
++                              (LayoutParams) mTitleBarHeader.getLayoutParams();
++        header_param.height = height;
++        mTitleBarHeader.setLayoutParams(header_param);
++        mTitleBarHeader.setOnTouchListener(new View.OnTouchListener() {
++                 @Override
++                 public boolean onTouch(View view, MotionEvent event) {
++                     switch (event.getAction()) {
++                          case MotionEvent.ACTION_DOWN:
++                              activity.setTouchViewDown(event.getX(), event.getY());
++                              activity.onUserInteraction();
++                              activity.updateFocusApp();
++                              if (!activity.getChangedPreviousRange()) {
++                                  activity.setPreviousTouchRange(event.getRawX(), event.getRawY());
++                                  activity.setChangedPreviousRange(true);
++                              }
++                              break;
++                          case MotionEvent.ACTION_MOVE:
++                              activity.changeFlagsLayoutParams();
++                              activity.setTouchViewMove(event.getRawX(), event.getRawY());
++                              if (activity.getRestorePosition()
++                                     && activity.moveRangeAboveLimit(event)) {
++                                  activity.restoreOldPosition();
++                              }
++                              activity.showSnap((int) event.getRawX(), (int) event.getRawY());
++                              break;
++                          case MotionEvent.ACTION_UP:
++                              activity.setChangedFlags(false);
++                              activity.finishSnap(activity.isValidSnap()
++                                           && activity.getTimeoutDone());
++                              activity.discardTimeout();
++                              activity.setChangedPreviousRange(false);
++                              break;
++                      }
++                      return view.onTouchEvent(event);
++                 }
++        });
++
++        ViewGroup.LayoutParams divider_param = mDividerViews.getLayoutParams();
++        divider_param.height = 2;
++        mDividerViews.setLayoutParams(divider_param);
++    }
++
++    private View findViewByIdHelper(View view, int id, String tag) {
++        View v = view.findViewById(id);
++        if (v == null) {
++            v = findViewWithTag(view, tag);
++        }
++        return v;
++    }
++
++    private View findViewWithTag(View view, String text) {
++        if (view.getTag() instanceof String) {
++            if (((String) view.getTag()).equals(text)) {
++                return view;
++            }
++        }
++        if (view instanceof ViewGroup) {
++            final ViewGroup group = (ViewGroup) view;
++            for (int i = 0; i < group.getChildCount(); ++i) {
++                 final View child = group.getChildAt(i);
++                 final View found = findViewWithTag(child, text);
++                 if (found != null) {
++                     return found;
++                 }
++            }
++        }
++        return null;
++    }
++
++    public void setFloatingBackgroundColor(int color) {
++        if (mTitleBarHeader == null
++            || mContentViews == null) {
++            return;
++        }
++        mContentViews.setBackgroundDrawable(makeOutline(color, 1));
++        mTitleBarHeader.setBackgroundColor(color);
++    }
++
++    public void setFloatingColorFilter(int color) {
++        if (mTitleBarClose == null
++            || mTitleBarMax == null
++            || mTitleBarMin == null
++            || mTitleBarMore == null
++            || mDividerViews == null) {
++            return;
++        }
++        mTitleBarMore.setColorFilter(color, Mode.SRC_ATOP);
++        mTitleBarMax.setColorFilter(color, Mode.SRC_ATOP);
++        mTitleBarMin.setColorFilter(color, Mode.SRC_ATOP);
++        mTitleBarClose.setColorFilter(color, Mode.SRC_ATOP);
++        mDividerViews.setBackgroundColor(color);
++    }
++
++    private ShapeDrawable makeOutline(int color, int thickness) {
++        ShapeDrawable rectShapeDrawable = new ShapeDrawable(new RectShape());
++        Paint paint = rectShapeDrawable.getPaint();
++        paint.setColor(color);
++        paint.setStyle(Paint.Style.STROKE);
++        paint.setStrokeWidth(thickness);
++        return rectShapeDrawable;
++    }
++
++    public static final RelativeLayout.LayoutParams getParams() {
++        final RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
++                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
++        params.setMargins(0, 0, 0, 0);
++        return params;
++    }
++}
+diff --git a/core/res/res/drawable-hdpi/ic_floating_window_close.png b/core/res/res/drawable-hdpi/ic_floating_window_close.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..905ae92aefdf311d86c969f018fbe730664fd484
+GIT binary patch
+literal 984
+zcmeAS@N?(olHy`uVBq!ia0vp^#vshW0wgD__^}X3v7|ftIx;Y9?C1WI$O_~$76-XI
+zF|0c$^AgBWNcITwWnidMV_;}#VPN<L6l!?Ez))(y!0;-8fx&791A}<MoLzx7KnbQK
+zZ+91l|Ly%}_5*pG1s;*b3=G`DAk4@xYmNj^#YImS$B>A_Z?E6Y4+#}H_Aq_=%yV0W
+zf?O{#Eo%r(zT%R}m8m7hJCR$<XQkS|+BoUlg`zHtuM{mblX5myYwL)=+LBeu@cZw^
+zJsHkxZWteLw0^#K&gOH!Z~vaV_u9FI3)`f!G@KRRd4~qeO}06|dG)L;36spLA~#L9
+zXk6Jld%=TD=Uv;_S>FU-Ts&p#j5VPmwvX2wfAe+QYr)KFkNMKGe2*pFI;N$)#ra%S
+z(B?eR{yTH)4#+M4npqg&y8W4z)8-`Bg$s@^=v%v>p*=(<SZwyyK>la!%KHR0UYVxs
+zUpw=S;fozcKhAZm4tsTQ&F@>$>o});S$SjkMMcGm8=8Nk1nNxQ6rc8#opEHA{@#~T
+zPLcC3m*pS3`fQ5$Tah0pJI=4k;a_=oUiLntH@j4($QWms-wK(tA=qPC@2o9zawp#m
+z^W2c-b#OJ`qBlEA!(~2B3j476v)x9QNpC}f9WM$xTdAJRy==8b@r=duuA{fqEDc!B
+zR)v=2{rnmJ{>KF;xo(-o!aBdNR9=o&5budT@x4mVr%5$<-`2A9=F9sGrW^Ow%s8ug
+z=P{@Cy9xX+wyyqW`f+>fvjbDUS}#uCY;AsTRn>Xd`g_a&t7*J6T_Edub;^B*+0*BK
+zaG3Y^%7G(nPgWRzQ`DL9q0M{M14s3}3$}h!jXlw}AhO?aE)%!j?u4+=lb*XT<T=dP
+zAn-2rhKNj=+wuu#q|KAWw#R<iH+#~B!~>tbO54RmWX+xkOsW(<_Ge>dR$k?G_B^i_
+zAG+?n@!qA$9Q0w$bsMe3i!Fx6o=%fi>`J*KGwH8ZUs~fPr`JIjS*Q6(ls%R|UvK_u
+zQ{{z~i=sEmomnNCJxNvGI=w7=vg!({uM;g#?h0LfTYkry$=~)So_ws<J8S3e$&(YV
+z%~*0@-z{eAtNq$X`YN>I`k5yxtzKo@_GqWZGimGpc@r1SVZE90K*KfIY{@Z)E*aN}
+z=U?5M`hGVkvHh}tt-t*Gw|SmxuYU!mc-0cuh?11Vl2ohYqEsNoU}RuuqH6#|Mj?hK
+zR)$7a#s=C3=2iv<hg;)0Q8eV{r(~v8qG&L-GPSfaGJ$B=U+yak)WG2B>gTe~DWM4f
+Da8S1^
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-hdpi/ic_floating_window_max.png b/core/res/res/drawable-hdpi/ic_floating_window_max.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..f4778a71cf293c5d1b5c0cb3fa5c6053877598df
+GIT binary patch
+literal 837
+zcmeAS@N?(olHy`uVBq!ia0vp^#vshW0wgD__^}X3v7|ftIx;Y9?C1WI$O_~$76-XI
+zF|0c$^AgBWNcITwWnidMV_;}#VPN<L6l!?Ez))(y!0;-8fx&791A}<MoLzx7KnbQK
+zZ+91l|Ly%}_5*pG1s;*bKx?mqFr$;k><XX?J5LwKkch)?ub$5qNtZeP@w)Nm*((C3
+zR0zykmLO!<`!QTVr}2`v{?uD%yZ&`6WrVr%FRBojC>P?B#D6v7s98iWhf?6Cn{z8|
+zc6dc^n(evb!r?vV&!^w}Tx)mU#@Q1DPCi%9F%d8q^)^#n>GkOO9JNVO8}ECU@4f4>
+zW0RuiBk9s=-P<o$Z9lrX)pX*O8N%N@a|+L_dR@5mg$?WO&LzjL_IeAv{jgZ`udB7z
+zl1`OlKC=TZemm8bF#U1gDluWv3ob&7m%R<1Sp8&+^gYgfLB=bCT(;zyPrR~1_?!1r
+zx!HyHookon7%o|stGDg?YmJv{JC=M~VZB1>^99MzM(1OTqJxuM&K~(Cymou$!3|OF
+zn;y)mwES_|b#qiu_1~0;j@egTn(n^hTiG=)W5@l82ZF_ICwTkL_*R-9xU^lxa8cf-
+z%O@j08y#$zdoN;Aw87%6kgOo@!}5k@uQk3*;8{I8WNPFE1NFlTGL_?YJTc#Sgi-zN
+z#H?ROS-bDbMZ8qvY`Y>8CTd%DZ;nn!XW{)@X%{BBCz?L13oSjB_qQ)AJEAMQYgei9
+zlO@W(T>Q_@m|A*BJM3wgZheJ#?&fpRN5bx}l)m9%-uYfOaBAhFIo0!3c2=|X{5-9@
+z_S~&$)<Mf_R-T`duGj5qTBA7iXYAwr$sCV1Y3F6t?U~D*bXxZIpPcDy*;*gXda+H`
+z==z!8-^K4;`SbiH=cBIZAbStn4bOJ+Wk-kPi0_>yzVnsx7wIVxTb`X)Eb09k^+8_6
+z3k3ej?_obYZJ!XAEz@jZ@=`5vjVMV;EJ?LWE=mPb3`PcqCb|YdWE5g(Vr6J#Wo)8t
+uU~Xk#V1BAv3PnS1eoAIqC7K2U11l3Vhz7ZBSF(W`7(8A5T-G@yGywp1jb+9F
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-hdpi/ic_floating_window_min.png b/core/res/res/drawable-hdpi/ic_floating_window_min.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..b99016c63ad8da8ae9d7d88915cdc4d562493a8d
+GIT binary patch
+literal 845
+zcmeAS@N?(olHy`uVBq!ia0vp^#vshW0wgD__^}X3v7|ftIx;Y9?C1WI$O_~$76-XI
+zF|0c$^AgBWNcITwWnidMV_;}#VPN<L6l!?Ez))(y!0;-8fx&791A}<MoLzx7KnbQK
+zZ+91l|Ly%}_5*pG1s;*bKx?mqFr$;k><XX?H%}MGkch)?uf6Z~36weh@%rA)#=D(1
+zwhCR#3aZPQ@r|=9$mP_#u21S-H}ATnoMv9RweG*h&zlq0sH7%E8mINMZ<d%fb8onu
+z#`n)Ju3651|GQ@Y_nPyTDW|4r1~2;`b@4v8s1-}kE$K^ZluT;3e=6Dfu{3(+yWAD3
+ze&s8Do7(NRNagf)@>nf+HEH(3TRd4)(=!~t-BvF;b~HXHnjv_T>js~5SI+k^eThiA
+zcKkxj9M^A_E5u!ePa5tqUhO_#aN^2kJyo(>E^aAaCjHQfx#&hwh)pi5Vjkzr;-kEq
+zm9k|GR|xDoFSp^oSoPaX9fJ$G+nuL%hxqK6#dg^Hao)<#uaZHN=9fQzB5=B!;|Z@-
+z%G47*+G-(D?b(rAJUHScL^WSt%XfKGwPI%RaaHEHnIYUIHxo}pO+2p_`#~@C{+}Or
+z|GM#Lt*FktGet`5_1BBlj^`R4cNOiMVe%~Wcfs3j4IU467H*u>RN7YPd$nig&ri8V
+zYc!U>nznhFwQ2F4vL%6kHeJqJ-L<y-OkV5Hgo%p;XFshey*@+SX}R0GhM&AH^M%V^
+zacwvz7=84WoJ8n5o|gezmR*|KyQpPq+nF8Nt%<4|E&F>bw+X0RyeZL<Q*g$t@}Tnc
+z+%4XYAFgPAzbei*=|u{U%P-mOv2l0VZL3&P)$bZkS8)k%vh20fvhIERX<Fm;bGzpA
+zY&szJL-pl@nStN09FR_rnf_yzM`1NvlC;d$$fK3hYrXRPN<G;l)~<NuDdq8MyF*5W
+zQ&jdVb@v~^$;*6Z8m0bH|H@n4u}%6+&E$K)WTsl;8c~vxSdwa$T$Bo=7>o=IO>_-_
+z$SB0n#LCdf%Gg}nz}(8ffK4f}9YsTKeoAIqC7K2UBP$~dh=v~FvL2uY22WQ%mvv4F
+FO#qisXX^j}
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-hdpi/ic_floating_window_more.png b/core/res/res/drawable-hdpi/ic_floating_window_more.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..94bd31f1e2cfe67bf18c3c54508bebf8a3909e95
+GIT binary patch
+literal 581
+zcmeAS@N?(olHy`uVBq!ia0vp^#vshW0wgD__^}X3v7|ftIx;Y9?C1WI$O_~$76-XI
+zF|0c$^AgBWNcITwWnidMV_;}#VPN<L6l!?Ez))(y!0;-8fx&791A}<MoLzx7KnbQK
+zZ+91l|Ly%}_5*pG1s;*b3=G`DAk4@xYmNlaXgg0A$B>A_Z>OF1I_x0Py5IB84Xszp
+zmR)dJ_`@adcZ=Q^*CVI>GWLcX<nCCpqtoo~-7QyJPt0k2nYGXLgi^cl=lOGd6efD8
+zOlt_1+m?_iR$urlujrSEM4x!um4A;!GXrJ6y-c>4XZfHfQ)V`ARSwgIr0K==i5_Nb
+zGnR$q);-FY60>#T-Xd3S_B%$4I3wq>PrJBO<#<KXnIrLQu3tWzFS^ofOY8J5t1V5Y
+z3|VqNdP2|ZF;_9v6r9-j|D4I}Qmt+2yH{F#tiS#x=h;h-$JcV|q$}#rm&`VITl1*F
+zx~=ea<itc9qh+0u=M^$<y!_ez@_)w7Cn8%Ie>|FJHO=>6gHS_xU(&VWcD}ac?yg|9
+zeNLv*vtwmv3iU<#N6WBWp0WJ7YOYaFw%((wmjgGMZ{FD%eSX2^;6J`w0}_=cdgwIg
+z>-mIKO@8tJ6EJvHOI#yLQW8s2t&)pUffR$0fuV`60T3C57@Ala8d;ebXd9SY85o>&
+n2opfjkei>9nO2FW!NAbU*aV^>M{jv5Py>UftDnm{r-UW|U9#a=
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-mdpi/ic_floating_window_close.png b/core/res/res/drawable-mdpi/ic_floating_window_close.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..34b50b5b64c4f125d51e424b9ac322e035733ca5
+GIT binary patch
+literal 709
+zcmeAS@N?(olHy`uVBq!ia0vp^Y9P$P0wkGC6jgx~OS+@4BLl<6e(pbstUx|vage(c
+z!@6@aFM%9|WRD<U28Jr2u7(x{hF?ITh8GMBr3MTPuM!v-tY$DUh!@P+6=(yLU`q0K
+zcVYP7-hXC4kjGiz5n0T@z%2~Ij105pNC1uA=jq}Y;&J@#m9u`69Yv0Pyzk8^GL?TJ
+zo1o7ZC7%El(c}h&j)#4Fltcv#l@gkE1mriga*MMvJ2iS~Ug_hW(y=d}wOp+>tvqes
+zf6L;uq7^Hb{r3s1u~5lrU$sqxQ8e@TGJ(H+yH?y2pK6g@o6|KVZ*kM|qK6jo4Lyds
+zX*FNoZrPAlen;rTja&L3`4(@I5?y=xf9C4$R?)R5Ja=dMq!(=2B0aJ6-Yn6h7ST3q
+zo;0i5Sw7$PTd&c~naw2H^y%85IlA9wO)Pk^cM4~Cs^QBE3#y~m&e|f=@AXPjregWI
+zmb^&bZ(p*%-kg&9JN=i`@%7WMrQZ=%b-cAJvwNRf^s7mUg1_%oBziC2()9DyimdB@
+zX6mT^3anoh^=khCCf{GYnZW`v1`AU3-ngZ=vSwUL_gTJ&HMP7{B5a!gm*-l)b!!6G
+zv+v58{oTj)=7t`@)b(#$BVx1`u4CIP_bTwisp3lZq8HOHF4b86=f#z&OYa)2b3eE!
+za(2RPZ_Q>s>ClZS_V2bnO1xfjYjesiw<j4VXPf4`A1m!${{ChktFP9woH-rO&n~z*
+z=dMNcr-Gcr*G@7sMlE^b&v$m!hI-lCrdPk*e`$TAw`<x>C$$V<^s1J)MwFx^mZVxG
+z7o`Fz1|tJQ6I}x!G72#?u`)2WGBVIMFt;)=P)vTEiJ~DlKP5A*61Ro`yWp!p4Gf;H
+KelF{r5}E)_Tpj`d
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-mdpi/ic_floating_window_max.png b/core/res/res/drawable-mdpi/ic_floating_window_max.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..69067ce77bad2b802ad4eda9d8f7a1e52544c835
+GIT binary patch
+literal 611
+zcmeAS@N?(olHy`uVBq!ia0vp^Y9P$P0wkGC6jgx~OS+@4BLl<6e(pbstUx|vage(c
+z!@6@aFM%9|WRD<U28Jr2u7(x{hF?ITh8GMBr3MTPuM!v-tY$DUh!@P+6=(yLU`q0K
+zcVYP7-hXC4kjGiz5m^kh_BseNI%&+V02&?R>EamTas2I-gIU3W0_`8~@68nHQi$bb
+zRBp|fob}Qv{!nY^<tuZ4=-73gpU|Peb<9anyfiU3V!NY2Zq({bk4t4S5lgx~@|t(-
+zy8mv@=jX{Y9`aaPTK?}yDN-?Vzx+QcGQi+{Q~$5YkBo&wSI*ki9c9Mjqt6}GeeH_K
+z8i^|D#VJ-dJwti9ce#1Jld2MLKY26Nan-7Y&sI;X)qZx@{F7bZq|GOrjx@Eo-Z$B6
+zR`R5=YnQXU(xf+=>{q=mGg<pO`Lbp9s#k8?j=$!r4~)HB;2eH=S918&H?Lo4?@l_G
+zzPtbUiAx*HMORNN*}COxh|QN1lNx!?zlkjKw=_DX7riy-d~hy1XXm2NToxC;#hlkI
+zk2!U1^QKj?zPYv=-gYkXXR_a8@_5^9v)YqNuPc^5?wzlGKRw~~cW0#^?^=^ptv3l|
+zo^ktF;_uXPdHKy5-G-?>Ge0buI=NQ$>60fuXZ8D(ia7&9RVD%hU$w+Fq9i4;B-JXp
+zC>2OC7#SFv=o$c#QHY_5l>rc$Ya5tb85p?Oo_vg=AvZrIGp!Q02GfMXc%TLbPgg&e
+IbxsLQ0FO5C<^TWy
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-mdpi/ic_floating_window_min.png b/core/res/res/drawable-mdpi/ic_floating_window_min.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..ec5a22a62fe3456cdcc4c73ddf135fdbdbc08d28
+GIT binary patch
+literal 625
+zcmeAS@N?(olHy`uVBq!ia0vp^Y9P$P0wkGC6jgx~OS+@4BLl<6e(pbstUx|vage(c
+z!@6@aFM%9|WRD<U28Jr2u7(x{hF?ITh8GMBr3MTPuM!v-tY$DUh!@P+6=(yLU`q0K
+zcVYP7-hXC4kjGiz5m^kh_BseNI%&+V02-a;>EamTas2J&v)&<rGRHoi-+T8$#xaG1
+zT?-X7!gcTPPMy}-7IY!xblKm^+?tsssm@McHf3Bq*6O<ZLfVoeVtJP?CoM6wDNpOT
+zb@zQE_w?U?_Srm_(PL$0{XbdZ&(-fHVsC98YpE=>pUEidEE{VP;~pa3tNB%3`fJG9
+z6BEnSQ{HZ8m~Qj!$koTqkuG6nH&;x4HOujkWGM5!Otuvj3$oP1l&`&6e7!09og`!U
+z6`K;@rqAzI-}-#Wt^RD(t03V#?rF}a&FAxECEb`ayDlr@>*F5@lZvCCU+J;Fu;I<_
+z%|^Pa#c4~g>D=h!IW|j`DPA|}(3AvM?$pa^DRGr~(Nk`i-QK0^E%f*uN7$R0CD%3c
+zujaa%Pf^cqKfKI!rS!5TWoI?2^AAqnq4E68Ka1Vmay#{In7?RFx8we)oVib@(f9K`
+zkGb3O_U&Gkz4`uIt!2EGnRn~HSMc9lxK3sB>jmLEmaqBT{!LI<L*qyIAEp(NDc3A}
+z|K$OrLbb#-q9i4;B-JXpC>2OC7#SFv=o$c#QHY_5m4T_1k%6{>xs`!|PVH<x6b-rg
+aDVb@NxHZHoC{F@vVDNPHb6Mw<&;$TIaQJ)x
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-mdpi/ic_floating_window_more.png b/core/res/res/drawable-mdpi/ic_floating_window_more.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..3c7d1ef2ab025018f998e58d577a4086312e0b86
+GIT binary patch
+literal 486
+zcmeAS@N?(olHy`uVBq!ia0vp^Y9P$P0wkGC6jgx~OS+@4BLl<6e(pbstUx|vage(c
+z!@6@aFM%9|WRD<U28Jr2u7(x{hF?ITh8GMBr3MTPuM!v-tY$DUh!@P+6=(yLU`q0K
+zcVYP7-hXC4kjGiz5n0T@z%2~Ij105pNB{-zd%8G=cpQIw#n#)|P~zyv_;pQ}qPgbI
+znZv^Fs_~bpsV-BUJzP+*t7`{G)Dne9-fO2^vUo91`()6L^pizD>@CkLE(~2Q8tftY
+z$o|Z0Ubb&vSo7n8kD07_d?KLW^$~BqHQD#&s@yaqt}3Jztv{P@R+{Sj^jPq>D<_so
+z#iyy>>UkD1ts~NUi?W2Z@yT{xUW2mv{K{Mr%bJ%Z&ezjnDNnt1=fcq|<#n?i4gOmv
+z>#Zrv3IFioO0nLW#|Id0uM6Iwmj8MCQP)m0`<PXs=WLg(@x8Ssccsss<!4;?zYSX(
+z=4UT3#YAWFx7t5Iud0@~MwFx^mZVxG7o`Fz1|tJQ6I}x!G72#?u`)2VGP2Y*Ft;)=
+p*!lF{Ula|w`6-!cmFOBwtV~QH8q~Jt^#C<6c)I$ztaD0e0suBpt9AeY
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xhdpi/ic_floating_window_close.png b/core/res/res/drawable-xhdpi/ic_floating_window_close.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..b9d236f73729ff77bee2e5c11ea5838d585742e0
+GIT binary patch
+literal 1306
+zcmeAS@N?(olHy`uVBq!ia0vp^z97uO0wg^d6s>_2OS+@4BLl<6e(pbstUx|vage(c
+z!@6@aFM%9|WRD=Ajw&?<hK3dfhF?ITh8GMBr3MTPuM!v-tY$DUh!@P+6=(yLU`q0K
+zcVYP7-hXC4kjGiz5n0T@z%2~Ij105pNC2%8_H=O!$+-9S#?4|;SCQi%&p&zAru#-n
+zIb@?alTs^-j+i%>OP8+V1TFbLum5m+tlM-liDl^$0WKCsO+m&;*5)Rb6W8ogBqniG
+zq_2CJS?6C|z3X?)Z=d_ce&#!io}QYj9lkCG$f(Ngy2Q_^$-eCEf1l8s2R7+tL|hEW
+zUX`?S8B^#hUmyPIT)G@rqMir8*P4>7B{1`~aP-xst*iZZPT6?vW=>P#uDRT`>+d->
+zp3w1?Dp|Sh_}mFe=a)K5zgM2^bKrIq%ky|v@s2YaVw)E&+Pdm(+3K3>OK)dyUTbP7
+zx80%p=c>3gO@W!~BAXW}NaSv1JNl`2sq^mF;;|o#4?5jGTWuJlVC1{_X;zZ`*PXAr
+z?mcwcz3@qiO>MvikIj~g78WqRGL1@f;Sr0u^6Josg{<LkN}|?tIBr$lHrrN0@4)O?
+zYs`!ocQ3gbX`9KEueGJ)!KSeEBnz&4mvgQa?_dbd*;v(ZTra!WEq_<f1fwTzUv@5e
+z67wmuOUh*CMSk&wO}^J8=5F}6>g>uAxzi19F6-yNDN+3B+51$=xBH;lt&FvXCvRta
+z`Ms*+wKQqlov^&S^QT}~hLNan&X%}bp}p&}Ki7(F_;ORBjeGAo%?v~Rf6iATmL5;^
+zUK2jMWY4-M6=oZJTqoWL?V5HY(a*;H$wcW_J^s7yeA&5pUW(~NN!_;SRY%XHOv`YP
+z+O_z}>^BKFyB0lP{i-Zz^=dX(zJl}bP94y4QeJeNGj|=Y=dJH=%5F^ddbUnL_uC!I
+za8b70UTMFVJz6()r!Ho7i%Oe#%hCAkhEqEx?2Py?e}Ty~Eb~*FUoCT-&xV7?kA-b}
+z!vzw{`ZUeX);UI`{hrsKX_C4Dk86FG9p#<4f6mwA3Oh=VrL>>!5YvcCoBh)B^8H)2
+zY4d-3o>q}wYpC^l-sveTn66ICGE@E-vAnFhbjSKr&s3CsHoEp7p0`hJJ!>JSrLkw=
+z+`b!&nfYZ)4m7LeUCI2?C>Z%?+S4y_xf|0q3vW2yck5~1oUd{>-ala2QPmrk*67_S
+zrcvQu98-88`1qTm-SRp@h4<~+ZG70i%EzCwd!O#a{kMJ3+h@lgE8XqW+-bSQZ%2N=
+zvz+Sw<=NX}O09N?WHdJYEQ=5bmzbz`eCizmwkFr}4{nvJ9r@U4!W*-T-|DUzw{U-{
+z<-#Z14<>NNwD0XxDVR8OmTs7Y-j<KACKp_OJ7tpge>U$2b=z-mms6ki>I$#?t@Gb@
+zcYCat-?H;h(gv1y+w^Oed#il95bpOv?|wwr1ZmFxEw49URk6=1efcz@us%<7<)%x*
+z>@}7O!BbN8TbX*kE!?@UEbe|if1iG;*^7b`^F^=ze)^y_Fwsln^&|av@uF(&8($i~
+z%-)^mm%r+e*7iSF`Cl(T1IwkL?7H+9yTWsKg$1pjj{(aJ)e_f;l9a@fRIB8oR3OD*
+zWMF8bYXC$>A%-SahQ?N==Gq44Rt5(8{mgbK8glbfGSe#2G#Hp!8A3JuwO{xLsDZ)L
+L)z4*}Q$iB}b1p?K
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xhdpi/ic_floating_window_max.png b/core/res/res/drawable-xhdpi/ic_floating_window_max.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..d1c9a52ccb288233c3aa4a29b7176294d4463cb6
+GIT binary patch
+literal 1077
+zcmeAS@N?(olHy`uVBq!ia0vp^z97uO0wg^d6s>_2OS+@4BLl<6e(pbstUx|vage(c
+z!@6@aFM%9|WRD=Ajw&?<hK3dfhF?ITh8GMBr3MTPuM!v-tY$DUh!@P+6=(yLU`q0K
+zcVYP7-hXC4kjGiz5m^kh_BseNI%&+VU|?X@^K@|x$+-9SMy&rFSCIoB?=#$<HFZ-!
+zT$Imh)3s9BHJwL}EZG+2c&n*l+58jhlaqF@FbrHBsK23gON_^*8O!v8dcqWsIAtal
+z9`Cjb>4>q}ofD-0tp2;rY|GE{jf>Bn)9Z9mn&_b-1fl-jZ*gPo;^n_}$zkK7zt{fc
+z?KL!%-gJQDF58}W^SIU4nkwZqZ(4SI#&!|c+$Qghj77fIyaKM@Buiri4>~UXCGu$6
+z<?j+#Hm$9>&w12cf4<?P)U*Aj*@C-zEEa0qve<c0P`)DY^0`mjF7w{i2{X-Com_pe
+zect_<F?X{9mz>_P-FD{Q9nX^Qrxy9f89kd2us>$5s8r&5#rGMag0bd#QSD8S=Q(tT
+zul;r8ZA5zeD(&o<H#SWEmXc&X$2j-y{9}JJLIvJ_YBSvXYR%Ou^DT!bOrC92c5cg8
+zhVq&$FQ8SISIqmhY=yJ#rt6aLZ%ww13%@78{bBWapY-_f-Ll4OR?pjWb%mJgt-06M
+z>sA*A-xQsyaOzf0$>|-Ep#dd_7JR!EUEtem=yY-d<I)`Me9PyXzHTUelyR}Cb{ET=
+zYpb)a-Eucwc{OUGYWkP#YL&8kQ+?KW?w<5pETk!-G&HjNIZNQlhS2**rbcCLW!vg;
+zQj^*1=40K|>7fpj7ytSiW%O{-?;p2&nl{f9z3{T9OFnDj>6Ky&&o21BC0+8j>&+=%
+zW}(X!YolCZpFQ?x+?W(~Fp}M|Uol(lQS%=2jek-%9ADrlJM%_v>g4_-FTQL^3oWt!
+zV34&S>D2RgDXXhbb=bA;5q=h$ZJJ?lT4M9L*=K&;aGs{4#4$}b?}|&p*%tjX+#P%p
+zpQG;0Jym_}7tf0mVfNW~Qp%2*{WyGmR%x{1!&lRaY9CbZ=DDf;XhLB5-#Z>#m9307
+zT0YkM`@Ac*@Zy}j(`mYYe@8m(c^=KWe5<0xo2kcE=|*plzB=cVS<;4QZPK@Sc^}2b
+zXBK*C&-yfP+n%h+->h>EvIgJo%+1?*``Z2ZeIW%t7w62Z34WGiZ200@>dE|TuYXET
+zyBpf4wew}viYJnj!`EJ8yzS1>lyy&HXL^^l(Cs~Y+Wsa^fG1sG3TFPvo<5cBg6HhI
+zDZuQcTH+c}l9E`GYL#4+3Zxi}3=B<l4S>if#L&bFhztz04a|Y0gNVjj6b-rgDVb@N
+cXc~Y@4UHiho^5(}5vYN|)78&qol`;+0AQr!r~m)}
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xhdpi/ic_floating_window_min.png b/core/res/res/drawable-xhdpi/ic_floating_window_min.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..fcadd56a30270d56fb6e8fcadda0629072cefaea
+GIT binary patch
+literal 1091
+zcmeAS@N?(olHy`uVBq!ia0vp^z97uO0wg^d6s>_2OS+@4BLl<6e(pbstUx|vage(c
+z!@6@aFM%9|WRD=Ajw&?<hK3dfhF?ITh8GMBr3MTPuM!v-tY$DUh!@P+6=(yLU`q0K
+zcVYP7-hXC4kjGiz5m^kh_BseNI%&+VU|?Xj@pN$v$+-9S+ROZ@t|AQ|@86lW^n%xt
+zpeYT<nml>CybLtDg?J5vws9S^ztG<{t?ASxk3}xb6LoV^J2Mnc1c`8lu)N#*xZOHI
+zU+B}lr_E}gYpSQu{QP8&G51U#waF(_j3Cs%+bv1^kGiqjq_!<8p2BrL*2p)#wu9}c
+z*RL<H^{kd{eo$|$dpZA3|GJ~kjIL*PZv7>*^>%OBs=aTG_r80z{q9lqleTN0Oyu*f
+z$y&JJI`8i87M-XIt!dn8701Q6|HWS82tIr1>ydm_X0u3*gkAd<W$GQ16;<`w>T`3$
+z>Hbu`8R@Ol@047KSo7zzu8_{An+{S1$CrLvCHtxCdP&E!$aOipwM&a^+18rH9%Y*U
+zd!^r-ROh(sid<?nuRS(SaOM8BIdORi%f*uSx1Rjmb?NNZ2yv^g%MaP6G%Dt+Y~20r
+z_S3NHtE<jQ6h=t~P8T)1c5>=nfBw|(a%nn7=iR)09ShDg#_tX+sTB|54(XLNTgH_Z
+zk=neo|H(S57v`zLeU{qGz8CXE<w;dM*q|S)`C@6sdd{SynJnwII@2OlZ#}FM*^%9U
+z`q}TpoY$RvbGDU+y%Gv6JhP%Z>7(t&g?EjEHr)tgURnO`Mt=LpB|;@DRtdSJMW(M!
+zcX7Pw8E<jDBSM*dYRI+AZF2)1O)h6ipXqFJ2npjg-6$vj%fbKD4awVc^L^Ghnlg#1
+z_gc)ZT6eqp+HB#gU!2zd+`abW#Pr}*`VywgZoT+;Z9&u|>%7^;t2%b=&A(7QIV^kn
+zRJ&`l<6?|n?eKd1JnwMU$~Eda#ryo$ZJ(wTtZTkPzw>X_m4|6ZW(8HNnA>>f^?t2V
+z4%XRvklXXks=0hs7kqly%=(W%O*&e5P+d%O;c=<Z>a*rgj()kkV|~s0xXshgrychU
+zpKG4$%N|^CTC?`o<;(BOZly2!$)LMJb?5e+i}R%xN8NU1+5TqJ@wZ`2CRej3udqnF
+z(Rw9%sY=;xyZc+zt}TiZ(6G*WGEwH>{C%6RpB3}IRCFz?$i3%>>f2rQKM&?TUfX55
+z*Xi}sq??Hs)4K1JAMgv063;%)bII~T<^dsLzMXgGW!_$7=Ba<z=9c5_D?U-|$VvLo
+z{~yw!2e_Ko*uFRc%v`D^t`Q|Ei6yC4$wjF^iowXh&_ve&h>SuEO{{>(z*yVB+{(b9
+p@Q)ENuOey4%}>cpt3=ZPRBCDl(O_`kd=F3qgQu&X%Q~loCIHY=;`{&r
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xhdpi/ic_floating_window_more.png b/core/res/res/drawable-xhdpi/ic_floating_window_more.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..296267df8a6979524503218fdc89f57da8f02051
+GIT binary patch
+literal 659
+zcmeAS@N?(olHy`uVBq!ia0vp^z97uO0wg^d6s>_2OS+@4BLl<6e(pbstUx|vage(c
+z!@6@aFM%9|WRD=Ajw&?<hK3dfhF?ITh8GMBr3MTPuM!v-tY$DUh!@P+6=(yLU`q0K
+zcVYP7-hXC4kjGiz5n0T@z%2~Ij105pNC1uQ@pN$v$+-7+#$GRGM-jL4IY~^r0)-CB
+z3mkM>%OWUJ)A-<U)GOtVuBA~cB4)_1W>NM^N}9B>AaW9i(4E~C-PNmRJ}XK~e^>LS
+zAyJ|YjMyw@8riijnv|7Sw8G)+VIk?1#h!Dy>?$9wX_4ZdVyPm0_MPRjNqbiGM0LuB
+zEn<FtqS&|e(T~5gXDJ^zZX}sjaPlgX;MS93Ur!!=a^=pA8=hOHpK1H{viC*Jg=s&s
+zjIwyooe+Ff_+`f<Hz(g$akEo(gI)(c4m~^dbbr4}VAv|&pon~}EGBl}tVTI5k;hT_
+zdtRKpP}z5*_lk`FoB-dr5H08LH+qaqX0m5R8JQ>;Pg`ht`ohYB{b&AloN43xA#?JA
+zoUAR-l9SnIFIZmVWPA~{P&M#|QAqDBpSG?ojqMYXY-*P;UCzrj#WLYU!+RdvrR!Ah
+ziQi10t>}DU<0<9yvy8ULpH4X$-R9T&i0AEbE5GnIvz-b{1pdB>En5BjQ^N#ZFNQ5U
+z7q8TJmc13Hdb#qnDbHa8Fk<+@By&6e>3;ng_Q1$eEpd$~Nl7e8wMs5Z1yT$~28JfO
+z20&yKVrXIoL<VNs2If`<2Fgcdr=w`d%}>cpt3=aaU}0r!0MU?AvSJTV1B0ilpUXO@
+GgeCwHoBc`v
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xxhdpi/ic_floating_window_close.png b/core/res/res/drawable-xxhdpi/ic_floating_window_close.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..e43322ba34550f797ddbc16634532321ba1d92c5
+GIT binary patch
+literal 2095
+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
+DF~{B`
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xxhdpi/ic_floating_window_max.png b/core/res/res/drawable-xxhdpi/ic_floating_window_max.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..14df1ef53c9c9167d8c3e83ebf989c459efa8f5e
+GIT binary patch
+literal 1755
+zcmZ`(c~sJg7XDc-X<0MklI2!9X5(lGqQPj53vLOxBq?fXA|kGdDCROfpUaq~4Y)7a
+zFr$uxifbw+Rt)wuND-CBo->-|nz<la<nrjezur6Vo%7xMo%`MMo%_eV=jM5#UDef2
+zr~v?=?(XL7BWLpGIHV}g3LerJIVnaspd0|8weavxsM2Sd?BnVPG{4YWlov)}Zaydg
+zxM>Oix3U00CYNq4000FH081eNfG7h1o%kxYx1GFk;QA$3XJ9|Kkl!z_RO8(O<g?Vp
+zpF_dXtda@<N@MQM4wtEuE0Zh9mwEb+*N3M}OpGv@cJ4Dqj#9m%`U5_SNW05JP8y7r
+z{Jm@rShbbs(^xfHVxVR=TzFw5#IHchOi2|_ujaVjde?UtPw$PguU_T!CMOX%-}d)N
+zDtj)OXyiGc{?YA!(i>G1X)Jih2qpG|en*egu$7A2*AXOTjrPXvHkWz*8_0&M0x=5e
+z)iQ=Q?|AT+(v;=#MvThRFS=&_ul3C}bIz$Feird$cZi`oes^$fQwi$FENyUg0tpRV
+zP_dtDeK4;!BfN9q%VU!dgla3=chY2gMA*SRWKv-BsaX-ec4cnjYR5pu-!kVZcgpB*
+zyDDQ^xK$?tC$P|aRCI1<g+TzGhWc|O@z=#4CcL2c%2*b#Gwr<lZ9E&_C|x#8bVT!;
+zji@LnxvgluJeql}3<rIVi&WM)Oz~&7zH@nfAA~;Xrd4yDX^Uzer%pISAKUdd4)O;x
+zT>F-TBcR3zQBoYS;VyCZ1M^p-a{rJnO2rUf18KM{%-`<(5E*b(+jF~Q|GcL1#&CXu
+zp#YFjsJyHqd_QJ$K}#`$^2rX$Aa~&69QTYX+6hMMjT3wg+Cs8t>A5UL<?4;VzH&8f
+z;x_bdO8(q$aJ}ZZR6p_(R(QjnbKGMLq>6m@XtkyxAul`WW`Gli0VgS!H3@DC8shcW
+z^4_Z$!_&O`xm)a#FM}CVht*PU&(-O=@y7}2Joq1PB|p-*3}o&*vc0HYr!#<7PefNJ
+z+#jETfqX2H^_$&QC3<zkhAWa)PZsuNjCV$5N09YFyRcGqoKM$n^ukuaTLJm>%)^5h
+z63$SVLXU6xL*@#62k7G<eH)T{_VNP|B3+gR%B;*-b?Wjhwn;(u!ax2n2kMX{QY|FY
+zXA!lZ_C!)|lWpWNHr+#~B4(77WT3BCPxyj5fWC;aIF-ksvxm5_qI3goR5ziff8kO!
+zs*^hY(9R}ucJv6?wHIYt7ps0grtp%M3&i_42{tZeURX=sZ5XBZg;p-ks!!c`)1g3!
+zY#08*N2FkragdRaf_eVPs(D{*w#wg252b~%^01}hPoHQ8YVJO1GL&!jNN=>Ym2nF0
+zii`*uiN0&09p#<CeYW*UHe(Aq^&vM_iRt4SCW?VgbJuoX`pT>_$mfHSUskD#9U>BY
+z?j03-wG735lQ!}`ScSsAFFUJtb+aJ6d~oxe{a#~SqrQRYpGUx=qpZpzwqF7|nddau
+zVB-&F+}4ij^ZGNxaS)jrG~~$($cU_-YkeWKA|B0MMzd1CChy!pmrAs*>GE6Re-E{O
+zVx2!qH`TqJW3RPkDe1(%tP`U_?VXdfl(nKN@!K8aiNPFxxfjDbTcwpo-}(UY<sN7%
+zDU6|GYYAWE6hPZ%5Yvw=BMd)o%wtWFtCE-{&jrrHEn{|Y@e8R=>Z`Wa=+WN{1&a?~
+zMSCof2ER(JO7|R)RR0`X;P0?N5r)(<RFSS}(=LRLQc`=jtcZgXC@)9bz@cZ(QHK|w
+zaRyGtk170h);(Sfx7Ru#`DwvkMcOUDz&h^E*Qvo$_8-y34Z4H*i0YKr=8u*$=G#i`
+zny#_vH*40CBn1~EA5L|&ZJl_8zsoFsYJXAS0`<M(VY!$Q-F@B6gNyo}9MtZRu58e+
+zY<j3mAN*vZ&CrI}I+is_D)Bj4N5fDMP<Gdgyzgo_xu-F2a&{}C-BI*8QhOF@e$HM;
+zdd!w)_K}~8)|C#DAg`enquqplr|{HL8jE@I`4TLDZ>eR~YV-JFBD;h&4(cYcxH5ws
+z#1*~g@9-|Z7+BWtc1#QGTJfx<cow5^Y8@2VWF0KjGK4Q(r8Hq#swh+U&7LbY`$WYu
+z(oX^JWuxOl49zOaBb+J??G`-sI)P1RQud**&Lh9~3@-S8AN3#m@O`D-Od%_f+C!H=
+z{jU;{{)za|#BfAdLb#j&2-wQn0xSpQvXwPL4j9B7Y>NPcYoctY|HBXyhmRzr{I>y&
+XfWZH4ST#)G$qj%z67AgV7?SxfUav0`
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xxhdpi/ic_floating_window_min.png b/core/res/res/drawable-xxhdpi/ic_floating_window_min.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..b6853be6123289793b625d960851349ba18f1d41
+GIT binary patch
+literal 1724
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/drawable-xxhdpi/ic_floating_window_more.png b/core/res/res/drawable-xxhdpi/ic_floating_window_more.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..bda06b478daa783863016909f019fcc27e618016
+GIT binary patch
+literal 854
+zcmeAS@N?(olHy`uVBq!ia0vp^#URYV0wfu|zUBfcmUKs7M+SzC{oH>NSwX_ZLGDfr
+z>(0r%1acITJ%W507^>757#dm_7=8hT8eT9klo~KFyh>nTu$sZZAYL$MSD+10f+@+{
+z-G$+Qd;gjJKptm-M<mcLZeb8+WSBKa0;s~@)5S5Q;?~<+=e<P|WsZOR{`pMbMzy3T
+ziUvzGqBWcS<|$2hVgEwlOMKaj<Ejh$*tS-$adzQYbZM4Y?lx<G_U)<HW;QPP(`Wa)
+z^6gv8A2s%y`|Lg^I=CQ#zTz<H)+qLj8Ld7UkBYhZUKD0*-hc8a&x8$!w4Q(Rwy^uu
+z#oR5Jv(MMPyFKPO|Nf%}F?*d)d4Kb-WBC8x{*iui+~P*{gO5EuJU*N$oImX-gPEbC
+z?p|A_%X9iQ)6R+*t93~Vub#0k>FSFOnWCSq|4#B~jNNxc*m$w??D;#A=ljn4crb}!
+zwei~IiKbB|ZtS)%Hl2&E5>uAAE6teDc5~zXd2+FAX39P%J}-+r^Jzib?e00c!bSN}
+zfA6!jv)_rh<&b9F6u8;_l##jT@k!R(Zai3h^jq1~>&fdxu6^Hmg8Q3a9mDEV*_}rd
+zFHZd*^FYpAhiyZZ(@d?stg>f!Xsr*}D5d4!m~I4d=+AgxpQm3}r<iUK4u5*}ne1Mt
+z6X$K7?mfx?G>|EKOVRYJ8xLpSl5xAj%G#i2yz{S&y@katri({pT-WAT3tG17{J(U~
+zq9NAjct~QUgZ-jY+7733^B(>TE@QMXt8~7e!~}H7O!pYwHSY}17k4iJn)>umRzlxy
+zok*U5_t9||QmmHExH@$@=T>&Zz%w(hNMC+acv<V&_DiR<lV{(pNJ=ZYp|R)b)Q_F&
+z8$;u!R~$I?LU;XQ;kQ<@zXVGi855?p-jTGrklO7S!k-j+e8GyijVriT#rY#ewcpD7
+zfvYNZ-He<O2TX6OC9V-ADTyViR>?)FK#IZ0z|ch30Emo23{9+n$kamHz}(8fz*;(E
+l9g2qB{FKbJN^}i|R>p=94gY6^GXXU)c)I$ztaD0e0swcfU4j4r
+
+literal 0
+HcmV?d00001
+
+diff --git a/core/res/res/layout/floating_window_layout.xml b/core/res/res/layout/floating_window_layout.xml
+new file mode 100644
+index 0000000..ee53d51
+--- /dev/null
++++ b/core/res/res/layout/floating_window_layout.xml
+@@ -0,0 +1,100 @@
++<?xml version="1.0" encoding="utf-8"?>
++<RelativeLayout xmlns:tools="http://schemas.android.com/tools"
++    xmlns:android="http://schemas.android.com/apk/res/android"
++    android:layout_width="wrap_content"
++    android:layout_height="wrap_content"
++    android:background="@null" >
++
++    <View
++        android:id="@+id/floating_window_background"
++        android:layout_width="wrap_content"
++        android:layout_height="wrap_content"
++        android:layout_alignParentBottom="true"
++        android:layout_alignParentLeft="true"
++        android:layout_alignParentRight="true"
++        android:layout_alignParentTop="true"
++        android:clickable="false"
++        android:focusable="false"
++        android:focusableInTouchMode="false" />
++
++    <RelativeLayout
++        android:id="@+id/floating_window_titlebar"
++        android:layout_width="wrap_content"
++        android:layout_height="0dp"
++        android:background="#f000"
++        android:tag="floating_window_titlebar" >
++
++        <ImageButton
++            android:id="@+id/floating_window_close"
++            style="@android:style/Widget.Holo.Button.Borderless"
++            android:layout_width="wrap_content"
++            android:layout_height="match_parent"
++            android:layout_alignParentBottom="true"
++            android:layout_alignParentRight="true"
++            android:layout_alignParentTop="true"
++            android:adjustViewBounds="true"
++            android:paddingLeft="0dp"
++            android:paddingRight="0dp"
++            android:scaleType="fitCenter"
++            android:src="#FFF"
++            android:tag="floating_window_close" />
++
++        <ImageButton
++            android:id="@+id/floating_window_min"
++            style="@android:style/Widget.Holo.Button.Borderless"
++            android:layout_width="wrap_content"
++            android:layout_height="match_parent"
++            android:layout_alignParentBottom="true"
++            android:layout_alignParentTop="true"
++            android:layout_toLeftOf="@+id/floating_window_close"
++            android:adjustViewBounds="true"
++            android:paddingLeft="0dp"
++            android:paddingRight="0dp"
++            android:scaleType="fitCenter"
++            android:src="#FFF"
++            android:tag="floating_window_min" />
++
++        <ImageButton
++            android:id="@+id/floating_window_max"
++            style="@android:style/Widget.Holo.Button.Borderless"
++            android:layout_width="wrap_content"
++            android:layout_height="match_parent"
++            android:layout_alignParentBottom="true"
++            android:layout_alignParentTop="true"
++            android:layout_toLeftOf="@+id/floating_window_min"
++            android:adjustViewBounds="true"
++            android:paddingLeft="0dp"
++            android:paddingRight="0dp"
++            android:scaleType="fitCenter"
++            android:src="#FFF"
++            android:tag="floating_window_max" />
++
++        <ImageButton
++            android:id="@+id/floating_window_more"
++            style="@android:style/Widget.Holo.Button.Borderless"
++            android:layout_width="wrap_content"
++            android:layout_height="match_parent"
++            android:layout_alignParentBottom="true"
++            android:layout_alignParentLeft="true"
++            android:layout_alignParentTop="true"
++            android:adjustViewBounds="true"
++            android:paddingLeft="0dp"
++            android:paddingRight="2dp"
++            android:scaleType="fitCenter"
++            android:src="#FFF"
++            android:tag="floating_window_more" />
++
++         <View
++            android:id="@+id/floating_window_line"
++            android:layout_width="wrap_content"
++            android:layout_height="2dp"
++            android:layout_alignParentBottom="true"
++            android:layout_alignParentLeft="true"
++            android:layout_alignParentRight="true"
++            android:background="#fff"
++            android:minHeight="5dp"
++            android:tag="floating_window_line" />
++
++    </RelativeLayout>
++
++</RelativeLayout>
+diff --git a/core/res/res/values/custom_strings.xml b/core/res/res/values/custom_strings.xml
+index 8040a7a..05dbc8c 100644
+--- a/core/res/res/values/custom_strings.xml
++++ b/core/res/res/values/custom_strings.xml
+@@ -59,6 +59,13 @@
+     <!-- status message in phone options dialog for when mobile data is off -->
+     <string name="global_actions_mobile_data_off_status">Mobile data is OFF</string>
+ 
++    <!-- Floating Window -->
++    <string name="floating_window_snap_top">Snap top</string>
++    <string name="floating_window_snap_bottom">Snap bottom</string>
++    <string name="floating_window_snap_left">Snap left</string>
++    <string name="floating_window_snap_right">Snap right</string>
++    <string name="floating_window_minimize">Minimize</string>
++
+     <!-- Immersive mode confirmation: Pick confirmation window from bottom when status bar is visible -->
+     <string name="immersive_mode_confirmation_bottom">Swipe up from the bottom to exit full screen.</string>
+ 
+diff --git a/core/res/res/values/custom_symbols.xml b/core/res/res/values/custom_symbols.xml
+index 58e790d..b808e07 100644
+--- a/core/res/res/values/custom_symbols.xml
++++ b/core/res/res/values/custom_symbols.xml
+@@ -16,6 +16,32 @@
+ */
+ -->
+ <resources>
++  <!-- We don't want to publish private symbols in android.R as part of the
++       SDK.  Instead, put them here. -->
++  <private-symbols package="com.android.internal" />
++
++  <!-- Private symbols that we need to reference from framework code.  See
++       frameworks/base/core/res/MakeJavaSymbols.sed for how to easily generate
++       this.
++  -->
++  <!-- Floating Window -->
++  <java-symbol type="drawable" name="ic_floating_window_close" />
++  <java-symbol type="drawable" name="ic_floating_window_max" />
++  <java-symbol type="drawable" name="ic_floating_window_min" />
++  <java-symbol type="drawable" name="ic_floating_window_more" />
++  <java-symbol type="id" name="floating_window_background" />
++  <java-symbol type="id" name="floating_window_titlebar" />
++  <java-symbol type="id" name="floating_window_close" />
++  <java-symbol type="id" name="floating_window_max" />
++  <java-symbol type="id" name="floating_window_min" />
++  <java-symbol type="id" name="floating_window_more" />
++  <java-symbol type="id" name="floating_window_line" />
++  <java-symbol type="layout" name="floating_window_layout" />
++  <java-symbol type="string" name="floating_window_snap_top"/>
++  <java-symbol type="string" name="floating_window_snap_bottom"/>
++  <java-symbol type="string" name="floating_window_snap_left"/>
++  <java-symbol type="string" name="floating_window_snap_right"/>
++  <java-symbol type="string" name="floating_window_minimize"/>
+   <!-- AOKP -->
+   <java-symbol type="string" name="animation_default"/>
+   <java-symbol type="string" name="animation_fade"/>
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+index fb75df4..b5c98ab 100644
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -1260,6 +1260,8 @@
+   <java-symbol type="style" name="Theme.DeviceDefault.Dialog.NoFrame" />
+   <java-symbol type="style" name="Theme.IconMenu" />
+   <java-symbol type="style" name="Theme.Panel.Volume" />
++  <java-symbol type="style" name="Theme.DeviceDefault.FloatingWindow" />
++  <java-symbol type="style" name="Theme.DeviceDefault.FloatingWindowLight" />
+ 
+   <java-symbol type="attr" name="mediaRouteButtonStyle" />
+   <java-symbol type="attr" name="externalRouteEnabledDrawable" />
+diff --git a/core/res/res/values/themes_device_defaults.xml b/core/res/res/values/themes_device_defaults.xml
+index 721c6b0..ea3cdd7 100644
+--- a/core/res/res/values/themes_device_defaults.xml
++++ b/core/res/res/values/themes_device_defaults.xml
+@@ -519,6 +519,31 @@ easier.
+     <style name="Theme.DeviceDefault.Light.Panel" parent="Theme.Holo.Light.Panel" >
+ 
+     </style>
++
++    <style name="Theme.DeviceDefault.FloatingWindow">
++        <item name="android:windowIsFloating">false</item>
++        <item name="android:windowIsTranslucent">true</item>
++        <item name="android:windowFrame">@null</item>
++        <item name="android:windowContentOverlay">@null</item>
++        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
++        <item name="android:windowActionModeOverlay">true</item>
++        <item name="android:windowCloseOnTouchOutside">true</item>
++        <item name="android:windowFullscreen">false</item>
++        <item name="android:windowSoftInputMode">stateAlwaysHidden|adjustPan</item>
++    </style>
++
++    <style name="Theme.DeviceDefault.FloatingWindowLight" parent="Theme.Holo.Light.Dialog">
++        <item name="android:windowIsFloating">false</item>
++        <item name="android:windowIsTranslucent">true</item>
++        <item name="android:windowFrame">@null</item>
++        <item name="android:windowContentOverlay">@null</item>
++        <item name="android:windowAnimationStyle">@android:style/Animation.Dialog</item>
++        <item name="android:windowActionModeOverlay">true</item>
++        <item name="android:windowCloseOnTouchOutside">true</item>
++        <item name="android:windowFullscreen">false</item>
++        <item name="android:windowSoftInputMode">stateAlwaysHidden|adjustPan</item>
++     </style>
++
+     <!-- DeviceDefault theme for windows that want to have the user's selected wallpaper appear
+     behind them. -->
+     <style name="Theme.DeviceDefault.Wallpaper" parent="Theme.Holo.Wallpaper" >
+diff --git a/policy/src/com/android/internal/policy/impl/PhoneWindow.java b/policy/src/com/android/internal/policy/impl/PhoneWindow.java
+index 38a8e06..fb3bc4e 100644
+--- a/policy/src/com/android/internal/policy/impl/PhoneWindow.java
++++ b/policy/src/com/android/internal/policy/impl/PhoneWindow.java
+@@ -39,6 +39,7 @@ import com.android.internal.widget.ActionBarContextView;
+ import com.android.internal.widget.ActionBarOverlayLayout;
+ import com.android.internal.widget.ActionBarView;
+ 
++import android.app.Activity;
+ import android.app.KeyguardManager;
+ import android.content.ComponentName;
+ import android.content.ContentResolver;
+@@ -2909,7 +2910,7 @@ public class PhoneWindow extends Window implements MenuBuilder.Callback {
+         void updateWindowResizeState() {
+             Drawable bg = getBackground();
+             hackTurnOffWindowResizeAnim(bg == null || bg.getOpacity()
+-                    != PixelFormat.OPAQUE);
++                    != PixelFormat.OPAQUE || mIsFloatingWindow);
+         }
+         
+         @Override
+diff --git a/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java b/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
+index b4e0b46..1d24540 100644
+--- a/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
++++ b/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
+@@ -3666,6 +3666,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         }
+     }
+ 
++    public Rect getContentRect() {
++        return new Rect(mContentLeft, mContentTop, mContentRight, mContentBottom);
++    }
++
+     /** {@inheritDoc} */
+     @Override
+     public void layoutWindowLw(WindowState win, WindowManager.LayoutParams attrs,
+diff --git a/services/input/InputWindow.cpp b/services/input/InputWindow.cpp
+index fe61918..7217850 100644
+--- a/services/input/InputWindow.cpp
++++ b/services/input/InputWindow.cpp
+@@ -36,7 +36,8 @@ bool InputWindowInfo::frameContainsPoint(int32_t x, int32_t y) const {
+ bool InputWindowInfo::isTrustedOverlay() const {
+     return layoutParamsType == TYPE_INPUT_METHOD
+             || layoutParamsType == TYPE_INPUT_METHOD_DIALOG
+-            || layoutParamsType == TYPE_SECURE_SYSTEM_OVERLAY;
++            || layoutParamsType == TYPE_SECURE_SYSTEM_OVERLAY
++            || layoutParamsType == TYPE_SYSTEM_ALERT;
+ }
+ 
+ bool InputWindowInfo::supportsSplitTouch() const {
+diff --git a/services/java/com/android/server/am/ActiveServices.java b/services/java/com/android/server/am/ActiveServices.java
+index 17bb3e0..d66c5a7 100644
+--- a/services/java/com/android/server/am/ActiveServices.java
++++ b/services/java/com/android/server/am/ActiveServices.java
+@@ -203,6 +203,7 @@ public final class ActiveServices {
+                     Slog.i(TAG, "Waited long enough for: " + r);
+                     mStartingBackground.remove(i);
+                     N--;
++                    i--;
+                 }
+             }
+             while (mDelayedStartList.size() > 0
+diff --git a/services/java/com/android/server/am/ActivityManagerService.java b/services/java/com/android/server/am/ActivityManagerService.java
+index c6a97b4..b26c01f 100644
+--- a/services/java/com/android/server/am/ActivityManagerService.java
++++ b/services/java/com/android/server/am/ActivityManagerService.java
+@@ -7253,6 +7253,24 @@ public final class ActivityManagerService extends ActivityManagerNative
+         }
+     }
+ 
++    public IBinder getActivityForTask(int task, boolean onlyRoot) {
++        final ActivityStack mainStack = mStackSupervisor.getFocusedStack();
++        synchronized(this) {
++            ArrayList<ActivityStack> stacks = mStackSupervisor.getStacks();
++            for (ActivityStack stack : stacks) {
++                TaskRecord r = stack.taskForIdLocked(task);
++
++                if (r != null && r.getTopActivity() != null) {
++                    return r.getTopActivity().appToken;
++                } else {
++                    return null;
++                }
++            }
++        }
++        return null;
++    }
++
++
+     // =========================================================
+     // THUMBNAILS
+     // =========================================================
+@@ -12423,6 +12441,7 @@ public final class ActivityManagerService extends ActivityManagerNative
+         app.foregroundActivities = false;
+         app.hasShownUi = false;
+         app.hasAboveClient = false;
++        app.hasClientActivities = false;
+ 
+         mServices.killServicesLocked(app, allowRestart);
+ 
+diff --git a/services/java/com/android/server/am/ActivityRecord.java b/services/java/com/android/server/am/ActivityRecord.java
+index 49f29fe..c3fb9ef 100644
+--- a/services/java/com/android/server/am/ActivityRecord.java
++++ b/services/java/com/android/server/am/ActivityRecord.java
+@@ -25,6 +25,7 @@ import com.android.server.am.ActivityStack.ActivityState;
+ import android.app.ActivityOptions;
+ import android.app.ResultInfo;
+ import android.content.ComponentName;
++import android.content.Context;
+ import android.content.Intent;
+ import android.content.pm.ActivityInfo;
+ import android.content.pm.ApplicationInfo;
+@@ -44,6 +45,7 @@ import android.util.EventLog;
+ import android.util.Log;
+ import android.util.Slog;
+ import android.util.TimeUtils;
++import android.view.ContextThemeWrapper;
+ import android.view.IApplicationToken;
+ import android.view.WindowManager;
+ 
+@@ -136,6 +138,11 @@ final class ActivityRecord {
+     boolean frozenBeforeDestroy;// has been frozen but not yet destroyed.
+     boolean immersive;      // immersive mode (don't interrupt if possible)
+     boolean forceNewConfig; // force re-create with new config next time
++
++    boolean topIntent;
++    boolean newAppTask;
++    boolean floatingWindow;
++
+     int launchCount;        // count of launches since last state
+     long lastLaunchTime;    // time of last lauch of this activity
+ 
+@@ -384,6 +391,9 @@ final class ActivityRecord {
+         // lacking in state to be removed if it dies.
+         haveState = true;
+ 
++        topIntent = false;
++        floatingWindow = false;
++
+         if (aInfo != null) {
+             if (aInfo.targetActivity == null
+                     || aInfo.launchMode == ActivityInfo.LAUNCH_MULTIPLE
+@@ -416,6 +426,45 @@ final class ActivityRecord {
+                         ? android.R.style.Theme
+                         : android.R.style.Theme_Holo;
+             }
++
++            // This is where the package gets its first context from the attribute-cache
++            // In order to hook its attributes we set up our check for floating multi windows here.
++            topIntent = true;
++            ActivityStack stack = supervisor.getFocusedStack();
++            floatingWindow = (intent.getFlags() & Intent.FLAG_FLOATING_WINDOW) == Intent.FLAG_FLOATING_WINDOW;
++            TaskRecord baseRecord = stack != null && stack.mTaskHistory.size() > 0 ? stack.mTaskHistory.get(stack.mTaskHistory.size() -1) : null;
++
++            if (baseRecord != null) {
++                ActivityRecord record = baseRecord.mActivities.size() > 0 ? baseRecord.mActivities.get(baseRecord.mActivities.size() - 1) : null;
++                final boolean floats = (baseRecord.intent.getFlags() & Intent.FLAG_FLOATING_WINDOW) == Intent.FLAG_FLOATING_WINDOW;
++                final boolean taskAppAffinity = record == null ? false : aInfo.applicationInfo.packageName.equals(record.packageName);
++                newAppTask = (intent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) == Intent.FLAG_ACTIVITY_NEW_TASK;
++                // If the current intent is not a new task we will check its top parent.
++                // Perhaps it started out as a multiwindow in which case we pass the flag on
++                if (floats && (!newAppTask || taskAppAffinity)) {
++                    intent.addFlags(Intent.FLAG_FLOATING_WINDOW);
++                    // Flag the activity as sub-task
++                    topIntent = false;
++                    floatingWindow = true;
++                }
++            }
++            // If this is a multiwindow activity we prevent it from messing up the history stack,
++            // like jumping back home, killing the current activity or polluting recents
++            if (floatingWindow) {
++                intent.setFlags(intent.getFlags() & ~Intent.FLAG_ACTIVITY_TASK_ON_HOME);
++                intent.setFlags(intent.getFlags() & ~Intent.FLAG_ACTIVITY_SINGLE_TOP);
++                intent.addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION);
++                // If this is the mother-intent we make it volatile
++                if (topIntent) {
++                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
++                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
++                }
++                // Change theme
++                realTheme = com.android.internal.R.style.Theme_DeviceDefault_FloatingWindow;
++            } else {
++                intent.setFlags(intent.getFlags() & ~Intent.FLAG_FLOATING_WINDOW);
++            }
++
+             if ((aInfo.flags&ActivityInfo.FLAG_HARDWARE_ACCELERATED) != 0) {
+                 windowFlags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
+             }
+@@ -428,7 +477,8 @@ final class ActivityRecord {
+                 processName = aInfo.processName;
+             }
+ 
+-            if (intent != null && (aInfo.flags & ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS) != 0) {
++            if ((intent != null && (aInfo.flags & ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS) != 0)
++                || floatingWindow) {
+                 intent.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+             }
+ 
+diff --git a/services/java/com/android/server/am/ActivityStack.java b/services/java/com/android/server/am/ActivityStack.java
+index 596c84d..4d3d8fc 100644
+--- a/services/java/com/android/server/am/ActivityStack.java
++++ b/services/java/com/android/server/am/ActivityStack.java
+@@ -38,6 +38,7 @@ import static com.android.server.am.ActivityStackSupervisor.HOME_STACK_ID;
+ 
+ import com.android.internal.os.BatteryStatsImpl;
+ import com.android.internal.util.Objects;
++import com.android.server.AttributeCache;
+ import com.android.server.Watchdog;
+ import com.android.server.am.ActivityManagerService.ItemMatcher;
+ import com.android.server.wm.AppTransition;
+@@ -74,6 +75,7 @@ import android.os.Trace;
+ import android.os.UserHandle;
+ import android.util.EventLog;
+ import android.util.Slog;
++import android.view.ContextThemeWrapper;
+ import android.view.Display;
+ 
+ import java.io.FileDescriptor;
+@@ -145,7 +147,7 @@ final class ActivityStack {
+      * The back history of all previous (and possibly still
+      * running) activities.  It contains #TaskRecord objects.
+      */
+-    private ArrayList<TaskRecord> mTaskHistory = new ArrayList<TaskRecord>();
++    ArrayList<TaskRecord> mTaskHistory = new ArrayList<TaskRecord>();
+ 
+     /**
+      * Used for validating app tokens with window manager.
+@@ -1138,14 +1140,15 @@ final class ActivityStack {
+                     // Aggregate current change flags.
+                     configChanges |= r.configChangeFlags;
+ 
+-                    if (r.fullscreen) {
++                    if (r.fullscreen && !r.floatingWindow) {
+                         // At this point, nothing else needs to be shown
+                         if (DEBUG_VISBILITY) Slog.v(TAG, "Fullscreen: at " + r);
+                         behindFullscreen = true;
++                        showHomeBehindStack = false;
+                     } else if (isActivityOverHome(r)) {
+                         if (DEBUG_VISBILITY) Slog.v(TAG, "Showing home: at " + r);
+                         showHomeBehindStack = true;
+-                        behindFullscreen = !isHomeStack();
++                        behindFullscreen = !isHomeStack() && r.frontOfTask && task.mOnTopOfHome;
+                     }
+                 } else {
+                     if (DEBUG_VISBILITY) Slog.v(
+@@ -1285,11 +1288,12 @@ final class ActivityStack {
+ 
+         final TaskRecord nextTask = next.task;
+         final TaskRecord prevTask = prev != null ? prev.task : null;
++        boolean isFloatingWindow = prev != null ? prev.floatingWindow : false;
+         if (prevTask != null && prevTask.mOnTopOfHome && prev.finishing && prev.frontOfTask) {
+             if (DEBUG_STACK)  mStackSupervisor.validateTopActivitiesLocked();
+             if (prevTask == nextTask) {
+                 prevTask.setFrontOfTask();
+-            } else if (prevTask != topTask()) {
++            } else if (prevTask != topTask() && !isFloatingWindow) {
+                 // This task is going away but it was supposed to return to the home task.
+                 // Now the task above it has to return to the home task instead.
+                 final int taskNdx = mTaskHistory.indexOf(prevTask) + 1;
+@@ -1377,7 +1381,7 @@ final class ActivityStack {
+         // We need to start pausing the current activity so the top one
+         // can be resumed...
+         boolean pausing = mStackSupervisor.pauseBackStacks(userLeaving);
+-        if (mResumedActivity != null) {
++        if (mResumedActivity != null && !next.floatingWindow) {
+             pausing = true;
+             startPausingLocked(userLeaving, false);
+             if (DEBUG_STATES) Slog.d(TAG, "resumeTopActivityLocked: Pausing " + mResumedActivity);
+@@ -1459,7 +1463,7 @@ final class ActivityStack {
+             if (prev.finishing) {
+                 if (DEBUG_TRANSITION) Slog.v(TAG,
+                         "Prepare close transition: prev=" + prev);
+-                if (mNoAnimActivities.contains(prev)) {
++                if (mNoAnimActivities.contains(prev) || next.floatingWindow) {
+                     anim = false;
+                     mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, false);
+                 } else {
+@@ -1471,7 +1475,7 @@ final class ActivityStack {
+                 mWindowManager.setAppVisibility(prev.appToken, false);
+             } else {
+                 if (DEBUG_TRANSITION) Slog.v(TAG, "Prepare open transition: prev=" + prev);
+-                if (mNoAnimActivities.contains(next)) {
++                if (mNoAnimActivities.contains(next) || next.floatingWindow) {
+                     anim = false;
+                     mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, false);
+                 } else {
+@@ -1603,7 +1607,7 @@ final class ActivityStack {
+                 if (!next.hasBeenLaunched) {
+                     next.hasBeenLaunched = true;
+                 } else  if (SHOW_APP_STARTING_PREVIEW && lastStack != null &&
+-                        mStackSupervisor.isFrontStack(lastStack)) {
++                        mStackSupervisor.isFrontStack(lastStack) && !next.floatingWindow) {
+                     mWindowManager.setAppStartingWindow(
+                             next.appToken, next.packageName, next.theme,
+                             mService.compatibilityInfoForPackageLocked(next.info.applicationInfo),
+@@ -1636,7 +1640,7 @@ final class ActivityStack {
+             if (!next.hasBeenLaunched) {
+                 next.hasBeenLaunched = true;
+             } else {
+-                if (SHOW_APP_STARTING_PREVIEW) {
++                if (SHOW_APP_STARTING_PREVIEW && !next.floatingWindow) {
+                     mWindowManager.setAppStartingWindow(
+                             next.appToken, next.packageName, next.theme,
+                             mService.compatibilityInfoForPackageLocked(
+@@ -1757,11 +1761,11 @@ final class ActivityStack {
+             }
+             if (DEBUG_TRANSITION) Slog.v(TAG,
+                     "Prepare open transition: starting " + r);
+-            if ((r.intent.getFlags()&Intent.FLAG_ACTIVITY_NO_ANIMATION) != 0) {
++            if (((r.intent.getFlags()&Intent.FLAG_ACTIVITY_NO_ANIMATION) != 0) || (r.floatingWindow && !r.topIntent)) {
+                 mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, keepCurTransition);
+                 mNoAnimActivities.add(r);
+             } else {
+-                mWindowManager.prepareAppTransition(newTask
++                mWindowManager.prepareAppTransition(newTask && !r.floatingWindow
+                         ? AppTransition.TRANSIT_TASK_OPEN
+                         : AppTransition.TRANSIT_ACTIVITY_OPEN, keepCurTransition);
+                 mNoAnimActivities.remove(r);
+@@ -1784,7 +1788,7 @@ final class ActivityStack {
+                     doShow = topRunningNonDelayedActivityLocked(null) == r;
+                 }
+             }
+-            if (SHOW_APP_STARTING_PREVIEW && doShow) {
++            if (SHOW_APP_STARTING_PREVIEW && doShow && !r.floatingWindow) {
+                 // Figure out if we are transitioning from another activity that is
+                 // "has the same starting icon" as the next one.  This allows the
+                 // window manager to keep the previous window it had previously
+@@ -2430,7 +2434,7 @@ final class ActivityStack {
+             boolean endTask = index <= 0;
+             if (DEBUG_VISBILITY || DEBUG_TRANSITION) Slog.v(TAG,
+                     "Prepare close transition: finishing " + r);
+-            mWindowManager.prepareAppTransition(endTask
++            mWindowManager.prepareAppTransition(endTask && !r.floatingWindow
+                     ? AppTransition.TRANSIT_TASK_CLOSE
+                     : AppTransition.TRANSIT_ACTIVITY_CLOSE, false);
+ 
+@@ -2514,6 +2518,7 @@ final class ActivityStack {
+         // activity into the stopped state and then finish it.
+         if (localLOGV) Slog.v(TAG, "Enqueueing pending finish: " + r);
+         mStackSupervisor.mFinishingActivities.add(r);
++        r.resumeKeyDispatchingLocked();
+         mStackSupervisor.getFocusedStack().resumeTopActivityLocked(null);
+         return r;
+     }
+@@ -2610,6 +2615,9 @@ final class ActivityStack {
+         if (mResumedActivity == r) {
+             mResumedActivity = null;
+         }
++        if (mPausingActivity == r) {
++            mPausingActivity = null;
++        }
+         if (mService.mFocusedActivity == r) {
+             mService.mFocusedActivity = null;
+         }
+@@ -3030,7 +3038,7 @@ final class ActivityStack {
+         if (numTasks == 0 || index < 0)  {
+             // nothing to do!
+             if (reason != null &&
+-                    (reason.intent.getFlags()&Intent.FLAG_ACTIVITY_NO_ANIMATION) != 0) {
++                    ((reason.intent.getFlags()&Intent.FLAG_ACTIVITY_NO_ANIMATION) != 0 || reason.floatingWindow)) {
+                 ActivityOptions.abort(options);
+             } else {
+                 updateTransitLocked(AppTransition.TRANSIT_TASK_TO_FRONT, options);
+@@ -3046,7 +3054,7 @@ final class ActivityStack {
+ 
+         if (DEBUG_TRANSITION) Slog.v(TAG, "Prepare to front transition: task=" + tr);
+         if (reason != null &&
+-                (reason.intent.getFlags()&Intent.FLAG_ACTIVITY_NO_ANIMATION) != 0) {
++                ((reason.intent.getFlags()&Intent.FLAG_ACTIVITY_NO_ANIMATION) != 0 || reason.floatingWindow)) {
+             mWindowManager.prepareAppTransition(AppTransition.TRANSIT_NONE, false);
+             ActivityRecord r = topRunningActivityLocked(null);
+             if (r != null) {
+@@ -3148,9 +3156,7 @@ final class ActivityStack {
+ 
+         final TaskRecord task = mResumedActivity != null ? mResumedActivity.task : null;
+         if (task == tr && task.mOnTopOfHome || numTasks <= 1) {
+-            if (task != null) {
+-                task.mOnTopOfHome = false;
+-            }
++            tr.mOnTopOfHome = false;
+             return mStackSupervisor.resumeHomeActivity(null);
+         }
+ 
+diff --git a/services/java/com/android/server/am/ActivityStackSupervisor.java b/services/java/com/android/server/am/ActivityStackSupervisor.java
+index d616f1b..74e1f64 100644
+--- a/services/java/com/android/server/am/ActivityStackSupervisor.java
++++ b/services/java/com/android/server/am/ActivityStackSupervisor.java
+@@ -1438,6 +1438,7 @@ public final class ActivityStackSupervisor {
+             r.resultTo = null;
+         }
+ 
++        boolean switchStackFromBg = false;
+         boolean addingToTask = false;
+         boolean movedHome = false;
+         TaskRecord reuseTask = null;
+@@ -1499,6 +1500,11 @@ public final class ActivityStackSupervisor {
+                             }
+                             options = null;
+                         }
++                    } else {
++                        switchStackFromBg = lastStack != targetStack;
++                        if (DEBUG_TASKS) Slog.d(TAG, "Caller " + sourceRecord
++                                    + " is not top task, it may not move " + r
++                                    + " to front, switchStack=" + switchStackFromBg);
+                     }
+                     // If the caller has requested that the target task be
+                     // reset, then do so.
+@@ -1606,6 +1612,10 @@ public final class ActivityStackSupervisor {
+                         // don't use that intent!)  And for paranoia, make
+                         // sure we have correctly resumed the top activity.
+                         if (doResume) {
++                            if (switchStackFromBg) {
++                                moveHomeStack(lastStack.isHomeStack());
++                                targetStack = lastStack;
++                            }
+                             targetStack.resumeTopActivityLocked(null, options);
+                         } else {
+                             ActivityOptions.abort(options);
+diff --git a/services/java/com/android/server/wm/WindowManagerService.java b/services/java/com/android/server/wm/WindowManagerService.java
+index da55129..14b21c4 100644
+--- a/services/java/com/android/server/wm/WindowManagerService.java
++++ b/services/java/com/android/server/wm/WindowManagerService.java
+@@ -153,6 +153,7 @@ import java.util.Date;
+ import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.Iterator;
++import java.util.Map;
+ import java.util.List;
+ 
+ /** {@hide} */
+@@ -3512,8 +3513,9 @@ public class WindowManagerService extends IWindowManager.Stub
+             Task newTask = mTaskIdToTask.get(groupId);
+             if (newTask == null) {
+                 newTask = createTask(groupId, oldTask.mStack.mStackId, oldTask.mUserId, atoken);
++            } else {
++                newTask.mAppTokens.add(atoken);
+             }
+-            newTask.mAppTokens.add(atoken);
+         }
+     }
+ 
+@@ -9926,7 +9928,15 @@ public class WindowManagerService extends IWindowManager.Stub
+ 
+             if (DEBUG_FOCUS_LIGHT) Slog.v(TAG, "findFocusedWindow: Found new focus @ " + i +
+                         " = " + win);
+-            return win;
++
++            // Dispatch to this window if it is wants key events.
++            if (win.canReceiveKeys()) {
++                if (mFocusedApp != null) {
++                    return win;
++                } else {
++                    return win;
++                }
++            }
+         }
+ 
+         if (DEBUG_FOCUS_LIGHT) Slog.v(TAG, "findFocusedWindow: No focusable windows.");
+@@ -10924,6 +10934,120 @@ public class WindowManagerService extends IWindowManager.Stub
+         mLastStatusBarVisibility |= flag;
+     }
+ 
++    private void moveTaskAndActivityToFront(int taskId) {
++        try {
++            moveTaskToTop(taskId);
++            mActivityManager.moveTaskToFront(taskId, 0, null);
++        } catch (RemoteException e) {
++            Log.e(TAG, "Cannot move the activity to front", e);
++        }
++    }
++
++    @Override
++    public void notifyFloatActivityTouched(IBinder token, boolean force) {
++        synchronized(mWindowMap) {
++              boolean changed = false;
++              if (token != null) {
++                  AppWindowToken newFocus = findAppWindowToken(token);
++                  if (newFocus == null) {
++                      Slog.w(TAG, "Attempted to set focus to non-existing app token: " + token);
++                      return;
++                  }
++                  changed = mFocusedApp != newFocus;
++                  mFocusedApp = newFocus;
++                  if (changed || force) {
++                      if (DEBUG_FOCUS) Slog.v(TAG, "Changed app focus to " + token);
++                      mInputMonitor.setFocusedAppLw(newFocus);
++                  }
++              }
++
++              if (changed || force) {
++                  final long origId = Binder.clearCallingIdentity();
++                  updateFocusedWindowLocked(UPDATE_FOCUS_NORMAL, true);
++                  mH.removeMessages(H.REPORT_FOCUS_CHANGE);
++                  mH.sendEmptyMessage(H.REPORT_FOCUS_CHANGE);
++                  Binder.restoreCallingIdentity(origId);
++              }
++       }
++
++       if (!force) {
++           final long origId = Binder.clearCallingIdentity();
++           try {
++                int taskId = mActivityManager.getTaskForActivity(token, false);
++                moveTaskAndActivityToFront(taskId);
++           } catch (RemoteException e) {
++                Log.e(TAG, "Cannot move the activity to front", e);
++           }
++           Binder.restoreCallingIdentity(origId);
++       }
++    }
++
++    @Override
++    public Rect getAppFullscreenViewRect() {
++        final DisplayContent displayContent = getDefaultDisplayContentLocked();
++        final boolean rotated = (mRotation == Surface.ROTATION_90
++                || mRotation == Surface.ROTATION_270);
++        final int realdw = rotated ?
++                displayContent.mBaseDisplayHeight : displayContent.mBaseDisplayWidth;
++        final int realdh = rotated ?
++                displayContent.mBaseDisplayWidth : displayContent.mBaseDisplayHeight;
++
++        int dw = realdw;
++        int dh = realdh;
++
++        // Get application display metrics.
++        int appWidth = mPolicy.getNonDecorDisplayWidth(dw, dh, mRotation);
++        int appHeight = mPolicy.getNonDecorDisplayHeight(dw, dh, mRotation);
++
++        return new Rect(0, 0, appWidth, appHeight);
++    }
++
++    @Override
++    public Rect getAppMinimumViewRect() {
++        final DisplayContent displayContent = getDefaultDisplayContentLocked();
++        final boolean rotated = (mRotation == Surface.ROTATION_90
++                || mRotation == Surface.ROTATION_270);
++        final int realdw = rotated ?
++                displayContent.mBaseDisplayHeight : displayContent.mBaseDisplayWidth;
++        final int realdh = rotated ?
++                displayContent.mBaseDisplayWidth : displayContent.mBaseDisplayHeight;
++
++        int dw = realdw;
++        int dh = realdh;
++
++        // Get application display metrics.
++        int appWidth = mPolicy.getNonDecorDisplayWidth(dw, dh, mRotation);
++        int appHeight = mPolicy.getNonDecorDisplayHeight(dw, dh, mRotation);
++
++        return new Rect(0, 0, (int)(appWidth * 0.5f) , (int)(appHeight * 0.5f));
++    }
++
++    @Override
++    public Rect getFloatViewRect() {
++        final DisplayContent displayContent = getDefaultDisplayContentLocked();
++        final boolean rotated = (mRotation == Surface.ROTATION_90
++                || mRotation == Surface.ROTATION_270);
++        final int realdw = rotated ?
++                displayContent.mBaseDisplayHeight : displayContent.mBaseDisplayWidth;
++        final int realdh = rotated ?
++                displayContent.mBaseDisplayWidth : displayContent.mBaseDisplayHeight;
++        final boolean nativeLandscape =
++                (displayContent.mBaseDisplayHeight < displayContent.mBaseDisplayWidth);
++
++        int dw = realdw;
++        int dh = realdh;
++
++        // Get application display metrics.
++        int appWidth = mPolicy.getNonDecorDisplayWidth(dw, dh, mRotation);
++        int appHeight = mPolicy.getNonDecorDisplayHeight(dw, dh, mRotation);
++
++        if (nativeLandscape ^ rotated) {
++            return new Rect(0, 0, (int)(appWidth * 0.7f), (int)(appHeight * 0.9f));
++        } else {
++            return new Rect(0, 0, (int)(appWidth * 0.9f) , (int)(appHeight * 0.7f));
++        }
++    }
++
+     private float getDegreesForRotation(int value) {
+         switch (value) {
+             case Surface.ROTATION_90:
+-- 
+1.7.9.5
+

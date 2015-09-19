@@ -1,0 +1,123 @@
+From 22e64a053bc62be0d462ed7578d629a426f07dc8 Mon Sep 17 00:00:00 2001
+From: Steve Spear <stephen.k.spear@gmail.com>
+Date: Sat, 28 Dec 2013 16:07:10 +0700
+Subject: [PATCH 1/2] [2/3]Settings: All in One Animation Control
+
+Allow configure System, ListView, Scroll, and Keyboard Animation
+
+base from
+AOKP Animation Control https://github.com/AOKP/frameworks_base/commit/015c9cf00a8e49aea22d70b57b0af87c9134be73
+thanks to Steve Spear <stephen.k.spear@gmail.com>
+
+ListView Animation https://gerrit.omnirom.org/#/c/2863/
+thanks to jkl5616<jkl5616@gmail.com>
+
+Keyboard Animation https://github.com/zst123/XuiMod/commit/975cd531a9a847769b2af306495643a55ec44aaa
+thanks to zst123 for patches
+
+with slight modification to OmniRom
+
+Scrolling Animation https://github.com/zst123/XuiMod/commit/48c180cfa762617f59b4ceb3da50a6c28befe24f
+thanks to zst123 for patches
+
+Conflicts:
+	res/values/custom_strings.xml
+
+Patchset 16: Fixes force close when selecting Animation Control in
+Settings with new tablet mode merge.
+
+Change-Id: I0c3714e389ccaf2b674cb7933f6c292d20651a79
+---
+ AndroidManifest.xml                    |   15 +++++++++++++++
+ res/values/custom_strings.xml          |    1 +
+ res/xml/settings_headers.xml           |    7 +++++++
+ src/com/android/settings/Settings.java |    3 +++
+ 4 files changed, 26 insertions(+)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index cd4f8d2..d9d8e7e 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -671,6 +671,21 @@
+                 android:resource="@id/interface_notification_panel" />
+         </activity>
+ 
++        <activity android:name="Settings$AnimationInterfaceSettingsActivity"
++                android:label="@string/interface_animation_title"
++                android:taskAffinity=""
++                android:excludeFromRecents="true">
++            <intent-filter>
++                <action android:name="android.intent.action.MAIN" />
++                <category android:name="android.intent.category.DEFAULT" />
++                <category android:name="com.android.settings.SHORTCUT" />
++            </intent-filter>
++            <meta-data android:name="com.android.settings.FRAGMENT_CLASS"
++                android:value="org.omnirom.omnigears.interfacesettings.AnimationInterfaceSettings" />
++            <meta-data android:name="com.android.settings.TOP_LEVEL_HEADER_ID"
++                android:resource="@id/interface_animation" />
++        </activity>
++
+         <activity android:name="Settings$MoreInterfaceSettingsActivity"
+                 android:label="@string/interface_more_title"
+                 android:taskAffinity=""
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index efad20a..256c99e 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -108,6 +108,7 @@
+     <string name="interface_bars_title">Bars</string>
+     <string name="interface_menus_title">Menus</string>
+     <string name="interface_notification_panel_title">Notification drawer</string>
++    <string name="interface_animation_title">Animation control</string>
+ 
+     <!-- Battery Icon selection -->
+     <string name="pref_battery_indicator_title">Battery indicator</string>
+diff --git a/res/xml/settings_headers.xml b/res/xml/settings_headers.xml
+index d69dc5e..c0049ae 100644
+--- a/res/xml/settings_headers.xml
++++ b/res/xml/settings_headers.xml
+@@ -91,6 +91,13 @@
+         android:icon="@drawable/ic_settings_actived" />
+ 
+     <header
++        android:id="@+id/interface_animation"
++        android:title="@string/interface_animation_title"
++        android:breadCrumbTitle="@string/interface_animation_title"
++        android:fragment="org.omnirom.omnigears.interfacesettings.AnimationInterfaceSettings"
++        android:icon="@drawable/ic_rom_control_animations" />
++
++    <header
+         android:id="@+id/interface_more"
+         android:title="@string/interface_more_title"
+         android:breadCrumbTitle="@string/interface_more_title"
+diff --git a/src/com/android/settings/Settings.java b/src/com/android/settings/Settings.java
+index a243a85..4286a7d 100644
+--- a/src/com/android/settings/Settings.java
++++ b/src/com/android/settings/Settings.java
+@@ -101,6 +101,7 @@ import org.omnirom.omnigears.ButtonSettings;
+ import org.omnirom.omnigears.interfacesettings.BarsSettings;
+ import org.omnirom.omnigears.interfacesettings.MenusSettings;
+ import org.omnirom.omnigears.interfacesettings.NotificationPanelSettings;
++import org.omnirom.omnigears.interfacesettings.AnimationInterfaceSettings;
+ import org.omnirom.omnigears.chameleonos.ActiveDisplaySettings;
+ import org.omnirom.omnigears.interfacesettings.MoreInterfaceSettings;
+ import com.brewcrewfoo.performance.activities.MainActivity;
+@@ -382,6 +383,7 @@ public class Settings extends PreferenceActivity
+         BarsSettings.class.getName(),
+         MenusSettings.class.getName(),
+         NotificationPanelSettings.class.getName(),
++        AnimationInterfaceSettings.class.getName(),
+         ActiveDisplaySettings.class.getName(),
+         MoreInterfaceSettings.class.getName(),
+         AppOpsSummary.class.getName(),
+@@ -1156,6 +1158,7 @@ public class Settings extends PreferenceActivity
+     public static class BarsSettingsActivity extends Settings { /* empty */ }
+     public static class MenusSettingsActivity extends Settings { /* empty */ }
+     public static class NotificationPanelSettingsActivity extends Settings { /* empty */ }
++    public static class AnimationInterfaceSettingsActivity extends Settings { /* empty */ }
+     public static class MoreInterfaceSettingsActivity extends Settings { /* empty */ }
+     public static class ActiveDisplaySettingsActivity extends Settings { /* empty */ }
+     public static class DisplaySettingsActivity extends Settings { /* empty */ }
+-- 
+1.7.9.5
+

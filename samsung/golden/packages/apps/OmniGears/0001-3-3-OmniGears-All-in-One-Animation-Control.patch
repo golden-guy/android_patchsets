@@ -1,0 +1,2337 @@
+From 54361354d46c3d12a8d23a06d6963289bd0ffdbd Mon Sep 17 00:00:00 2001
+From: Steve Spear <stephen.k.spear@gmail.com>
+Date: Sat, 28 Dec 2013 15:51:40 +0700
+Subject: [PATCH 1/4] [3/3]OmniGears: All in One Animation Control
+
+Allow configure System, ListView, Scroll, and Keyboard Animation
+
+base from
+AOKP Animation Control https://github.com/AOKP/frameworks_base/commit/015c9cf00a8e49aea22d70b57b0af87c9134be73
+thanks to Steve Spear <stephen.k.spear@gmail.com>
+
+ListView Animation https://gerrit.omnirom.org/#/c/2863/
+thanks to jkl5616<jkl5616@gmail.com>
+
+Keyboard Animation https://github.com/zst123/XuiMod/commit/975cd531a9a847769b2af306495643a55ec44aaa
+thanks to zst123 for patches
+
+with slight modification to OmniRom
+
+Scrolling Animation https://github.com/zst123/XuiMod/commit/48c180cfa762617f59b4ceb3da50a6c28befe24f
+thanks to zst123 for patches
+
+add toast animations
+
+add separate option for them
+
+Change-Id: I89d880250867c41aecbb4cbe3ba1d473e780ebb4
+---
+ res/drawable-hdpi/ic_rom_control_animations.png    |  Bin 0 -> 575 bytes
+ res/drawable-mdpi/ic_rom_control_animations.png    |  Bin 0 -> 414 bytes
+ res/drawable-xhdpi/ic_rom_control_animations.png   |  Bin 0 -> 695 bytes
+ res/values/custom_arrays.xml                       |  125 ++++++
+ res/values/custom_attrs.xml                        |    2 +
+ res/values/custom_strings.xml                      |  115 ++++++
+ res/xml/animation_interface_settings.xml           |   48 +++
+ res/xml/keyboard_animation_interface_settings.xml  |   69 ++++
+ res/xml/listview_animation_interface_settings.xml  |   78 ++++
+ res/xml/scroll_animation_interface_settings.xml    |   88 ++++
+ res/xml/system_animation_interface_settings.xml    |  128 ++++++
+ res/xml/toast_animation_interface_settings.xml     |   34 ++
+ .../AnimationInterfaceSettings.java                |   53 +++
+ .../KeyboardAnimationInterfaceSettings.java        |  251 ++++++++++++
+ .../ListViewAnimationInterfaceSettings.java        |  263 ++++++++++++
+ .../ScrollAnimationInterfaceSettings.java          |  209 ++++++++++
+ .../SystemAnimationInterfaceSettings.java          |  432 ++++++++++++++++++++
+ .../ToastAnimationInterfaceSettings.java           |   87 ++++
+ src/org/omnirom/omnigears/ui/TestKeyboard.java     |   45 ++
+ src/org/omnirom/omnigears/ui/TestListView.java     |   51 +++
+ 20 files changed, 2078 insertions(+)
+ create mode 100644 res/drawable-hdpi/ic_rom_control_animations.png
+ create mode 100644 res/drawable-mdpi/ic_rom_control_animations.png
+ create mode 100644 res/drawable-xhdpi/ic_rom_control_animations.png
+ create mode 100644 res/xml/animation_interface_settings.xml
+ create mode 100644 res/xml/keyboard_animation_interface_settings.xml
+ create mode 100644 res/xml/listview_animation_interface_settings.xml
+ create mode 100644 res/xml/scroll_animation_interface_settings.xml
+ create mode 100644 res/xml/system_animation_interface_settings.xml
+ create mode 100644 res/xml/toast_animation_interface_settings.xml
+ create mode 100644 src/org/omnirom/omnigears/interfacesettings/AnimationInterfaceSettings.java
+ create mode 100644 src/org/omnirom/omnigears/interfacesettings/KeyboardAnimationInterfaceSettings.java
+ create mode 100644 src/org/omnirom/omnigears/interfacesettings/ListViewAnimationInterfaceSettings.java
+ create mode 100644 src/org/omnirom/omnigears/interfacesettings/ScrollAnimationInterfaceSettings.java
+ create mode 100644 src/org/omnirom/omnigears/interfacesettings/SystemAnimationInterfaceSettings.java
+ create mode 100644 src/org/omnirom/omnigears/interfacesettings/ToastAnimationInterfaceSettings.java
+ create mode 100644 src/org/omnirom/omnigears/ui/TestKeyboard.java
+ create mode 100644 src/org/omnirom/omnigears/ui/TestListView.java
+
+diff --git a/res/drawable-hdpi/ic_rom_control_animations.png b/res/drawable-hdpi/ic_rom_control_animations.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..c7f33a1fc327abea335190abd6adc4e39e3a034f
+GIT binary patch
+literal 575
+zcmeAS@N?(olHy`uVBq!ia0vp^1|ZDA1|-9oezpTC#^NA%Cx&(BWL^R}Ea{HEjtmSN
+z`?>!lvI6;>1s;*b3=G^tAk28_ZrvZCAbW|YuPggqP99!CO&i95?LZ-^64!{5;QX|b
+z^2DN4hJeJ(yb?V>*ARs=V?9$nLqqq^PUb+HW_!9ghGaOuow;9+B~aq%@%>F2TSQ!z
+z2783WIW7+k&JY#S^4`*=YSZNQm{Y}Ts!Kq1d+zb~Ypge|)3+AB`LOP!?MeOO_cN={
+zpShV*X1?1sa@smWU;i1))O{`sFMG*(`AbV?SKRvVe5u`UL^~ey?K$8$L;n!#oD99l
+z@8OBFniyU$TKvSv{P;(SkOk7uRu}Mw&+@+ZH+04_g$27V2$#4Y;r&zDSocB0<=QQW
+zJUs=UV1WtTN0hY1I}Cjt9rOgc*Tg6sGht<P=6=xMo|wE*y_c!tk-)Y@qZ?b3a)VgU
+zJ>-3t;2bwMVsZ-ON3Q7`SQ4-L7wX+)68-gPJOAdym*x-E;}<+)+?Jq}^Rj#AY$nm=
+z24dSX`)4!t7qFauu<C&Ei^RD0Ob%<iqc%60s>FA-`p#%xA6^^q!&7WWd+dz%h4atN
+z@n6*-cY$xsfhl{eHma>;;x<@Z7`)M}mr1Bj!c@HalI92LiBq|c06nB2-r*XiCy+d=
+zsUb!|Eb@QQfxqi7=U%L0y#N0~#X%F>#98wU5FyvT=?8=T+>5QE2O>&=k;&lc>gTe~
+HDWM4fwmahp
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/drawable-mdpi/ic_rom_control_animations.png b/res/drawable-mdpi/ic_rom_control_animations.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..d45f2a92c37a90557d78709af8da1306a0cc19ce
+GIT binary patch
+literal 414
+zcmeAS@N?(olHy`uVBq!ia0vp^3LwnE1|*BCs=fdz#^NA%Cx&(BWL^R}Ea{HEjtmSN
+z`?>!lvI6;>1s;*b3=G^tAk28_ZrvZCAbW|YuPggqP99!CO&i95?LZ-^64!{5;QX|b
+z^2DN4hJeJ(yb?V>*ARs=V?9$nLqqq^PUb*WzdT(WLn7SYUNhu6WFT_vqf%FQx5A4j
+zoHkAFg0V6&E-`ahJ~GH1FfI{3a`)oNKz)UGPU7u9`1f($;s~2{eJOw4jT+Ba=4J-R
+zo}7}*Dr%cGXW=pz0oRMX&-}|xHo8a{{5fZ^;r#snsj5tTx5Z;OdcI_;-rg%(7L?E!
+zc#BE8TJdaw`jp+Sjf)(<u||YH`S`lvSa##aJuCDAlWu&DO6W4?d$Cw2dc9(>roin*
+z+?EUD4_GC3{OHMQw5?j9Xty}%L5F43guBl-e2YqGGPTn1{A2bcj@u+)>eAvH-@_kF
+zf9MyuKx0B?W6XZe&wsV9J>xO8boM<LFxmJ@aua(=&od{J;|806p}^qj>gTe~DWM4f
+Dy%?P_
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/drawable-xhdpi/ic_rom_control_animations.png b/res/drawable-xhdpi/ic_rom_control_animations.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..ce1a8347a1d62cf46ac9970c08a6825add37ce27
+GIT binary patch
+literal 695
+zcmeAS@N?(olHy`uVBq!ia0vp^4j|0I1|(Ny7TyC=jKx9jP7LeL$-D$|SkfJR9T^xl
+z_H+M9WCij$3p^r=85p>QK$!8;-MT+OLG}_)Usv|KoIJdOnl_99+krw-C9V-A!TD(=
+z<%vb93;~Imc_n&&t|1C##(JiDhKBB+oy-{+n1nrD978JN-rm~lC6g#}?BmrRqOA?R
+zjzJy=%py3<oKCQ2JZ6pX+;B?tMtiQ1qGCd-Do18ebjDmISC>CKCQfZI_;>&5n>5+^
+zM?>#itvqk}A-O&MUU}N{MDED#VIr;BMqgao=AF18ELo-G?4R<YlgD=ALUkjZY!j*a
+zK$}MGHP<EL+&^-s|CqJOL`MG+`@Y0`Nk3(}cuw!wP*vO<<j;TPwf2&Bf4<rNCkytp
+z$$mZvmrZW|^oDDN^4%@-|2@1Zwju5Ni`xbLr~7`pGEQ@4>|pW{xe#-rK!#O;%OJ4f
+z=qF1N$!UcTH5NFFB!CrWi5=K!sdI2rJMVAp=mSQVr0*P)zA^JR?{BT>1JyAzzNns3
+z_qq9UUb}6i$c3VoP@bEctlPInieA{%&wAt4yTh||xIO$nN*Zr-<$JzacfnJByQD+g
+z?n!)l!<}*S=!)EY{>X2vGLN}0h2K)%w%0c0rr3mgf8@eGNFCmA_kX+2X(ql6joUr`
+zKiLqwy}dY6^n-MCMf>y(SMRo)Mv4?Py`ScL_^iCs^B*&>C5q`MXje&J3*Xl8#qj<S
+zn_~&-@66w<&S88!!{xkux#^qrX^j1*ca*ta?1&dhh!kniIN-u~ww332Aj2XCVb%zp
+z`OXs)CB^%gtakjLdSihr<IBd1+Dl9||HCZOvB%7p#VcZ&OMZUbeZk?69WW6wc)I$z
+JtaD0e0sy8=Cnf*@
+
+literal 0
+HcmV?d00001
+
+diff --git a/res/values/custom_arrays.xml b/res/values/custom_arrays.xml
+index d5906e7..c561f6a 100644
+--- a/res/values/custom_arrays.xml
++++ b/res/values/custom_arrays.xml
+@@ -297,6 +297,131 @@
+         <item>@string/tinted_statusbar_all</item>
+     </string-array>
+ 
++    <!-- Listview animation -->
++    <string-array name="listview_animation_entries" translatable="false">
++        <item>@string/listview_off</item>
++        <item>@string/listview_wave_left</item>
++        <item>@string/listview_wave_right</item>
++        <item>@string/listview_scale</item>
++        <item>@string/listview_alpha</item>
++        <item>@string/listview_stack_top</item>
++        <item>@string/listview_stack_bottom</item>
++        <item>@string/listview_unfold</item>
++        <item>@string/listview_fold</item>
++        <item>@string/listview_translate_left</item>
++        <item>@string/listview_translate_right</item>
++    </string-array>
++
++    <string-array name="listview_animation_values" translatable="false">
++        <item>0</item>
++        <item>1</item>
++        <item>2</item>
++        <item>3</item>
++        <item>4</item>
++        <item>5</item>
++        <item>6</item>
++        <item>7</item>
++        <item>8</item>
++        <item>9</item>
++        <item>10</item>
++    </string-array>
++
++    <!-- Listview Interpolator -->
++    <string-array name="listview_interpolator_entries" translatable="false">
++        <item>@string/listview_off</item>
++        <item>@string/listview_accelerate_interpolator</item>
++        <item>@string/listview_decelerate_interpolator</item>
++        <item>@string/listview_accelerate_decelerate_interpolator</item>
++        <item>@string/listview_anticipate_interpolator</item>
++        <item>@string/listview_overshoot_interpolator</item>
++        <item>@string/listview_anticipate_overshoot_interpolator</item>
++        <item>@string/listview_bounce_interpolator</item>
++        <item>@string/listview_cycle_interpolator</item>
++        <item>@string/listview_linear_interpolator</item>
++    </string-array>
++
++    <string-array name="listview_interpolator_values" translatable="false">
++        <item>0</item>
++        <item>1</item>
++        <item>2</item>
++        <item>3</item>
++        <item>4</item>
++        <item>5</item>
++        <item>6</item>
++        <item>7</item>
++        <item>8</item>
++        <item>9</item>
++    </string-array>
++
++    <string-array name="listview_cache_entries" translatable="false">
++        <item>@string/listview_cache_none</item>
++        <item>@string/listview_cache_anim</item>
++        <item>@string/listview_cache_scroll</item>
++        <item>@string/listview_cache_all</item>
++    </string-array>
++
++    <string-array name="listview_cache_values" translatable="false">
++        <item>0</item>
++        <item>1</item>
++        <item>2</item>
++        <item>3</item>
++    </string-array>
++
++    <string-array name="anim_controls_entries" translatable="false">
++        <item>@string/animation_default</item>
++        <item>@string/animation_fade</item>
++        <item>@string/animation_slide_right</item>
++        <item>@string/animation_slide_left</item>
++        <item>@string/animation_slide_right_no_fade</item>
++        <item>@string/animation_slide_left_no_fade</item>
++        <item>@string/animation_slide_up</item>
++        <item>@string/animation_slide_down</item>
++        <item>@string/animation_translucent</item>
++        <item>@string/animation_grow_shrink</item>
++        <item>@string/animation_grow_shrink_center</item>
++        <item>@string/animation_grow_shrink_bottom</item>
++        <item>@string/animation_grow_shrink_left</item>
++        <item>@string/animation_grow_shrink_right</item>
++        <item>@string/animation_random</item>
++        </string-array>
++
++    <string-array name="anim_controls_values" translatable="false">
++        <item>0</item>
++        <item>1</item>
++        <item>2</item>
++        <item>3</item>
++        <item>4</item>
++        <item>5</item>
++        <item>6</item>
++        <item>7</item>
++        <item>8</item>
++        <item>9</item>
++        <item>10</item>
++        <item>11</item>
++        <item>12</item>
++        <item>13</item>
++        <item>-1</item>
++    </string-array>
++
++    <!-- Toast Animations -->
++    <string-array name="toast_animation_entries" translatable="false">
++        <item>@string/toast_none_animation</item>
++        <item>@string/toast_default_animation</item>
++        <item>@string/toast_fade_animation</item>
++        <item>@string/toast_SlideRight_animation</item>
++        <item>@string/toast_SlideLeft_animation</item>
++        <item>@string/toast_Xylon_animation</item>
++        <item>@string/toast_Toko_animation</item>
++        <item>@string/toast_Tn_animation</item>
++        <item>@string/toast_Honami_animation</item>
++        <item>@string/toast_FastFade_animation</item>
++        <item>@string/toast_GrowFade_animation</item>
++        <item>@string/toast_GrowFadeCenter_animation</item>
++        <item>@string/toast_GrowFadeBottom_animation</item>
++        <item>@string/toast_Translucent_animation</item>
++        <item>@string/toast_Random_animation</item>
++    </string-array>
++
+     <!-- Quick pulldown -->
+     <string-array name="quick_pulldown_entries" translatable="false">
+         <item>@string/quick_pulldown_off</item>
+diff --git a/res/values/custom_attrs.xml b/res/values/custom_attrs.xml
+index 0586183..eb01325 100644
+--- a/res/values/custom_attrs.xml
++++ b/res/values/custom_attrs.xml
+@@ -25,9 +25,11 @@
+         <attr name="unitsRight" format="string|reference" />
+     </declare-styleable>
+ 
++
+     <declare-styleable name="AppSelectListPreference">
+         <attr name="neutralButtonText" format="string|reference" />
+         <attr name="neutralButtonValue" format="string|reference" />
+         <attr name="positiveButtonValue" format="string|reference" />
+     </declare-styleable>
++
+ </resources>
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index ac2fddf..7852ffa 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -440,6 +440,120 @@
+     <string name="qs_configurable_title">Quick settings configurable</string>
+     <string name="qs_configurable_summary">Enable/disable dynamic row changes</string>
+ 
++    <!-- ListView animation -->
++    <string name="bars_and_menus_category_system_title">System</string>
++    <string name="listview_title">ListView</string>
++    <string name="listview_animation_title">ListView Animation</string>
++    <string name="listview_off">Off</string>
++    <string name="listview_wave_left">Wave (Left)</string>
++    <string name="listview_wave_right">Wave (Right)</string>
++    <string name="listview_alpha">Alpha</string>
++    <string name="listview_scale">Scale</string>
++    <string name="listview_stack_top">Stack (Top)</string>
++    <string name="listview_stack_bottom">Stack (Bottom)</string>
++    <string name="listview_unfold">Unfold</string>
++    <string name="listview_fold">Fold</string>
++    <string name="listview_translate_left">Translate (Left)</string>
++    <string name="listview_translate_right">Translate (Right)</string>
++    <string name="listview_duration_title">ListView Duration</string>
++    <string name="listview_cache_title">ListView Persistent Cache</string>
++    <string name="listview_cache_none">No Cache</string>
++    <string name="listview_cache_anim">Animation Cache</string>
++    <string name="listview_cache_scroll">Scrolling Cache</string>
++    <string name="listview_cache_all">Animation &amp; Scrolling</string>
++    <string name="listview_blacklist_title">Excluded applications</string>
++    <string name="listview_blacklist_summary">Prevent Apps from animating</string>
++    <string name="listview_test">Test ListView</string>
++    <string name="listview_test_summary">Open Test Dialog with a ListView</string>
++    <string name="listview_test_instructions">Scroll to see changes</string>
++    <string name="listview_test_item">ListView Item</string>
++
++    <!-- ListView interpolator -->
++    <string name="listview_interpolator_title">ListView Interpolator</string>
++    <string name="listview_accelerate_interpolator">Accelerate</string>
++    <string name="listview_decelerate_interpolator">Decelerate</string>
++    <string name="listview_accelerate_decelerate_interpolator">Accelerate and Decelerate</string>
++    <string name="listview_anticipate_interpolator">Anticipate</string>
++    <string name="listview_overshoot_interpolator">Overshoot</string>
++    <string name="listview_anticipate_overshoot_interpolator">Anticipate and Overshoot</string>
++    <string name="listview_bounce_interpolator">Bounce</string>
++    <string name="listview_cycle_interpolator">Cycle</string>
++    <string name="listview_linear_interpolator">Linear</string>
++
++    <!-- Animation Controls -->
++    <string name="animation_settings_reset_message">Reset all animation settings to default?</string>
++    <string name="animation_controls_title">Animation Controls</string>
++    <string name="activity_open_title">Open In-App Activity Animation</string>
++    <string name="activity_close_title">Close In-App Activity Animation</string>
++    <string name="task_open_title">Launch From In App Animation</string>
++    <string name="task_close_title">Return To Previous Animation</string>
++    <string name="task_move_to_front_title">Move To Front Animation</string>
++    <string name="task_move_to_back_title">Move To Back Animation</string>
++    <string name="wallpaper_open_title">Return To Homescreen Animation</string>
++    <string name="wallpaper_close_title">Launch From Homescreen Animation</string>
++    <string name="wallpaper_intra_open_title">Recents Page Open Animation</string>
++    <string name="wallpaper_intra_close_title">Recents Page Close Animation</string>
++    <string name="animation_duration_title">Animation Duration</string>
++    <string name="animation_no_override_title">Prevent App Overrides</string>
++    <string name="animation_no_override_summary_on">Prevent apps from overriding transitions.</string>
++    <string name="animation_no_override_summary_off">Apps can overriding transitions.</string>
++
++    <!-- Animation Strings -->
++    <string name="animation_default">Default</string>
++    <string name="animation_fade">Fade</string>
++    <string name="animation_slide_right">Slide in right</string>
++    <string name="animation_slide_left">Slide in left</string>
++    <string name="animation_slide_right_no_fade">Slide in right (No fade)</string>
++    <string name="animation_slide_left_no_fade">Slide in left (No fade)</string>
++    <string name="animation_slide_up">Slide in bottom</string>
++    <string name="animation_slide_down">Slide in top</string>
++    <string name="animation_translucent">Translucent</string>
++    <string name="animation_grow_shrink">Grow in (Top)</string>
++    <string name="animation_grow_shrink_center">Grow in (Center)</string>
++    <string name="animation_grow_shrink_bottom">Grow in (Bottom)</string>
++    <string name="animation_grow_shrink_left">Grow in (Left)</string>
++    <string name="animation_grow_shrink_right">Grow in (Right)</string>
++    <string name="animation_random">Random</string>
++
++    <!-- Scrolling Animation Controls -->
++    <string name="scrolling_title">Scrolling</string>
++    <string name="animation_fling_velocity_title">Fling Velocity</string>
++    <string name="animation_scroll_friction_title">Scroll Friction</string>
++    <string name="animation_overscroll_distance_title">Overscroll Distance</string>
++    <string name="animation_overfling_distance_title">Overfling Distance</string>
++    <string name="animation_duration_summary">Set duration</string>
++    <string name="animation_no_scroll_title">Customizing scroll</string>
++    <string name="animation_no_scroll_summary_on">Enabled</string>
++    <string name="animation_no_scroll_summary_off">Disabled</string>
++
++    <!-- IME Animation Controls -->
++    <string name="ime_animation_title">Keyboard</string>
++    <string name="ime_animation_test_title">Test IME Animation Here</string>
++    <string name="ime_enter_animation_title">Enter Animation</string>
++    <string name="ime_exit_animation_title">Exit Animation</string>
++    <string name="ime_interpolator_title">Interpolator</string>
++    <string name="ime_duration_title">IME Duration</string>
++
++    <!-- Toast Animations -->
++    <string name="toast_animation_title">Toast Animation</string>
++    <string name="toast_choose_animation">Choose Animation</string>
++    <string name="toast_none_animation">None</string>
++    <string name="toast_default_animation">Default</string>
++    <string name="toast_fade_animation">Fade</string>
++    <string name="toast_SlideRight_animation">Slide-Right</string>
++    <string name="toast_SlideLeft_animation">Slide-Left</string>
++    <string name="toast_Xylon_animation">Xylon</string>
++    <string name="toast_Toko_animation">Toko</string>
++    <string name="toast_Tn_animation">Tn</string>
++    <string name="toast_Honami_animation">Honami</string>
++    <string name="toast_FastFade_animation">Fast-Fade</string>
++    <string name="toast_GrowFade_animation">Grow-Fade</string>
++    <string name="toast_GrowFadeCenter_animation">Grow-Fade-Center</string>
++    <string name="toast_GrowFadeBottom_animation">Grow-Fade-Bottom</string>
++    <string name="toast_Translucent_animation">Translucent</string>
++    <string name="toast_Random_animation">Random</string>
++    <string name="toast_test_animation">Test toast animation</string>
++
+     <!-- QuickSettings: Quick Pulldown -->
+     <string name="title_quick_pulldown">Quick pulldown</string>
+     <string name="summary_quick_pulldown">Quickly pulldown quick settings with one finger</string>
+@@ -460,6 +574,7 @@
+     <string name="volume_key_cursor_control_on">Left/right</string>
+     <string name="volume_key_cursor_control_on_reverse">Right/left</string>
+ 
++
+     <!-- Quick Swipe -->
+     <string name="quick_swipe_title">Quick swipe</string>
+     <string name="quick_swipe_summary">Quickly swipe between quick settings and notification drawer</string>
+diff --git a/res/xml/animation_interface_settings.xml b/res/xml/animation_interface_settings.xml
+new file mode 100644
+index 0000000..6c3c902
+--- /dev/null
++++ b/res/xml/animation_interface_settings.xml
+@@ -0,0 +1,48 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--  Copyright (C) 2013 The OmniROM Project
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:key="interface_animation"
++        android:title="@string/interface_animation_title"
++        xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
++
++    <PreferenceScreen
++        android:key="interface_animation_system"
++        android:fragment="org.omnirom.omnigears.interfacesettings.SystemAnimationInterfaceSettings"
++        android:title="@string/bars_and_menus_category_system_title" />
++
++    <PreferenceScreen
++        android:key="interface_animation_listview"
++        android:fragment="org.omnirom.omnigears.interfacesettings.ListViewAnimationInterfaceSettings"
++        android:title="@string/listview_title" />
++
++    <PreferenceScreen
++        android:key="interface_animation_scroll"
++        android:fragment="org.omnirom.omnigears.interfacesettings.ScrollAnimationInterfaceSettings"
++        android:title="@string/scrolling_title" />
++
++    <PreferenceScreen
++        android:key="interface_animation_keyboard"
++        android:fragment="org.omnirom.omnigears.interfacesettings.KeyboardAnimationInterfaceSettings"
++        android:title="@string/ime_animation_title" />
++
++    <PreferenceScreen
++        android:key="interface_animation_toast"
++        android:fragment="org.omnirom.omnigears.interfacesettings.ToastAnimationInterfaceSettings"
++        android:title="@string/toast_animation_title" />
++
++</PreferenceScreen>
+diff --git a/res/xml/keyboard_animation_interface_settings.xml b/res/xml/keyboard_animation_interface_settings.xml
+new file mode 100644
+index 0000000..08434b4
+--- /dev/null
++++ b/res/xml/keyboard_animation_interface_settings.xml
+@@ -0,0 +1,69 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--  Copyright (C) 2013 The OmniROM Project
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:key="interface_animation_keyboard"
++        android:title="@string/interface_animation_title"
++        xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
++
++    <PreferenceCategory
++            android:key="category_system_ime"
++            android:title="@string/ime_animation_title">
++
++        <ListPreference
++            android:key="ime_enter_animation"
++            android:title="@string/ime_enter_animation_title"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:persistent="false" />
++
++        <ListPreference
++            android:key="ime_exit_animation"
++            android:title="@string/ime_exit_animation_title"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:persistent="false" />
++
++         <ListPreference
++            android:key="ime_interpolator"
++            android:title="@string/ime_interpolator_title"
++            android:entries="@array/listview_interpolator_entries"
++            android:entryValues="@array/listview_interpolator_values"
++            android:persistent="false"
++            android:defaultValue="0" />
++
++        <org.omnirom.omnigears.chameleonos.SeekBarPreference
++            android:key="ime_anim_duration"
++            android:persistent="false"
++            android:title="@string/ime_duration_title"
++            android:summary="@string/animation_duration_summary"
++            android:max="100"
++            settings:min="0"
++            settings:interval="1"
++            settings:unitsLeft=""
++            settings:unitsRight="* 15ms"
++            android:defaultValue="0" />
++
++        <org.omnirom.omnigears.ui.TestKeyboard
++            android:key="anim_ime_test"
++            hint="@string/ime_animation_test_title" />
++
++    </PreferenceCategory>
++
++</PreferenceScreen>
+diff --git a/res/xml/listview_animation_interface_settings.xml b/res/xml/listview_animation_interface_settings.xml
+new file mode 100644
+index 0000000..fee1ef8
+--- /dev/null
++++ b/res/xml/listview_animation_interface_settings.xml
+@@ -0,0 +1,78 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--  Copyright (C) 2013 The OmniROM Project
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:key="interface_animation_listview"
++        android:title="@string/interface_animation_title"
++        xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
++
++    <PreferenceCategory
++            android:key="category_system_listview"
++            android:title="@string/listview_title">
++
++        <ListPreference
++            android:key="listview_animation"
++            android:dialogTitle="@string/listview_animation_title"
++            android:title="@string/listview_animation_title"
++            android:entries="@array/listview_animation_entries"
++            android:entryValues="@array/listview_animation_values"
++            android:persistent="false"
++            android:defaultValue="0" />
++
++         <ListPreference
++            android:key="listview_interpolator"
++            android:dialogTitle="@string/listview_interpolator_title"
++            android:title="@string/listview_interpolator_title"
++            android:entries="@array/listview_interpolator_entries"
++            android:entryValues="@array/listview_interpolator_values"
++            android:persistent="false"
++            android:defaultValue="0" />
++
++         <ListPreference
++            android:key="listview_cache"
++            android:dialogTitle="@string/listview_cache_title"
++            android:title="@string/listview_cache_title"
++            android:entries="@array/listview_cache_entries"
++            android:entryValues="@array/listview_cache_values"
++            android:persistent="false"
++            android:defaultValue="0" />
++
++        <org.omnirom.omnigears.chameleonos.SeekBarPreference
++            android:key="listview_anim_duration"
++            android:persistent="false"
++            android:title="@string/listview_duration_title"
++            android:summary="@string/animation_duration_summary"
++            android:max="100"
++            settings:min="0"
++            settings:interval="1"
++            settings:unitsLeft=""
++            settings:unitsRight="* 15ms"
++            android:defaultValue="0" />
++
++        <org.omnirom.omnigears.ui.TestListView
++            android:summary="@string/listview_test_summary"
++            android:title="@string/listview_test" />
++
++        <org.omnirom.omnigears.chameleonos.AppMultiSelectListPreference
++            android:key="listview_blacklist"
++            android:persistent="false"
++            android:title="@string/listview_blacklist_title"
++            android:summary="@string/listview_blacklist_summary" />
++
++    </PreferenceCategory>
++
++</PreferenceScreen>
+diff --git a/res/xml/scroll_animation_interface_settings.xml b/res/xml/scroll_animation_interface_settings.xml
+new file mode 100644
+index 0000000..e2cc1be
+--- /dev/null
++++ b/res/xml/scroll_animation_interface_settings.xml
+@@ -0,0 +1,88 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--  Copyright (C) 2013 The OmniROM Project
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:key="interface_animation_scroll"
++        android:title="@string/interface_animation_title"
++        xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
++
++    <PreferenceCategory
++            android:key="category_system_scroll"
++            android:title="@string/scrolling_title">
++
++        <SwitchPreference
++            android:key="animation_no_scroll"
++            android:persistent="false"
++            android:title="@string/animation_no_scroll_title"
++            android:summaryOff="@string/animation_no_scroll_summary_off"
++            android:summaryOn="@string/animation_no_scroll_summary_on" />
++
++        <org.omnirom.omnigears.chameleonos.SeekBarPreference
++            android:key="animation_fling_velocity"
++            android:persistent="false"
++            android:title="@string/animation_fling_velocity_title"
++            android:summary="@string/animation_duration_summary"
++            android:max="10000"
++            settings:min="1000"
++            settings:interval="500"
++            settings:unitsLeft=""
++            settings:unitsRight="px/sec"
++            android:defaultValue="8000"
++            android:dependency="animation_no_scroll" />
++
++        <org.omnirom.omnigears.chameleonos.SeekBarPreference
++            android:key="animation_scroll_friction"
++            android:persistent="false"
++            android:title="@string/animation_scroll_friction_title"
++            android:summary="@string/animation_duration_summary"
++            android:max="1000"
++            settings:min="100"
++            settings:interval="10"
++            settings:unitsLeft=""
++            settings:unitsRight="units"
++            android:defaultValue="150"
++            android:dependency="animation_no_scroll" />
++
++        <org.omnirom.omnigears.chameleonos.SeekBarPreference
++            android:key="animation_overscroll_distance"
++            android:persistent="false"
++            android:title="@string/animation_overscroll_distance_title"
++            android:summary="@string/animation_duration_summary"
++            android:max="100"
++            settings:min="0"
++            settings:interval="1"
++            settings:unitsLeft=""
++            settings:unitsRight="px"
++            android:defaultValue="0"
++            android:dependency="animation_no_scroll" />
++
++        <org.omnirom.omnigears.chameleonos.SeekBarPreference
++            android:key="animation_overfling_distance"
++            android:persistent="false"
++            android:title="@string/animation_overfling_distance_title"
++            android:summary="@string/animation_duration_summary"
++            android:max="100"
++            settings:min="0"
++            settings:interval="1"
++            settings:unitsLeft=""
++            settings:unitsRight="px"
++            android:defaultValue="6"
++            android:dependency="animation_no_scroll" />
++
++    </PreferenceCategory>
++
++</PreferenceScreen>
+diff --git a/res/xml/system_animation_interface_settings.xml b/res/xml/system_animation_interface_settings.xml
+new file mode 100644
+index 0000000..a27c883
+--- /dev/null
++++ b/res/xml/system_animation_interface_settings.xml
+@@ -0,0 +1,128 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--  Copyright (C) 2013 The OmniROM Project
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:key="interface_animation_system"
++        android:title="@string/interface_animation_title"
++        xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
++
++    <PreferenceCategory
++            android:key="category_system"
++            android:title="@string/bars_and_menus_category_system_title">
++
++        <SwitchPreference
++            android:key="animation_no_override"
++            android:persistent="false"
++            android:title="@string/animation_no_override_title"
++            android:summaryOff="@string/animation_no_override_summary_off"
++            android:summaryOn="@string/animation_no_override_summary_on" />
++
++        <ListPreference
++            android:key="activity_open"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/activity_open_title" />
++
++        <ListPreference
++            android:key="activity_close"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/activity_close_title" />
++
++        <ListPreference
++            android:key="task_open"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/task_open_title" />
++
++        <ListPreference
++            android:key="task_close"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/task_close_title" />
++
++        <ListPreference
++            android:key="task_move_to_front"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/task_move_to_front_title" />
++
++        <ListPreference
++            android:key="task_move_to_back"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/task_move_to_back_title" />
++
++        <ListPreference
++            android:key="wallpaper_open"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/wallpaper_open_title" />
++
++        <ListPreference
++            android:key="wallpaper_close"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/wallpaper_close_title" />
++
++        <ListPreference
++            android:key="wallpaper_intra_open"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/wallpaper_intra_open_title" />
++
++        <ListPreference
++            android:key="wallpaper_intra_close"
++            android:persistent="false"
++            android:entries="@array/anim_controls_entries"
++            android:entryValues="@array/anim_controls_values"
++            android:defaultValue="0"
++            android:title="@string/wallpaper_intra_close_title" />
++
++        <org.omnirom.omnigears.chameleonos.SeekBarPreference
++            android:key="animation_duration"
++            android:persistent="false"
++            android:title="@string/animation_duration_title"
++            android:summary="@string/animation_duration_summary"
++            android:max="100"
++            settings:min="0"
++            settings:interval="1"
++            settings:unitsLeft=""
++            settings:unitsRight="* 15ms"
++            android:defaultValue="0" />
++
++    </PreferenceCategory>
++
++</PreferenceScreen>
+diff --git a/res/xml/toast_animation_interface_settings.xml b/res/xml/toast_animation_interface_settings.xml
+new file mode 100644
+index 0000000..a67f63b
+--- /dev/null
++++ b/res/xml/toast_animation_interface_settings.xml
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--  Copyright (C) 2013 The OmniROM Project
++
++  This program is free software: you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation, either version 2 of the License, or
++  (at your option) any later version.
++
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++
++  You should have received a copy of the GNU General Public License
++  along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ -->
++
++<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
++        android:key="interface_animation_toast"
++        android:title="@string/toast_animation_title"
++        xmlns:settings="http://schemas.android.com/apk/res/com.android.settings">
++
++    <ListPreference
++        android:key="toast_animation"
++        android:title="@string/toast_choose_animation"
++        android:entries="@array/toast_animation_entries"
++        android:entryValues="@array/anim_controls_values"
++        android:persistent="false" />
++
++    <Preference
++        android:key="toast_test_animation"
++        android:title="@string/toast_test_animation" />
++
++</PreferenceScreen>
+diff --git a/src/org/omnirom/omnigears/interfacesettings/AnimationInterfaceSettings.java b/src/org/omnirom/omnigears/interfacesettings/AnimationInterfaceSettings.java
+new file mode 100644
+index 0000000..279aec7
+--- /dev/null
++++ b/src/org/omnirom/omnigears/interfacesettings/AnimationInterfaceSettings.java
+@@ -0,0 +1,53 @@
++/*
++ *  Copyright (C) 2013 The OmniROM Project
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++package org.omnirom.omnigears.interfacesettings;
++
++import com.android.settings.SettingsPreferenceFragment;
++import com.android.settings.R;
++
++import android.content.Context;
++import android.content.Intent;
++import android.os.Bundle;
++import android.preference.Preference;
++import android.preference.PreferenceScreen;
++
++public class AnimationInterfaceSettings extends SettingsPreferenceFragment implements
++        Preference.OnPreferenceChangeListener {
++    private static final String TAG = "AnimationInterfaceSettings";
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.animation_interface_settings);
++
++        PreferenceScreen prefSet = getPreferenceScreen();
++
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
++        // If we didn't handle it, let preferences handle it.
++        return super.onPreferenceTreeClick(preferenceScreen, preference);
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object objValue) {
++        return false;
++    }
++}
+diff --git a/src/org/omnirom/omnigears/interfacesettings/KeyboardAnimationInterfaceSettings.java b/src/org/omnirom/omnigears/interfacesettings/KeyboardAnimationInterfaceSettings.java
+new file mode 100644
+index 0000000..f1f8b43
+--- /dev/null
++++ b/src/org/omnirom/omnigears/interfacesettings/KeyboardAnimationInterfaceSettings.java
+@@ -0,0 +1,251 @@
++/*
++ *  Copyright (C) 2013 The OmniROM Project
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++package org.omnirom.omnigears.interfacesettings;
++
++import com.android.settings.SettingsPreferenceFragment;
++import com.android.settings.R;
++
++import android.app.AlertDialog;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.os.Bundle;
++import android.preference.ListPreference;
++import android.preference.Preference;
++import android.preference.PreferenceGroup;
++import android.preference.PreferenceScreen;
++import android.preference.SwitchPreference;
++import android.provider.Settings;
++import android.view.Menu;
++import android.view.MenuInflater;
++import android.view.MenuItem;
++import android.util.Log;
++import android.text.TextUtils;
++
++import org.omnirom.omnigears.chameleonos.SeekBarPreference;
++import com.android.internal.util.aokp.AwesomeAnimationHelper;
++
++public class KeyboardAnimationInterfaceSettings extends SettingsPreferenceFragment implements
++        Preference.OnPreferenceChangeListener {
++    private static final String TAG = "KeyboardAnimationInterfaceSettings";
++
++
++    private static final String IME_ENTER_ANIMATION = "ime_enter_animation";
++    private static final String IME_EXIT_ANIMATION = "ime_exit_animation";
++    private static final String IME_INTERPOLATOR = "ime_interpolator";
++    private static final String IME_ANIM_DURATION = "ime_anim_duration";
++
++    private static final int MENU_RESET = Menu.FIRST;
++
++    private ContentResolver mResolver;
++    private Context mContext;
++    private ListPreference mAnimationImeEnter;
++    private ListPreference mAnimationImeExit;
++    private ListPreference mAnimationImeInterpolator;
++    private SeekBarPreference mAnimationImeDuration;
++
++    private int[] mAnimations;
++    private String[] mAnimationsStrings;
++    private String[] mAnimationsNum;
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.keyboard_animation_interface_settings);
++
++        PreferenceScreen prefSet = getPreferenceScreen();
++        mContext = getActivity().getApplicationContext();
++        mResolver = mContext.getContentResolver();
++
++        mAnimations = AwesomeAnimationHelper.getAnimationsList();
++        int animqty = mAnimations.length;
++        mAnimationsStrings = new String[animqty];
++        mAnimationsNum = new String[animqty];
++        for (int i = 0; i < animqty; i++) {
++            mAnimationsStrings[i] = AwesomeAnimationHelper.getProperName(mContext.getResources(), mAnimations[i]);
++            mAnimationsNum[i] = String.valueOf(mAnimations[i]);
++        }
++
++        mAnimationImeEnter = (ListPreference) prefSet.findPreference(IME_ENTER_ANIMATION);
++        mAnimationImeEnter.setOnPreferenceChangeListener(this);
++        if (getProperVal(mAnimationImeEnter) != null) {
++             mAnimationImeEnter.setValue(getProperVal(mAnimationImeEnter));
++             mAnimationImeEnter.setSummary(getProperSummary(mAnimationImeEnter));
++        }
++        mAnimationImeEnter.setEntries(mAnimationsStrings);
++        mAnimationImeEnter.setEntryValues(mAnimationsNum);
++
++        mAnimationImeExit = (ListPreference) prefSet.findPreference(IME_EXIT_ANIMATION);
++        mAnimationImeExit.setOnPreferenceChangeListener(this);
++        if (getProperVal(mAnimationImeExit) != null) {
++             mAnimationImeExit.setValue(getProperVal(mAnimationImeExit));
++             mAnimationImeExit.setSummary(getProperSummary(mAnimationImeExit));
++        }
++        mAnimationImeExit.setEntries(mAnimationsStrings);
++        mAnimationImeExit.setEntryValues(mAnimationsNum);
++
++        mAnimationImeInterpolator = (ListPreference) prefSet.findPreference(IME_INTERPOLATOR);
++        if (getProperVal(mAnimationImeInterpolator) != null) {
++             mAnimationImeInterpolator.setValue(getProperVal(mAnimationImeInterpolator));
++             mAnimationImeInterpolator.setSummary(getListInterpolatorName(Integer.valueOf(getProperVal(mAnimationImeInterpolator))));
++        }
++        mAnimationImeInterpolator.setOnPreferenceChangeListener(this);
++
++        int imeDuration = Settings.System.getInt(mResolver,
++                Settings.System.ANIMATION_IME_DURATION, 0);
++        mAnimationImeDuration = (SeekBarPreference) prefSet.findPreference(IME_ANIM_DURATION);
++        mAnimationImeDuration.setValue(imeDuration);
++        mAnimationImeDuration.setOnPreferenceChangeListener(this);
++
++        setHasOptionsMenu(true);
++
++    }
++
++    @Override
++    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
++        menu.add(0, MENU_RESET, 0, R.string.reset)
++                .setIcon(R.drawable.ic_settings_backup) // use the backup icon
++                .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
++    }
++
++    @Override
++    public boolean onOptionsItemSelected(MenuItem item) {
++        switch (item.getItemId()) {
++            case MENU_RESET:
++                resetToDefault();
++                return true;
++            default:
++                return super.onContextItemSelected(item);
++        }
++    }
++
++    private void resetToDefault() {
++        AlertDialog.Builder alertDialog = new AlertDialog.Builder(mContext);
++        alertDialog.setTitle(R.string.reset);
++        alertDialog.setMessage(R.string.animation_settings_reset_message);
++        alertDialog.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
++            public void onClick(DialogInterface dialog, int id) {
++                resetAllValues();
++                resetAllSettings();
++            }
++        });
++        alertDialog.setNegativeButton(R.string.cancel, null);
++        alertDialog.create().show();
++    }
++
++    private void resetAllValues() {
++        mAnimationImeEnter.setValue("0");
++        mAnimationImeExit.setValue("0");
++        mAnimationImeInterpolator.setValue("0");
++        mAnimationImeDuration.setValue(0);
++    }
++
++    private void resetAllSettings() {
++        setProperVal(mAnimationImeEnter, 0);
++        mAnimationImeEnter.setSummary(getProperSummary(mAnimationImeEnter));
++        setProperVal(mAnimationImeExit, 0);
++        mAnimationImeExit.setSummary(getProperSummary(mAnimationImeExit));
++        setProperVal(mAnimationImeInterpolator, 0);
++        mAnimationImeInterpolator.setSummary(getListInterpolatorName(0));
++        setProperVal(mAnimationImeDuration, 0);
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
++        return true;
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object objValue) {
++        if (preference == mAnimationImeDuration) {
++            int val = ((Integer)objValue).intValue();
++            Settings.System.putInt(mResolver,
++                    Settings.System.ANIMATION_IME_DURATION,
++                    val);
++        } else if (preference == mAnimationImeEnter) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ANIMATION_IME_ENTER,
++                    val);
++            mAnimationImeEnter.setSummary(getProperSummary(mAnimationImeEnter));
++        } else if (preference == mAnimationImeExit) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ANIMATION_IME_EXIT,
++                    val);
++            mAnimationImeExit.setSummary(getProperSummary(mAnimationImeExit));
++        } else if (preference == mAnimationImeInterpolator) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ANIMATION_IME_INTERPOLATOR,
++                    val);
++            mAnimationImeInterpolator.setSummary(getListInterpolatorName(val));
++        } else {
++            return false;
++        }
++        return true;
++    }
++
++    private void setProperVal(Preference preference, int val) {
++        String mString = "";
++        if (preference == mAnimationImeEnter) {
++            mString = Settings.System.ANIMATION_IME_ENTER;
++        } else if (preference == mAnimationImeExit) {
++            mString = Settings.System.ANIMATION_IME_EXIT;
++        } else if (preference == mAnimationImeInterpolator) {
++            mString = Settings.System.ANIMATION_IME_INTERPOLATOR;
++        } else if (preference == mAnimationImeDuration) {
++            mString = Settings.System.ANIMATION_IME_DURATION;
++        }
++
++        Settings.System.putInt(mResolver, mString, val);
++    }
++
++    private String getProperSummary(Preference preference) {
++        String mString = "";
++        if (preference == mAnimationImeEnter) {
++            mString = Settings.System.ANIMATION_IME_ENTER;
++        } else if (preference == mAnimationImeExit) {
++            mString = Settings.System.ANIMATION_IME_EXIT;
++        }
++
++        String mNum = Settings.System.getString(mResolver, mString);
++        return AwesomeAnimationHelper.getProperName(mContext.getResources(), Integer.valueOf(mNum));
++    }
++
++    private String getProperVal(Preference preference) {
++        String mString = "";
++        if (preference == mAnimationImeEnter) {
++            mString = Settings.System.ANIMATION_IME_ENTER;
++        } else if (preference == mAnimationImeExit) {
++            mString = Settings.System.ANIMATION_IME_EXIT;
++        } else if (preference == mAnimationImeInterpolator) {
++            mString = Settings.System.ANIMATION_IME_INTERPOLATOR;
++        }
++
++        return Settings.System.getString(mResolver, mString);
++    }
++
++    private String getListInterpolatorName(int index) {
++    	String[] str = mContext.getResources().getStringArray(R.array.listview_interpolator_entries);
++    	return str[index];
++    }
++
++}
+diff --git a/src/org/omnirom/omnigears/interfacesettings/ListViewAnimationInterfaceSettings.java b/src/org/omnirom/omnigears/interfacesettings/ListViewAnimationInterfaceSettings.java
+new file mode 100644
+index 0000000..69dc75d
+--- /dev/null
++++ b/src/org/omnirom/omnigears/interfacesettings/ListViewAnimationInterfaceSettings.java
+@@ -0,0 +1,263 @@
++/*
++ *  Copyright (C) 2013 The OmniROM Project
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++package org.omnirom.omnigears.interfacesettings;
++
++import com.android.settings.SettingsPreferenceFragment;
++import com.android.settings.R;
++
++import android.app.AlertDialog;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.os.Bundle;
++import android.preference.ListPreference;
++import android.preference.Preference;
++import android.preference.PreferenceGroup;
++import android.preference.PreferenceScreen;
++import android.preference.SwitchPreference;
++import android.provider.Settings;
++import android.view.Menu;
++import android.view.MenuInflater;
++import android.view.MenuItem;
++import android.util.Log;
++import android.text.TextUtils;
++
++import org.omnirom.omnigears.chameleonos.SeekBarPreference;
++import org.omnirom.omnigears.chameleonos.AppMultiSelectListPreference;
++import com.android.internal.util.aokp.AwesomeAnimationHelper;
++
++import java.util.Arrays;
++import java.util.HashSet;
++import java.util.Set;
++
++public class ListViewAnimationInterfaceSettings extends SettingsPreferenceFragment implements
++        Preference.OnPreferenceChangeListener {
++    private static final String TAG = "ListViewAnimationInterfaceSettings";
++
++    private static final String KEY_LISTVIEW_ANIMATION = "listview_animation";
++    private static final String KEY_LISTVIEW_CACHE = "listview_cache";
++    private static final String KEY_LISTVIEW_INTERPOLATOR = "listview_interpolator";
++    private static final String LISTVIEW_ANIM_DURATION = "listview_anim_duration";
++    private static final String KEY_LISTVIEW_EXCLUDED_APPS = "listview_blacklist";
++
++    private static final int MENU_RESET = Menu.FIRST;
++
++    private ContentResolver mResolver;
++    private Context mContext;
++    private SeekBarPreference mListViewDuration;
++    private ListPreference mListViewAnimation;
++    private ListPreference mListViewInterpolator;
++    private ListPreference mListViewCache;
++    private AppMultiSelectListPreference mExcludedAppsPref;
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.listview_animation_interface_settings);
++
++        PreferenceScreen prefSet = getPreferenceScreen();
++        mContext = getActivity().getApplicationContext();
++        mResolver = mContext.getContentResolver();
++
++        mListViewAnimation = (ListPreference) prefSet.findPreference(KEY_LISTVIEW_ANIMATION);
++        if (getProperVal(mListViewAnimation) != null) {
++             mListViewAnimation.setValue(getProperVal(mListViewAnimation));
++             mListViewAnimation.setSummary(getListAnimationName(Integer.valueOf(getProperVal(mListViewAnimation))));
++        }
++        mListViewAnimation.setOnPreferenceChangeListener(this);
++
++        mListViewCache = (ListPreference) prefSet.findPreference(KEY_LISTVIEW_CACHE);
++        if (getProperVal(mListViewCache) != null) {
++             mListViewCache.setValue(getProperVal(mListViewCache));
++             mListViewCache.setSummary(getListCacheName(Integer.valueOf(getProperVal(mListViewCache))));
++        }
++        mListViewCache.setOnPreferenceChangeListener(this);
++
++        mListViewInterpolator = (ListPreference) prefSet.findPreference(KEY_LISTVIEW_INTERPOLATOR);
++        if (getProperVal(mListViewInterpolator) != null) {
++             mListViewInterpolator.setValue(getProperVal(mListViewInterpolator));
++             mListViewInterpolator.setSummary(getListInterpolatorName(Integer.valueOf(getProperVal(mListViewInterpolator))));
++        }
++        mListViewInterpolator.setOnPreferenceChangeListener(this);
++
++        int listviewDuration = Settings.System.getInt(mResolver,
++                Settings.System.LISTVIEW_DURATION, 0);
++        mListViewDuration = (SeekBarPreference) prefSet.findPreference(LISTVIEW_ANIM_DURATION);
++        mListViewDuration.setValue(listviewDuration);
++        mListViewDuration.setOnPreferenceChangeListener(this);
++
++        mExcludedAppsPref = (AppMultiSelectListPreference) prefSet.findPreference(KEY_LISTVIEW_EXCLUDED_APPS);
++        Set<String> excludedApps = getExcludedApps();
++        if (excludedApps != null) mExcludedAppsPref.setValues(excludedApps);
++        mExcludedAppsPref.setOnPreferenceChangeListener(this);
++
++        setHasOptionsMenu(true);
++
++    }
++
++    @Override
++    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
++        menu.add(0, MENU_RESET, 0, R.string.reset)
++                .setIcon(R.drawable.ic_settings_backup) // use the backup icon
++                .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
++    }
++
++    @Override
++    public boolean onOptionsItemSelected(MenuItem item) {
++        switch (item.getItemId()) {
++            case MENU_RESET:
++                resetToDefault();
++                return true;
++            default:
++                return super.onContextItemSelected(item);
++        }
++    }
++
++    private void resetToDefault() {
++        AlertDialog.Builder alertDialog = new AlertDialog.Builder(mContext);
++        alertDialog.setTitle(R.string.reset);
++        alertDialog.setMessage(R.string.animation_settings_reset_message);
++        alertDialog.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
++            public void onClick(DialogInterface dialog, int id) {
++                resetAllValues();
++                resetAllSettings();
++            }
++        });
++        alertDialog.setNegativeButton(R.string.cancel, null);
++        alertDialog.create().show();
++    }
++
++    private void resetAllValues() {
++        mListViewDuration.setValue(0);
++        mListViewAnimation.setValue("0");
++        mListViewInterpolator.setValue("0");
++        mListViewCache.setValue("0");
++    }
++
++    private void resetAllSettings() {
++        setProperVal(mListViewDuration, 0);
++        setProperVal(mListViewAnimation, 0);
++        mListViewAnimation.setSummary(getListAnimationName(0));
++        setProperVal(mListViewInterpolator, 0);
++        mListViewInterpolator.setSummary(getListInterpolatorName(0));
++        setProperVal(mListViewCache, 0);
++        mListViewCache.setSummary(getListCacheName(0));
++        Settings.System.putString(getContentResolver(),
++                Settings.System.LISTVIEW_ANIMATION_EXCLUDED_APPS, "");
++        mExcludedAppsPref.setClearValues();
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
++        return true;
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object objValue) {
++        if (preference == mListViewAnimation) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver, Settings.System.LISTVIEW_ANIMATION, val);
++            mListViewAnimation.setSummary(getListAnimationName(val));
++        } else if (preference == mListViewCache) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver, Settings.System.LISTVIEW_ANIMATION_CACHE, val);
++            mListViewCache.setSummary(getListCacheName(val));
++        } else if (preference == mListViewInterpolator) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver, Settings.System.LISTVIEW_INTERPOLATOR, val);
++            mListViewInterpolator.setSummary(getListInterpolatorName(val));
++        } else if (preference == mExcludedAppsPref) {
++            storeExcludedApps((Set<String>) objValue);
++        } else if (preference == mListViewDuration) {
++            int val = ((Integer)objValue).intValue();
++            Settings.System.putInt(mResolver,
++                    Settings.System.LISTVIEW_DURATION,
++                    val);
++        } else {
++            return false;
++        }
++        return true;
++    }
++
++    private void setProperVal(Preference preference, int val) {
++        String mString = "";
++        if (preference == mListViewAnimation) {
++            mString = Settings.System.LISTVIEW_ANIMATION;
++        } else if (preference == mListViewCache) {
++            mString = Settings.System.LISTVIEW_ANIMATION_CACHE;
++        } else if (preference == mListViewInterpolator) {
++            mString = Settings.System.LISTVIEW_INTERPOLATOR;
++        } else if (preference == mListViewDuration) {
++            mString = Settings.System.LISTVIEW_DURATION;
++        }
++
++        Settings.System.putInt(mContext.getContentResolver(), mString, val);
++    }
++
++    private String getProperVal(Preference preference) {
++        String mString = "";
++        if (preference == mListViewAnimation) {
++            mString = Settings.System.LISTVIEW_ANIMATION;
++        } else if (preference == mListViewCache) {
++            mString = Settings.System.LISTVIEW_ANIMATION_CACHE;
++        } else if (preference == mListViewInterpolator) {
++            mString = Settings.System.LISTVIEW_INTERPOLATOR;
++        }
++
++        return Settings.System.getString(mContext.getContentResolver(), mString);
++    }
++
++    private String getListAnimationName(int index) {
++    	String[] str = mContext.getResources().getStringArray(R.array.listview_animation_entries);
++    	return str[index];
++    }
++
++    private String getListCacheName(int index) {
++    	String[] str = mContext.getResources().getStringArray(R.array.listview_cache_entries);
++    	return str[index];
++    }
++
++    private String getListInterpolatorName(int index) {
++    	String[] str = mContext.getResources().getStringArray(R.array.listview_interpolator_entries);
++    	return str[index];
++    }
++
++    private Set<String> getExcludedApps() {
++        String excluded = Settings.System.getString(getContentResolver(),
++                Settings.System.LISTVIEW_ANIMATION_EXCLUDED_APPS);
++        if (TextUtils.isEmpty(excluded))
++            return null;
++
++        return new HashSet<String>(Arrays.asList(excluded.split("\\|")));
++    }
++
++    private void storeExcludedApps(Set<String> values) {
++        StringBuilder builder = new StringBuilder();
++        String delimiter = "";
++        for (String value : values) {
++            builder.append(delimiter);
++            builder.append(value);
++            delimiter = "|";
++        }
++        Settings.System.putString(getContentResolver(),
++                Settings.System.LISTVIEW_ANIMATION_EXCLUDED_APPS, builder.toString());
++    }
++
++}
+diff --git a/src/org/omnirom/omnigears/interfacesettings/ScrollAnimationInterfaceSettings.java b/src/org/omnirom/omnigears/interfacesettings/ScrollAnimationInterfaceSettings.java
+new file mode 100644
+index 0000000..2532b0d
+--- /dev/null
++++ b/src/org/omnirom/omnigears/interfacesettings/ScrollAnimationInterfaceSettings.java
+@@ -0,0 +1,209 @@
++/*
++ *  Copyright (C) 2013 The OmniROM Project
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++package org.omnirom.omnigears.interfacesettings;
++
++import com.android.settings.SettingsPreferenceFragment;
++import com.android.settings.R;
++
++import android.app.AlertDialog;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.os.Bundle;
++import android.preference.ListPreference;
++import android.preference.Preference;
++import android.preference.PreferenceGroup;
++import android.preference.PreferenceScreen;
++import android.preference.SwitchPreference;
++import android.provider.Settings;
++import android.view.ViewConfiguration;
++import android.view.Menu;
++import android.view.MenuInflater;
++import android.view.MenuItem;
++import android.util.Log;
++import android.text.TextUtils;
++
++import org.omnirom.omnigears.chameleonos.SeekBarPreference;
++
++public class ScrollAnimationInterfaceSettings extends SettingsPreferenceFragment implements
++        Preference.OnPreferenceChangeListener {
++    private static final String TAG = "ScrollAnimationInterfaceSettings";
++
++    private static final String ANIMATION_FLING_VELOCITY = "animation_fling_velocity";
++    private static final String ANIMATION_SCROLL_FRICTION = "animation_scroll_friction";
++    private static final String ANIMATION_OVERSCROLL_DISTANCE = "animation_overscroll_distance";
++    private static final String ANIMATION_OVERFLING_DISTANCE = "animation_overfling_distance";
++    private static final float MULTIPLIER_SCROLL_FRICTION = 10000f;
++    private static final String ANIMATION_NO_SCROLL = "animation_no_scroll";
++
++    private static final int MENU_RESET = Menu.FIRST;
++
++    private ContentResolver mResolver;
++    private Context mContext;
++
++    private SeekBarPreference mAnimationFling;
++    private SeekBarPreference mAnimationScroll;
++    private SeekBarPreference mAnimationOverScroll;
++    private SeekBarPreference mAnimationOverFling;
++    private SwitchPreference mAnimNoScroll;
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.scroll_animation_interface_settings);
++
++        PreferenceScreen prefSet = getPreferenceScreen();
++        mContext = getActivity().getApplicationContext();
++        mResolver = mContext.getContentResolver();
++
++        mAnimNoScroll = (SwitchPreference) prefSet.findPreference(ANIMATION_NO_SCROLL);
++        mAnimNoScroll.setChecked(Settings.System.getInt(mResolver,
++                Settings.System.ANIMATION_CONTROLS_NO_SCROLL, 0) == 1);
++        mAnimNoScroll.setOnPreferenceChangeListener(this);
++
++        float defaultScroll = Settings.System.getFloat(mResolver,
++                Settings.System.CUSTOM_SCROLL_FRICTION, ViewConfiguration.DEFAULT_SCROLL_FRICTION);
++        mAnimationScroll = (SeekBarPreference) prefSet.findPreference(ANIMATION_SCROLL_FRICTION);
++        mAnimationScroll.setValue((int) (defaultScroll * MULTIPLIER_SCROLL_FRICTION));
++        mAnimationScroll.setOnPreferenceChangeListener(this);
++
++        int defaultFling = Settings.System.getInt(mResolver,
++                Settings.System.CUSTOM_FLING_VELOCITY, ViewConfiguration.DEFAULT_MAXIMUM_FLING_VELOCITY);
++        mAnimationFling = (SeekBarPreference) prefSet.findPreference(ANIMATION_FLING_VELOCITY);
++        mAnimationFling.setValue(defaultFling);
++        mAnimationFling.setOnPreferenceChangeListener(this);
++
++        int defaultOverScroll = Settings.System.getInt(mResolver,
++                Settings.System.CUSTOM_OVERSCROLL_DISTANCE, ViewConfiguration.DEFAULT_OVERSCROLL_DISTANCE);
++        mAnimationOverScroll = (SeekBarPreference) prefSet.findPreference(ANIMATION_OVERSCROLL_DISTANCE);
++        mAnimationOverScroll.setValue(defaultOverScroll);
++        mAnimationOverScroll.setOnPreferenceChangeListener(this);
++
++        int defaultOverFling = Settings.System.getInt(mResolver,
++                Settings.System.CUSTOM_OVERFLING_DISTANCE, ViewConfiguration.DEFAULT_OVERFLING_DISTANCE);
++        mAnimationOverFling = (SeekBarPreference) prefSet.findPreference(ANIMATION_OVERFLING_DISTANCE);
++        mAnimationOverFling.setValue(defaultOverFling);
++        mAnimationOverFling.setOnPreferenceChangeListener(this);
++
++        setHasOptionsMenu(true);
++
++    }
++
++    @Override
++    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
++        menu.add(0, MENU_RESET, 0, R.string.reset)
++                .setIcon(R.drawable.ic_settings_backup) // use the backup icon
++                .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
++    }
++
++    @Override
++    public boolean onOptionsItemSelected(MenuItem item) {
++        switch (item.getItemId()) {
++            case MENU_RESET:
++                resetToDefault();
++                return true;
++            default:
++                return super.onContextItemSelected(item);
++        }
++    }
++
++    private void resetToDefault() {
++        AlertDialog.Builder alertDialog = new AlertDialog.Builder(mContext);
++        alertDialog.setTitle(R.string.reset);
++        alertDialog.setMessage(R.string.animation_settings_reset_message);
++        alertDialog.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
++            public void onClick(DialogInterface dialog, int id) {
++                resetAllValues();
++                resetAllSettings();
++            }
++        });
++        alertDialog.setNegativeButton(R.string.cancel, null);
++        alertDialog.create().show();
++    }
++
++    private void resetAllValues() {
++        mAnimationFling.setValue(ViewConfiguration.DEFAULT_MAXIMUM_FLING_VELOCITY);
++        mAnimationScroll.setValue((int) (ViewConfiguration.DEFAULT_SCROLL_FRICTION * MULTIPLIER_SCROLL_FRICTION));
++        mAnimationOverScroll.setValue(ViewConfiguration.DEFAULT_OVERSCROLL_DISTANCE);
++        mAnimationOverFling.setValue(ViewConfiguration.DEFAULT_OVERFLING_DISTANCE);
++        mAnimNoScroll.setChecked(false);
++    }
++
++    private void resetAllSettings() {
++        setProperVal(mAnimationFling, ViewConfiguration.DEFAULT_MAXIMUM_FLING_VELOCITY);
++        Settings.System.putFloat(mResolver,
++                   Settings.System.CUSTOM_SCROLL_FRICTION, ViewConfiguration.DEFAULT_SCROLL_FRICTION);
++        setProperVal(mAnimationOverScroll, ViewConfiguration.DEFAULT_OVERSCROLL_DISTANCE);
++        setProperVal(mAnimationOverFling, ViewConfiguration.DEFAULT_OVERFLING_DISTANCE);
++        setProperVal(mAnimNoScroll, 0);
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
++        return true;
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object objValue) {
++        if (preference == mAnimNoScroll) {
++            boolean value = (Boolean) objValue;
++            Settings.System.putInt(mResolver, Settings.System.ANIMATION_CONTROLS_NO_SCROLL, value ? 1 : 0);
++        } else if (preference == mAnimationScroll) {
++            int val = ((Integer)objValue).intValue();
++            Settings.System.putFloat(mResolver,
++                   Settings.System.CUSTOM_SCROLL_FRICTION,
++                   ((float) (val / MULTIPLIER_SCROLL_FRICTION)));
++        } else if (preference == mAnimationFling) {
++            int val = ((Integer)objValue).intValue();
++            Settings.System.putInt(mResolver,
++                    Settings.System.CUSTOM_FLING_VELOCITY,
++                    val);
++        } else if (preference == mAnimationOverScroll) {
++            int val = ((Integer)objValue).intValue();
++            Settings.System.putInt(mResolver,
++                    Settings.System.CUSTOM_OVERSCROLL_DISTANCE,
++                    val);
++        } else if (preference == mAnimationOverFling) {
++            int val = ((Integer)objValue).intValue();
++            Settings.System.putInt(mResolver,
++                    Settings.System.CUSTOM_OVERFLING_DISTANCE,
++                    val);
++        } else {
++            return false;
++        }
++        return true;
++    }
++
++    private void setProperVal(Preference preference, int val) {
++        String mString = "";
++        if (preference == mAnimNoScroll) {
++            mString = Settings.System.ANIMATION_CONTROLS_NO_SCROLL;
++        } else if (preference == mAnimationFling) {
++            mString = Settings.System.CUSTOM_FLING_VELOCITY;
++        } else if (preference == mAnimationOverScroll) {
++            mString = Settings.System.CUSTOM_OVERSCROLL_DISTANCE;
++        } else if (preference == mAnimationOverFling) {
++            mString = Settings.System.CUSTOM_OVERFLING_DISTANCE;
++        }
++
++        Settings.System.putInt(mResolver, mString, val);
++    }
++
++}
+diff --git a/src/org/omnirom/omnigears/interfacesettings/SystemAnimationInterfaceSettings.java b/src/org/omnirom/omnigears/interfacesettings/SystemAnimationInterfaceSettings.java
+new file mode 100644
+index 0000000..5e7da31
+--- /dev/null
++++ b/src/org/omnirom/omnigears/interfacesettings/SystemAnimationInterfaceSettings.java
+@@ -0,0 +1,432 @@
++/*
++ *  Copyright (C) 2013 The OmniROM Project
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++package org.omnirom.omnigears.interfacesettings;
++
++import com.android.settings.SettingsPreferenceFragment;
++import com.android.settings.R;
++
++import android.app.AlertDialog;
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.DialogInterface;
++import android.content.Intent;
++import android.os.Bundle;
++import android.preference.ListPreference;
++import android.preference.Preference;
++import android.preference.PreferenceGroup;
++import android.preference.PreferenceScreen;
++import android.preference.SwitchPreference;
++import android.provider.Settings;
++import android.view.Menu;
++import android.view.MenuInflater;
++import android.view.MenuItem;
++import android.util.Log;
++import android.text.TextUtils;
++
++import org.omnirom.omnigears.chameleonos.SeekBarPreference;
++import com.android.internal.util.aokp.AwesomeAnimationHelper;
++
++public class SystemAnimationInterfaceSettings extends SettingsPreferenceFragment implements
++        Preference.OnPreferenceChangeListener {
++    private static final String TAG = "SystemAnimationInterfaceSettings";
++
++    private static final String ACTIVITY_OPEN = "activity_open";
++    private static final String ACTIVITY_CLOSE = "activity_close";
++    private static final String TASK_OPEN = "task_open";
++    private static final String TASK_CLOSE = "task_close";
++    private static final String TASK_MOVE_TO_FRONT = "task_move_to_front";
++    private static final String TASK_MOVE_TO_BACK = "task_move_to_back";
++    private static final String ANIMATION_DURATION = "animation_duration";
++    private static final String ANIMATION_NO_OVERRIDE = "animation_no_override";
++    private static final String WALLPAPER_OPEN = "wallpaper_open";
++    private static final String WALLPAPER_CLOSE = "wallpaper_close";
++    private static final String WALLPAPER_INTRA_OPEN = "wallpaper_intra_open";
++    private static final String WALLPAPER_INTRA_CLOSE = "wallpaper_intra_close";
++
++    private static final int MENU_RESET = Menu.FIRST;
++
++    private ContentResolver mResolver;
++    private Context mContext;
++
++    private ListPreference mActivityOpenPref;
++    private ListPreference mActivityClosePref;
++    private ListPreference mTaskOpenPref;
++    private ListPreference mTaskClosePref;
++    private ListPreference mTaskMoveToFrontPref;
++    private ListPreference mTaskMoveToBackPref;
++    private ListPreference mWallpaperOpen;
++    private ListPreference mWallpaperClose;
++    private ListPreference mWallpaperIntraOpen;
++    private ListPreference mWallpaperIntraClose;
++    private SwitchPreference mAnimNoOverride;
++    private SeekBarPreference mAnimationDuration;
++
++    private int[] mAnimations;
++    private String[] mAnimationsStrings;
++    private String[] mAnimationsNum;
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.system_animation_interface_settings);
++
++        PreferenceScreen prefSet = getPreferenceScreen();
++        mContext = getActivity().getApplicationContext();
++        mResolver = mContext.getContentResolver();
++
++        mAnimations = AwesomeAnimationHelper.getAnimationsList();
++        int animqty = mAnimations.length;
++        mAnimationsStrings = new String[animqty];
++        mAnimationsNum = new String[animqty];
++        for (int i = 0; i < animqty; i++) {
++            mAnimationsStrings[i] = AwesomeAnimationHelper.getProperName(mContext.getResources(), mAnimations[i]);
++            mAnimationsNum[i] = String.valueOf(mAnimations[i]);
++        }
++
++        mAnimNoOverride = (SwitchPreference) prefSet.findPreference(ANIMATION_NO_OVERRIDE);
++        mAnimNoOverride.setChecked(Settings.System.getInt(mResolver,
++                Settings.System.ANIMATION_CONTROLS_NO_OVERRIDE, 0) == 1);
++        mAnimNoOverride.setOnPreferenceChangeListener(this);
++
++        mActivityOpenPref = (ListPreference) prefSet.findPreference(ACTIVITY_OPEN);
++        mActivityOpenPref.setOnPreferenceChangeListener(this);
++        if (getProperVal(mActivityOpenPref) != null) {
++             mActivityOpenPref.setValue(getProperVal(mActivityOpenPref));
++             mActivityOpenPref.setSummary(getProperSummary(mActivityOpenPref));
++        }
++        mActivityOpenPref.setEntries(mAnimationsStrings);
++        mActivityOpenPref.setEntryValues(mAnimationsNum);
++
++        mActivityClosePref = (ListPreference) prefSet.findPreference(ACTIVITY_CLOSE);
++        mActivityClosePref.setOnPreferenceChangeListener(this);
++        if (getProperVal(mActivityClosePref) != null) {
++             mActivityClosePref.setValue(getProperVal(mActivityClosePref));
++             mActivityClosePref.setSummary(getProperSummary(mActivityClosePref));
++        }
++        mActivityClosePref.setEntries(mAnimationsStrings);
++        mActivityClosePref.setEntryValues(mAnimationsNum);
++
++        mTaskOpenPref = (ListPreference) prefSet.findPreference(TASK_OPEN);
++        mTaskOpenPref.setOnPreferenceChangeListener(this);
++        if (getProperVal(mTaskOpenPref) != null) {
++             mTaskOpenPref.setValue(getProperVal(mTaskOpenPref));
++             mTaskOpenPref.setSummary(getProperSummary(mTaskOpenPref));
++        }
++        mTaskOpenPref.setEntries(mAnimationsStrings);
++        mTaskOpenPref.setEntryValues(mAnimationsNum);
++
++        mTaskClosePref = (ListPreference) prefSet.findPreference(TASK_CLOSE);
++        mTaskClosePref.setOnPreferenceChangeListener(this);
++        if (getProperVal(mTaskClosePref) != null) {
++             mTaskClosePref.setValue(getProperVal(mTaskClosePref));
++             mTaskClosePref.setSummary(getProperSummary(mTaskClosePref));
++        }
++        mTaskClosePref.setEntries(mAnimationsStrings);
++        mTaskClosePref.setEntryValues(mAnimationsNum);
++
++        mTaskMoveToFrontPref = (ListPreference) prefSet.findPreference(TASK_MOVE_TO_FRONT);
++        mTaskMoveToFrontPref.setOnPreferenceChangeListener(this);
++        if (getProperVal(mTaskMoveToFrontPref) != null) {
++             mTaskMoveToFrontPref.setValue(getProperVal(mTaskMoveToFrontPref));
++             mTaskMoveToFrontPref.setSummary(getProperSummary(mTaskMoveToFrontPref));
++        }
++        mTaskMoveToFrontPref.setEntries(mAnimationsStrings);
++        mTaskMoveToFrontPref.setEntryValues(mAnimationsNum);
++
++        mTaskMoveToBackPref = (ListPreference) prefSet.findPreference(TASK_MOVE_TO_BACK);
++        mTaskMoveToBackPref.setOnPreferenceChangeListener(this);
++        if (getProperVal(mTaskMoveToBackPref) != null) {
++             mTaskMoveToBackPref.setValue(getProperVal(mTaskMoveToBackPref));
++             mTaskMoveToBackPref.setSummary(getProperSummary(mTaskMoveToBackPref));
++        }
++        mTaskMoveToBackPref.setEntries(mAnimationsStrings);
++        mTaskMoveToBackPref.setEntryValues(mAnimationsNum);
++
++        mWallpaperOpen = (ListPreference) prefSet.findPreference(WALLPAPER_OPEN);
++        mWallpaperOpen.setOnPreferenceChangeListener(this);
++        if (getProperVal(mWallpaperOpen) != null) {
++             mWallpaperOpen.setValue(getProperVal(mWallpaperOpen));
++             mWallpaperOpen.setSummary(getProperSummary(mWallpaperOpen));
++        }
++        mWallpaperOpen.setEntries(mAnimationsStrings);
++        mWallpaperOpen.setEntryValues(mAnimationsNum);
++
++        mWallpaperClose = (ListPreference) prefSet.findPreference(WALLPAPER_CLOSE);
++        mWallpaperClose.setOnPreferenceChangeListener(this);
++        if (getProperVal(mWallpaperClose) != null) {
++             mWallpaperClose.setValue(getProperVal(mWallpaperClose));
++             mWallpaperClose.setSummary(getProperSummary(mWallpaperClose));
++        }
++        mWallpaperClose.setEntries(mAnimationsStrings);
++        mWallpaperClose.setEntryValues(mAnimationsNum);
++
++        mWallpaperIntraOpen = (ListPreference) prefSet.findPreference(WALLPAPER_INTRA_OPEN);
++        mWallpaperIntraOpen.setOnPreferenceChangeListener(this);
++        if (getProperVal(mWallpaperIntraOpen) != null) {
++             mWallpaperIntraOpen.setValue(getProperVal(mWallpaperIntraOpen));
++             mWallpaperIntraOpen.setSummary(getProperSummary(mWallpaperIntraOpen));
++        }
++        mWallpaperIntraOpen.setEntries(mAnimationsStrings);
++        mWallpaperIntraOpen.setEntryValues(mAnimationsNum);
++
++        mWallpaperIntraClose = (ListPreference) prefSet.findPreference(WALLPAPER_INTRA_CLOSE);
++        mWallpaperIntraClose.setOnPreferenceChangeListener(this);
++        if (getProperVal(mWallpaperIntraClose) != null) {
++             mWallpaperIntraClose.setValue(getProperVal(mWallpaperIntraClose));
++             mWallpaperIntraClose.setSummary(getProperSummary(mWallpaperIntraClose));
++        }
++        mWallpaperIntraClose.setEntries(mAnimationsStrings);
++        mWallpaperIntraClose.setEntryValues(mAnimationsNum);
++
++        int defaultDuration = Settings.System.getInt(mResolver,
++                Settings.System.ANIMATION_CONTROLS_DURATION, 0);
++        mAnimationDuration = (SeekBarPreference) prefSet.findPreference(ANIMATION_DURATION);
++        mAnimationDuration.setValue(defaultDuration);
++        mAnimationDuration.setOnPreferenceChangeListener(this);
++
++        setHasOptionsMenu(true);
++
++    }
++
++    @Override
++    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
++        menu.add(0, MENU_RESET, 0, R.string.reset)
++                .setIcon(R.drawable.ic_settings_backup) // use the backup icon
++                .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
++    }
++
++    @Override
++    public boolean onOptionsItemSelected(MenuItem item) {
++        switch (item.getItemId()) {
++            case MENU_RESET:
++                resetToDefault();
++                return true;
++            default:
++                return super.onContextItemSelected(item);
++        }
++    }
++
++    private void resetToDefault() {
++        AlertDialog.Builder alertDialog = new AlertDialog.Builder(mContext);
++        alertDialog.setTitle(R.string.reset);
++        alertDialog.setMessage(R.string.animation_settings_reset_message);
++        alertDialog.setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
++            public void onClick(DialogInterface dialog, int id) {
++                resetAllValues();
++                resetAllSettings();
++            }
++        });
++        alertDialog.setNegativeButton(R.string.cancel, null);
++        alertDialog.create().show();
++    }
++
++    private void resetAllValues() {
++        mActivityOpenPref.setValue("0");
++        mActivityClosePref.setValue("0");
++        mTaskOpenPref.setValue("0");
++        mTaskClosePref.setValue("0");
++        mTaskMoveToFrontPref.setValue("0");
++        mTaskMoveToBackPref.setValue("0");
++        mWallpaperOpen.setValue("0");
++        mWallpaperClose.setValue("0");
++        mWallpaperIntraOpen.setValue("0");
++        mWallpaperIntraClose.setValue("0");
++        mAnimationDuration.setValue(0);
++        mAnimNoOverride.setChecked(false);
++    }
++
++    private void resetAllSettings() {
++        setProperVal(mActivityOpenPref, 0);
++        mActivityOpenPref.setSummary(getProperSummary(mActivityOpenPref));
++        setProperVal(mActivityClosePref, 0);
++        mActivityClosePref.setSummary(getProperSummary(mActivityClosePref));
++        setProperVal(mTaskOpenPref, 0);
++        mTaskOpenPref.setSummary(getProperSummary(mTaskOpenPref));
++        setProperVal(mTaskClosePref, 0);
++        mTaskClosePref.setSummary(getProperSummary(mTaskClosePref));
++        setProperVal(mTaskMoveToFrontPref, 0);
++        mTaskMoveToFrontPref.setSummary(getProperSummary(mTaskMoveToFrontPref));
++        setProperVal(mTaskMoveToBackPref, 0);
++        mTaskMoveToBackPref.setSummary(getProperSummary(mTaskMoveToBackPref));
++        setProperVal(mWallpaperOpen, 0);
++        mWallpaperOpen.setSummary(getProperSummary(mWallpaperOpen));
++        setProperVal(mWallpaperClose, 0);
++        mWallpaperClose.setSummary(getProperSummary(mWallpaperClose));
++        setProperVal(mWallpaperIntraOpen, 0);
++        mWallpaperIntraOpen.setSummary(getProperSummary(mWallpaperIntraOpen));
++        setProperVal(mWallpaperIntraClose, 0);
++        mWallpaperIntraClose.setSummary(getProperSummary(mWallpaperIntraClose));
++        setProperVal(mAnimationDuration, 0);
++        setProperVal(mAnimNoOverride, 0);
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
++        return true;
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object objValue) {
++        if (preference == mAnimNoOverride) {
++            boolean value = (Boolean) objValue;
++            Settings.System.putInt(mResolver, Settings.System.ANIMATION_CONTROLS_NO_OVERRIDE, value ? 1 : 0);
++        } else if (preference == mActivityOpenPref) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[0], val);
++            mActivityOpenPref.setSummary(getProperSummary(mActivityOpenPref));
++        } else if (preference == mActivityClosePref) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[1], val);
++            mActivityClosePref.setSummary(getProperSummary(mActivityClosePref));
++        } else if (preference == mTaskOpenPref) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[2], val);
++            mTaskOpenPref.setSummary(getProperSummary(mTaskOpenPref));
++        } else if (preference == mTaskClosePref) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[3], val);
++            mTaskClosePref.setSummary(getProperSummary(mTaskClosePref));
++        } else if (preference == mTaskMoveToFrontPref) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[4], val);
++            mTaskMoveToFrontPref.setSummary(getProperSummary(mTaskMoveToFrontPref));
++        } else if (preference == mTaskMoveToBackPref) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[5], val);
++            mTaskMoveToBackPref.setSummary(getProperSummary(mTaskMoveToBackPref));
++        } else if (preference == mWallpaperOpen) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[6], val);
++            mWallpaperOpen.setSummary(getProperSummary(mWallpaperOpen));
++        } else if (preference == mWallpaperClose) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[7], val);
++            mWallpaperClose.setSummary(getProperSummary(mWallpaperClose));
++        } else if (preference == mWallpaperIntraOpen) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[8], val);
++            mWallpaperIntraOpen.setSummary(getProperSummary(mWallpaperIntraOpen));
++        } else if (preference == mWallpaperIntraClose) {
++            int val = Integer.parseInt((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ACTIVITY_ANIMATION_CONTROLS[9], val);
++            mWallpaperIntraClose.setSummary(getProperSummary(mWallpaperIntraClose));
++        } else if (preference == mAnimationDuration) {
++            int val = ((Integer)objValue).intValue();
++            Settings.System.putInt(mResolver,
++                    Settings.System.ANIMATION_CONTROLS_DURATION,
++                    val);
++        } else {
++            return false;
++        }
++        return true;
++    }
++
++    private void setProperVal(Preference preference, int val) {
++        String mString = "";
++        if (preference == mActivityOpenPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[0];
++        } else if (preference == mActivityClosePref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[1];
++        } else if (preference == mTaskOpenPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[2];
++        } else if (preference == mTaskClosePref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[3];
++        } else if (preference == mTaskMoveToFrontPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[4];
++        } else if (preference == mTaskMoveToBackPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[5];
++        } else if (preference == mWallpaperOpen) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[6];
++        } else if (preference == mWallpaperClose) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[7];
++        } else if (preference == mWallpaperIntraOpen) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[8];
++        } else if (preference == mWallpaperIntraClose) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[9];
++        }
++
++        Settings.System.putInt(mResolver, mString, val);
++    }
++
++    private String getProperSummary(Preference preference) {
++        String mString = "";
++        if (preference == mActivityOpenPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[0];
++        } else if (preference == mActivityClosePref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[1];
++        } else if (preference == mTaskOpenPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[2];
++        } else if (preference == mTaskClosePref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[3];
++        } else if (preference == mTaskMoveToFrontPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[4];
++        } else if (preference == mTaskMoveToBackPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[5];
++        } else if (preference == mWallpaperOpen) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[6];
++        } else if (preference == mWallpaperClose) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[7];
++        } else if (preference == mWallpaperIntraOpen) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[8];
++        } else if (preference == mWallpaperIntraClose) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[9];
++        }
++
++        String mNum = Settings.System.getString(mResolver, mString);
++        return AwesomeAnimationHelper.getProperName(mContext.getResources(), Integer.valueOf(mNum));
++    }
++
++    private String getProperVal(Preference preference) {
++        String mString = "";
++        if (preference == mActivityOpenPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[0];
++        } else if (preference == mActivityClosePref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[1];
++        } else if (preference == mTaskOpenPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[2];
++        } else if (preference == mTaskClosePref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[3];
++        } else if (preference == mTaskMoveToFrontPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[4];
++        } else if (preference == mTaskMoveToBackPref) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[5];
++        } else if (preference == mWallpaperOpen) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[6];
++        } else if (preference == mWallpaperClose) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[7];
++        } else if (preference == mWallpaperIntraOpen) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[8];
++        } else if (preference == mWallpaperIntraClose) {
++            mString = Settings.System.ACTIVITY_ANIMATION_CONTROLS[9];
++        }
++
++        return Settings.System.getString(mResolver, mString);
++    }
++
++}
+diff --git a/src/org/omnirom/omnigears/interfacesettings/ToastAnimationInterfaceSettings.java b/src/org/omnirom/omnigears/interfacesettings/ToastAnimationInterfaceSettings.java
+new file mode 100644
+index 0000000..b194bd1
+--- /dev/null
++++ b/src/org/omnirom/omnigears/interfacesettings/ToastAnimationInterfaceSettings.java
+@@ -0,0 +1,87 @@
++/*
++ *  Copyright (C) 2013 The OmniROM Project
++ *
++ * This program is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++package org.omnirom.omnigears.interfacesettings;
++
++import com.android.settings.SettingsPreferenceFragment;
++import com.android.settings.R;
++
++import android.content.ContentResolver;
++import android.content.Context;
++import android.content.Intent;
++import android.os.Bundle;
++import android.preference.ListPreference;
++import android.preference.Preference;
++import android.preference.PreferenceScreen;
++import android.provider.Settings;
++import android.widget.Toast;
++
++public class ToastAnimationInterfaceSettings extends SettingsPreferenceFragment implements
++        Preference.OnPreferenceChangeListener {
++    private static final String TAG = "ToastAnimationInterfaceSettings";
++
++    private static final String PREF_TOAST_ANIMATION = "toast_animation";
++    private static final String PREF_TOAST_TEST_ANIMATION = "toast_test_animation";
++
++    private ContentResolver mResolver;
++    private Context mContext;
++    private Preference mToastTestAnimation;
++    private ListPreference mToastAnimation;
++
++    @Override
++    public void onCreate(Bundle savedInstanceState) {
++        super.onCreate(savedInstanceState);
++        addPreferencesFromResource(R.xml.toast_animation_interface_settings);
++
++        PreferenceScreen prefSet = getPreferenceScreen();
++        mContext = getActivity().getApplicationContext();
++        mResolver = mContext.getContentResolver();
++
++        mToastAnimation = (ListPreference) prefSet.findPreference(PREF_TOAST_ANIMATION);
++        mToastAnimation.setValue(Integer.toString(Settings.System.getInt(mResolver,
++             Settings.System.ANIMATION_TOAST, 1)));
++        mToastAnimation.setSummary(mToastAnimation.getEntry());
++        mToastAnimation.setOnPreferenceChangeListener(this);
++
++        mToastTestAnimation = (Preference) prefSet.findPreference(PREF_TOAST_TEST_ANIMATION);
++    }
++
++    @Override
++    public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen, Preference preference) {
++        if (preference == mToastTestAnimation) {
++            Toast.makeText(mContext, mContext.getString(R.string.toast_test_animation), Toast.LENGTH_SHORT).show();
++            return true;
++        }
++        // If we didn't handle it, let preferences handle it.
++        return super.onPreferenceTreeClick(preferenceScreen, preference);
++    }
++
++    @Override
++    public boolean onPreferenceChange(Preference preference, Object objValue) {
++        if (preference == mToastAnimation) {
++            int val = Integer.parseInt((String) objValue);
++            int index = mToastAnimation.findIndexOfValue((String) objValue);
++            Settings.System.putInt(mResolver,
++                    Settings.System.ANIMATION_TOAST, val);
++            mToastAnimation.setSummary(mToastAnimation.getEntries()[index]);
++        } else {
++            return false;
++        }
++        return true;
++    }
++}
+diff --git a/src/org/omnirom/omnigears/ui/TestKeyboard.java b/src/org/omnirom/omnigears/ui/TestKeyboard.java
+new file mode 100644
+index 0000000..4d0a2ac
+--- /dev/null
++++ b/src/org/omnirom/omnigears/ui/TestKeyboard.java
+@@ -0,0 +1,45 @@
++/*
++ * Copyright (C) 2013 XuiMod
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package org.omnirom.omnigears.ui;
++
++import android.content.Context;
++import android.preference.Preference;
++import android.text.InputType;
++import android.util.AttributeSet;
++import android.view.Gravity;
++import android.view.View;
++import android.view.ViewGroup;
++import android.widget.EditText;
++
++public class TestKeyboard extends Preference{
++
++       int mHint;
++
++       public TestKeyboard(Context context, AttributeSet attrs) {
++           super(context, attrs);
++           mHint = attrs.getAttributeResourceValue(null, "hint", 0);
++       }
++
++       @Override
++       protected View onCreateView(ViewGroup parent){
++           EditText tv = new EditText(this.getContext());
++           tv.setPadding(0, 15, 0, 15);
++           tv.setHint(mHint);
++           tv.setGravity(Gravity.CENTER);
++           tv.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
++           return tv;
++       }
++}
+diff --git a/src/org/omnirom/omnigears/ui/TestListView.java b/src/org/omnirom/omnigears/ui/TestListView.java
+new file mode 100644
+index 0000000..fd5ae8e
+--- /dev/null
++++ b/src/org/omnirom/omnigears/ui/TestListView.java
+@@ -0,0 +1,51 @@
++/*
++ * Copyright (C) 2013 XuiMod
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++package org.omnirom.omnigears.ui;
++
++import org.omnirom.omnigears.R;
++
++import android.app.AlertDialog;
++import android.content.Context;
++import android.content.res.Resources;
++import android.preference.DialogPreference;
++import android.util.AttributeSet;
++import android.widget.ArrayAdapter;
++import android.widget.ListView;
++
++public class TestListView extends DialogPreference {
++
++       final Resources mRes;
++
++       public TestListView(Context context, AttributeSet attrs) {
++           super(context, attrs);
++           mRes = context.getResources();
++       }
++
++       @Override
++       protected void onPrepareDialogBuilder(AlertDialog.Builder builder) {
++           final ListView list = new ListView(getContext());
++           final ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(),
++                             android.R.layout.simple_list_item_1, android.R.id.text1);
++           adapter.add(mRes.getString(R.string.listview_test_instructions));
++           final String itemText = mRes.getString(R.string.listview_test_item);
++           for (int x = 1; x <= 200; x++) {
++                adapter.add(itemText + " " + x);
++           }
++           list.setAdapter(adapter);
++           builder.setView(list);
++       }
++}
+-- 
+1.7.9.5
+

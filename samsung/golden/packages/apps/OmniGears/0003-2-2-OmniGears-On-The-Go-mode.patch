@@ -1,0 +1,254 @@
+From 5886db48e1e1ec9db00911538eca2d66d3fa73e3 Mon Sep 17 00:00:00 2001
+From: Evisceration <eviscerationls@gmail.com>
+Date: Sat, 15 Mar 2014 18:43:50 +0700
+Subject: [PATCH 3/4] [2/2] OmniGears: On-The-Go mode
+
+On-The-Go turns on the camera of your phone and streams it to an overlay,
+which is drawn over everything.
+this makes you feel like your display is transparent, as you see the content
+behind it.
+
+its really useful when you are using your phone while walking, thats why
+we called it "On-The-Go"
+
+allows to change transparency of the overlay via the notification.
+
+have fun!
+
+also cleanup menu settings
+
+Change-Id: I1d6b538f9474f01cbe093d33983e8278fc44c1e8
+---
+ res/values/custom_strings.xml                      |    2 +
+ res/xml/menus_settings.xml                         |   65 ++++++++------
+ .../omnigears/interfacesettings/MenusSettings.java |   93 +++++---------------
+ 3 files changed, 61 insertions(+), 99 deletions(-)
+
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index 3616fac..4f4c358 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -236,6 +236,8 @@
+     <string name="power_menu_toggle_airplane_mode_summary">Show airplane option in power menu</string>
+     <string name="power_menu_toggle_sound_toggles_title">Sound toggles</string>
+     <string name="power_menu_toggle_sound_toggles_summary">Show sound toggles in power menu</string>
++    <string name="power_menu_toggle_onthego_title">On-the-go</string>
++    <string name="power_menu_toggle_onthego_summary">Show on-the-go option in power menu</string>
+ 
+     <!-- Active Display Notifications -->
+     <string name="ad_settings_title">Active display</string>
+diff --git a/res/xml/menus_settings.xml b/res/xml/menus_settings.xml
+index 6c2bd93..f97bf69 100644
+--- a/res/xml/menus_settings.xml
++++ b/res/xml/menus_settings.xml
+@@ -25,35 +25,42 @@
+             android:key="category_power_menu"
+             android:title="@string/bars_and_menus_category_power_menu_title">
+ 
+-    <CheckBoxPreference
+-            android:key="power_menu_mobile_data"
+-            android:title="@string/power_menu_toggle_mobile_data_title"
+-            android:summary="@string/power_menu_toggle_mobile_data_summary"
+-            android:persistent="false"/>
+-
+-    <CheckBoxPreference
+-            android:key="power_menu_screenshot"
+-            android:title="@string/power_menu_toggle_screenshot_title"
+-            android:summary="@string/power_menu_toggle_screenshot_summary"
+-            android:persistent="false"/>
+-
+-    <CheckBoxPreference
+-            android:key="power_menu_screenrecord"
+-            android:title="@string/power_menu_toggle_screenrecord_title"
+-            android:summary="@string/power_menu_toggle_screenrecord_summary"
+-            android:persistent="false"/>
+-
+-    <CheckBoxPreference
+-            android:key="power_menu_airplane_mode"
+-            android:title="@string/power_menu_toggle_airplane_mode_title"
+-            android:summary="@string/power_menu_toggle_airplane_mode_summary"
+-            android:persistent="false"/>
+-
+-    <CheckBoxPreference
+-            android:key="power_menu_sound_toggles"
+-            android:title="@string/power_menu_toggle_sound_toggles_title"
+-            android:summary="@string/power_menu_toggle_sound_toggles_summary"
+-            android:persistent="false"/>
++    <org.omnirom.omnigears.preference.SystemCheckBoxPreference
++        android:key="mobile_data_in_power_menu"
++        android:title="@string/power_menu_toggle_mobile_data_title"
++        android:summary="@string/power_menu_toggle_mobile_data_summary"
++        android:defaultValue="false" />
++
++    <org.omnirom.omnigears.preference.SystemCheckBoxPreference
++        android:key="screenshot_in_power_menu"
++        android:title="@string/power_menu_toggle_screenshot_title"
++        android:summary="@string/power_menu_toggle_screenshot_summary"
++        android:defaultValue="false" />
++
++    <org.omnirom.omnigears.preference.SystemCheckBoxPreference
++        android:key="screenrecord_in_power_menu"
++        android:title="@string/power_menu_toggle_screenrecord_title"
++        android:summary="@string/power_menu_toggle_screenrecord_summary"
++        android:defaultValue="false" />
++
++    <org.omnirom.omnigears.preference.SystemCheckBoxPreference
++        android:key="onthego_in_power_menu"
++        android:title="@string/power_menu_toggle_onthego_title"
++        android:summary="@string/power_menu_toggle_onthego_summary"
++        android:defaultValue="false" />
++
++    <org.omnirom.omnigears.preference.SystemCheckBoxPreference
++        android:key="airplane_mode_in_power_menu"
++        android:title="@string/power_menu_toggle_airplane_mode_title"
++        android:summary="@string/power_menu_toggle_airplane_mode_summary"
++        android:defaultValue="true" />
++
++    <org.omnirom.omnigears.preference.SystemCheckBoxPreference
++        android:key="sound_toggles_in_power_menu"
++        android:title="@string/power_menu_toggle_sound_toggles_title"
++        android:summary="@string/power_menu_toggle_sound_toggles_summary"
++        android:defaultValue="true" />
++
+     </PreferenceCategory>
+ 
+ </PreferenceScreen>
+diff --git a/src/org/omnirom/omnigears/interfacesettings/MenusSettings.java b/src/org/omnirom/omnigears/interfacesettings/MenusSettings.java
+index 7f0b309..2af5ca4 100644
+--- a/src/org/omnirom/omnigears/interfacesettings/MenusSettings.java
++++ b/src/org/omnirom/omnigears/interfacesettings/MenusSettings.java
+@@ -21,36 +21,28 @@ package org.omnirom.omnigears.interfacesettings;
+ import com.android.settings.SettingsPreferenceFragment;
+ import com.android.settings.R;
+ 
+-import android.content.ContentResolver;
+ import android.content.Context;
+ import android.os.Bundle;
+-import android.preference.CheckBoxPreference;
+ import android.preference.Preference;
+ import android.preference.PreferenceGroup;
+ import android.preference.PreferenceScreen;
+-import android.provider.Settings;
+-import android.provider.Settings.SettingNotFoundException;
+-import android.util.Log;
+-import android.net.ConnectivityManager;
++
++import com.android.internal.util.omni.DeviceUtils;
++import org.omnirom.omnigears.preference.SystemCheckBoxPreference;
+ 
+ public class MenusSettings extends SettingsPreferenceFragment implements
+         Preference.OnPreferenceChangeListener {
+     private static final String TAG = "MenusSettings";
+-    private ContentResolver resolver;
+ 
++    private Context mContext;
+     private static final String POWER_MENU_CATEGORY = "category_power_menu";
+-    private static final String POWER_MENU_SCREENSHOT = "power_menu_screenshot";
+-    private static final String POWER_MENU_SCREENRECORD = "power_menu_screenrecord";
+-    private static final String POWER_MENU_MOBILE_DATA = "power_menu_mobile_data";
+-    private static final String POWER_MENU_AIRPLANE_MODE = "power_menu_airplane_mode";
+-    private static final String POWER_MENU_SOUND_TOGGLES = "power_menu_sound_toggles";
+-
++    private static final String POWER_MENU_SCREENRECORD = "screenrecord_in_power_menu";
++    private static final String POWER_MENU_MOBILE_DATA = "mobile_data_in_power_menu";
++    private static final String POWER_MENU_ON_THE_GO = "onthego_in_power_menu";
+ 
+-    private CheckBoxPreference mScreenshotPowerMenu;
+-    private CheckBoxPreference mScreenrecordPowerMenu;
+-    private CheckBoxPreference mMobileDataPowerMenu;
+-    private CheckBoxPreference mAirplaneModePowerMenu;
+-    private CheckBoxPreference mSoundTogglesPowerMenu;
++    private SystemCheckBoxPreference mScreenrecordPowerMenu;
++    private SystemCheckBoxPreference mMobileDataPowerMenu;
++    private SystemCheckBoxPreference mOnTheGoPowerMenu;
+ 
+     @Override
+     public void onCreate(Bundle savedInstanceState) {
+@@ -58,44 +50,23 @@ public class MenusSettings extends SettingsPreferenceFragment implements
+         addPreferencesFromResource(R.xml.menus_settings);
+ 
+         PreferenceScreen prefSet = getPreferenceScreen();
+-        resolver = getActivity().getContentResolver();
+-
+-        mScreenshotPowerMenu = (CheckBoxPreference) prefSet.findPreference(POWER_MENU_SCREENSHOT);
+-        mScreenshotPowerMenu.setChecked(Settings.System.getInt(resolver,
+-                Settings.System.SCREENSHOT_IN_POWER_MENU, 0) == 1);
+-        mScreenshotPowerMenu.setOnPreferenceChangeListener(this);
++        mContext = getActivity().getApplicationContext();
++        PreferenceGroup powerMenuCategory = (PreferenceGroup)
++                findPreference(POWER_MENU_CATEGORY);
+ 
+-        mMobileDataPowerMenu = (CheckBoxPreference) prefSet.findPreference(POWER_MENU_MOBILE_DATA);
+-        Context context = getActivity();
+-        ConnectivityManager cm = (ConnectivityManager)
+-                context.getSystemService(Context.CONNECTIVITY_SERVICE);
+-        if(cm.isNetworkSupported(ConnectivityManager.TYPE_MOBILE)) {
+-            mMobileDataPowerMenu.setChecked(Settings.System.getInt(resolver,
+-                Settings.System.MOBILE_DATA_IN_POWER_MENU, 0) == 1);
+-            mMobileDataPowerMenu.setOnPreferenceChangeListener(this);
+-        } else {
+-            prefSet.removePreference(mMobileDataPowerMenu);
++        mMobileDataPowerMenu = (SystemCheckBoxPreference) prefSet.findPreference(POWER_MENU_MOBILE_DATA);
++        if (!DeviceUtils.deviceSupportsMobileData(mContext)) {
++            powerMenuCategory.removePreference(mMobileDataPowerMenu);
+         }
+ 
+-        mAirplaneModePowerMenu = (CheckBoxPreference) prefSet.findPreference(POWER_MENU_AIRPLANE_MODE);
+-        mAirplaneModePowerMenu.setChecked(Settings.System.getInt(resolver,
+-                Settings.System.AIRPLANE_MODE_IN_POWER_MENU, 1) == 1);
+-        mAirplaneModePowerMenu.setOnPreferenceChangeListener(this);
+-
+-        mSoundTogglesPowerMenu = (CheckBoxPreference) prefSet.findPreference(POWER_MENU_SOUND_TOGGLES);
+-        mSoundTogglesPowerMenu.setChecked(Settings.System.getInt(resolver,
+-                Settings.System.SOUND_TOGGLES_IN_POWER_MENU, 1) == 1);
+-        mSoundTogglesPowerMenu.setOnPreferenceChangeListener(this);
++        mOnTheGoPowerMenu = (SystemCheckBoxPreference) prefSet.findPreference(POWER_MENU_ON_THE_GO);
++        if (!DeviceUtils.deviceSupportsCamera(mContext)) {
++            powerMenuCategory.removePreference(mOnTheGoPowerMenu);
++        }
+ 
+-        mScreenrecordPowerMenu = (CheckBoxPreference) prefSet.findPreference(POWER_MENU_SCREENRECORD);
+-        if (!getResources().getBoolean(com.android.internal.R.bool.config_enableScreenrecordChord)) {
+-            PreferenceGroup powerMenuCategory = (PreferenceGroup)
+-                findPreference(POWER_MENU_CATEGORY);
++        mScreenrecordPowerMenu = (SystemCheckBoxPreference) prefSet.findPreference(POWER_MENU_SCREENRECORD);
++        if (!mContext.getResources().getBoolean(com.android.internal.R.bool.config_enableScreenrecordChord)) {
+             powerMenuCategory.removePreference(mScreenrecordPowerMenu);
+-        } else {
+-            mScreenrecordPowerMenu.setChecked(Settings.System.getInt(resolver,
+-                    Settings.System.SCREENRECORD_IN_POWER_MENU, 0) == 1);
+-            mScreenrecordPowerMenu.setOnPreferenceChangeListener(this);
+         }
+     }
+ 
+@@ -104,26 +75,8 @@ public class MenusSettings extends SettingsPreferenceFragment implements
+         return true;
+     }
+ 
++    @Override
+     public boolean onPreferenceChange(Preference preference, Object objValue) {
+-        if (preference == mScreenshotPowerMenu) {
+-            boolean value = (Boolean) objValue;
+-            Settings.System.putInt(resolver, Settings.System.SCREENSHOT_IN_POWER_MENU, value ? 1 : 0);
+-        } else if (preference == mScreenrecordPowerMenu) {
+-            boolean value = (Boolean) objValue;
+-            Settings.System.putInt(resolver, Settings.System.SCREENRECORD_IN_POWER_MENU, value ? 1 : 0);
+-        } else if (preference == mMobileDataPowerMenu) {
+-            boolean value = (Boolean) objValue;
+-            Settings.System.putInt(resolver, Settings.System.MOBILE_DATA_IN_POWER_MENU, value ? 1 : 0);
+-        } else if (preference == mAirplaneModePowerMenu) {
+-            boolean value = (Boolean) objValue;
+-            Settings.System.putInt(resolver, Settings.System.AIRPLANE_MODE_IN_POWER_MENU, value ? 1 : 0);
+-        } else if (preference == mSoundTogglesPowerMenu) {
+-            boolean value = (Boolean) objValue;
+-            Settings.System.putInt(resolver, Settings.System.SOUND_TOGGLES_IN_POWER_MENU, value ? 1 : 0);
+-        } else {
+-            return false;
+-        }
+-
+         return true;
+     }
+ }
+-- 
+1.7.9.5
+

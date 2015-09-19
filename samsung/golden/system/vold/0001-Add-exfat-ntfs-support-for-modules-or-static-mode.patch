@@ -1,0 +1,158 @@
+From 03378cacece9c32624fbc29a7b184431e20b422d Mon Sep 17 00:00:00 2001
+From: xiaolu <server@163.com>
+Date: Tue, 8 Apr 2014 23:02:36 +0800
+Subject: [PATCH] Add exfat/ntfs support for modules or static mode.
+
+selinux permissions is already in global settings
+https://github.com/omnirom/android_vendor_omni/blob/android-4.4/sepolicy/vold.te#L18
+
+Change-Id: I005f27b4e370106cc65a7fa6912792af25bddac9
+---
+ Android.mk |    8 ++++++++
+ Exfat.cpp  |   24 +++++++++++++++++++++---
+ Ntfs.cpp   |   23 ++++++++++++++++++++++-
+ 3 files changed, 51 insertions(+), 4 deletions(-)
+
+diff --git a/Android.mk b/Android.mk
+index 24fa369..46118ae 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -16,6 +16,14 @@ ifneq ($(TARGET_USE_CUSTOM_LUN_FILE_PATH),)
+ common_cflags += -DCUSTOM_LUN_FILE=\"$(TARGET_USE_CUSTOM_LUN_FILE_PATH)\"
+ endif
+ 
++ifneq ($(KERNEL_EXFAT_MODULE_NAME),)
++common_cflags += -DEXFAT_MODULE_NAME=\"$(KERNEL_EXFAT_MODULE_NAME)\"
++endif
++
++ifneq ($(KERNEL_NTFS_MODULE_NAME),)
++common_cflags += -DNTFS_MODULE_NAME=\"$(KERNEL_NTFS_MODULE_NAME)\"
++endif
++
+ common_cflags += -Werror
+ 
+ common_src_files := \
+diff --git a/Exfat.cpp b/Exfat.cpp
+index 85361af..4089724 100644
+--- a/Exfat.cpp
++++ b/Exfat.cpp
+@@ -54,10 +54,13 @@ int Exfat::doMount(const char *fsPath, const char *mountPoint,
+     char mountData[255];
+     const char *args[6];
+     int status;
++
+     if (access(EXFAT_MOUNT, X_OK)) {
+         SLOGE("Unable to mount, exFAT FUSE helper not found!");
+         return rc;
+     }
++
++#ifndef EXFAT_MODULE_NAME
+     if (sdcard) {
+         // Mount external volumes with forced sdcard_external context
+         sprintf(mountData,
+@@ -73,7 +76,6 @@ int Exfat::doMount(const char *fsPath, const char *mountPoint,
+             (ro ? "ro" : "rw"));
+     }
+ 
+-
+     args[0] = EXFAT_MOUNT;
+     args[1] = "-o";
+     args[2] = mountData;
+@@ -85,12 +87,30 @@ int Exfat::doMount(const char *fsPath, const char *mountPoint,
+ 
+     rc = android_fork_execvp(ARRAY_SIZE(args), (char **)args, &status, false,
+             true);
++#else
++    unsigned long flags;
++
++    flags = MS_NOATIME | MS_NODEV | MS_NOSUID | MS_DIRSYNC;
++
++    flags |= (executable ? 0 : MS_NOEXEC);
++    flags |= (ro ? MS_RDONLY : 0);
++    flags |= (remount ? MS_REMOUNT : 0);
+ 
++    sprintf(mountData,
++            "context=u:object_r:sdcard_external:s0,uid=%d,gid=%d,fmask=%o,dmask=%o",
++            ownerUid, ownerGid, permMask, permMask);
++    rc = mount(fsPath, mountPoint, EXFAT_MODULE_NAME, flags, mountData);
++#endif
+     if (rc && errno == EROFS) {
+         SLOGE("%s appears to be a read only filesystem - retrying mount RO", fsPath);
++#ifndef EXFAT_MODULE_NAME
+         strcat(mountData, ",ro");
+         rc = android_fork_execvp(ARRAY_SIZE(args), (char **)args, &status, false,
+             true);
++#else
++        flags |= MS_RDONLY;
++        rc = mount(fsPath, mountPoint, EXFAT_MODULE_NAME, flags, mountData);
++#endif
+     }
+ 
+     return rc;
+@@ -98,7 +118,6 @@ int Exfat::doMount(const char *fsPath, const char *mountPoint,
+ 
+ int Exfat::check(const char *fsPath) {
+ 
+-    bool rw = true;
+     int rc = -1;
+     int status;
+ 
+@@ -145,7 +164,6 @@ int Exfat::check(const char *fsPath) {
+ 
+ int Exfat::format(const char *fsPath) {
+ 
+-    int fd;
+     const char *args[3];
+     int rc = -1;
+     int status;
+diff --git a/Ntfs.cpp b/Ntfs.cpp
+index ebcb6fd..7f96601 100644
+--- a/Ntfs.cpp
++++ b/Ntfs.cpp
+@@ -112,9 +112,10 @@ int Ntfs::doMount(const char *fsPath, const char *mountPoint,
+         permMask = 0;
+     }
+ 
++#ifndef NTFS_MODULE_NAME
+     sprintf(mountData,
+             "utf8,uid=%d,gid=%d,fmask=%o,dmask=%o,"
+-	    "shortname=mixed,nodev,nosuid,dirsync",
++            "shortname=mixed,nodev,nosuid,dirsync",
+             ownerUid, ownerGid, permMask, permMask);
+ 
+     if (!executable)
+@@ -136,11 +137,31 @@ int Ntfs::doMount(const char *fsPath, const char *mountPoint,
+     rc = android_fork_execvp(ARRAY_SIZE(args), (char **)args, &status, false,
+             true);
+ 
++#else
++    unsigned long flags;
++
++    flags = MS_NOATIME | MS_NODEV | MS_NOSUID | MS_DIRSYNC;
++
++    flags |= (executable ? 0 : MS_NOEXEC);
++    flags |= (ro ? MS_RDONLY : 0);
++    flags |= (remount ? MS_REMOUNT : 0);
++
++    sprintf(mountData,
++            "uid=%d,gid=%d,fmask=%o,dmask=%o",
++            ownerUid, ownerGid, permMask, permMask);
++    rc = mount(fsPath, mountPoint, NTFS_MODULE_NAME, flags, mountData);
++#endif
++
+     if (rc && errno == EROFS) {
+         SLOGE("%s appears to be a read only filesystem - retrying mount RO", fsPath);
++#ifndef NTFS_MODULE_NAME
+         strcat(mountData, ",ro");
+         rc = android_fork_execvp(ARRAY_SIZE(args), (char **)args, &status, false,
+             true);
++#else
++        flags |= MS_RDONLY;
++        rc = mount(fsPath, mountPoint, NTFS_MODULE_NAME, flags, mountData);
++#endif
+ 
+     }
+ 
+-- 
+1.7.9.5
+
