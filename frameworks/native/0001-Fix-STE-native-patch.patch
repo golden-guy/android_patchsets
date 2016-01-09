@@ -1,0 +1,40 @@
+From b9a063c7807c82ad88a50315358c437465341692 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Mon, 25 Jan 2016 23:16:45 +0100
+Subject: [PATCH 1/9] Fix STE native patch
+
+Change-Id: Icdf6832e7694d67416cfc1103b8d212184e9b79c
+---
+ libs/gui/Android.mk |   10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/libs/gui/Android.mk b/libs/gui/Android.mk
+index e5a5eb3..63736a3 100644
+--- a/libs/gui/Android.mk
++++ b/libs/gui/Android.mk
+@@ -37,16 +37,18 @@ LOCAL_SRC_FILES:= \
+ 	SyncFeatures.cpp \
+ 
+ LOCAL_SHARED_LIBRARIES := \
+-	libbinder \
+-	libcutils \
+-	libEGL \
+-	libGLESv2 \
+ 	libsync \
+ 	libui \
+ 	libutils \
+ 	liblog
+ 
+ 
++LOCAL_SHARED_LIBRARIES += \
++	libbinder \
++	libcutils \
++	libEGL \
++	libGLESv2
++
+ LOCAL_MODULE:= libgui
+ 
+ ifeq ($(TARGET_BOARD_PLATFORM), tegra)
+-- 
+1.7.9.5
+

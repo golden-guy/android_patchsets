@@ -1,7 +1,7 @@
-From a901ebe364f404f3b4f89a342597dcbdfbb22e4b Mon Sep 17 00:00:00 2001
+From 1da266b9e69b95a48e9b2a2a40753110dc8c7a63 Mon Sep 17 00:00:00 2001
 From: Meticulus <theonejohnnyd@gmail.com>
 Date: Thu, 5 Mar 2015 21:09:45 +0100
-Subject: [PATCH 6/6] Fix missing statements in second GLConsumer constructor
+Subject: [PATCH 7/9] Fix missing statements in second GLConsumer constructor
 
 Change-Id: Iac0b70817ff4273c17541608721bcc87eddd0298
 ---

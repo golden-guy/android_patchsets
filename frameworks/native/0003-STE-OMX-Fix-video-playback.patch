@@ -1,7 +1,7 @@
-From 2167734f51ca5160d84424c1d39cfbcd7a7fec5e Mon Sep 17 00:00:00 2001
+From af9798386b7fcdb8b8e4c345f270ac989fc1e318 Mon Sep 17 00:00:00 2001
 From: Agontuk <rifat662@gmail.com>
 Date: Sun, 4 Jan 2015 11:37:45 +0100
-Subject: [PATCH 2/6] STE OMX Fix video playback
+Subject: [PATCH 3/9] STE OMX Fix video playback
 
 Change-Id: I9e02f38fe6d8f76eeb0c0ff76c11ead16954edfb
 ---
