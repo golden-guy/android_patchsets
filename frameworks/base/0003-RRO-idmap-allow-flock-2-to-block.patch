@@ -1,0 +1,34 @@
+From 2f3c279c057674b2802ba15ed94c7ccb1a8c1277 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?M=C3=A5rten=20Kongstad?= <marten.kongstad@sonymobile.com>
+Date: Wed, 18 Mar 2015 15:18:10 +0100
+Subject: [PATCH 3/5] RRO: idmap: allow flock(2) to block
+
+During creation of an idmap an advisory lock is applied on the
+output file using flock(2). This commit removes the LOCK_NB flag
+from the call to flock(2).
+
+The reason for this is that if the function were to return
+EWOULDBLOCK, the entire idmap operation would be aborted leading
+to the device booting without the correct overlay packages applied.
+
+Change-Id: Iad319779976e950d4354e4f60b30439f6f208b77
+---
+ cmds/idmap/create.cpp |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cmds/idmap/create.cpp b/cmds/idmap/create.cpp
+index 593a197..fec7e3f1 100644
+--- a/cmds/idmap/create.cpp
++++ b/cmds/idmap/create.cpp
+@@ -40,7 +40,7 @@ namespace {
+             ALOGD("error: fchmod %s: %s\n", path, strerror(errno));
+             goto fail;
+         }
+-        if (TEMP_FAILURE_RETRY(flock(fd, LOCK_EX | LOCK_NB)) != 0) {
++        if (TEMP_FAILURE_RETRY(flock(fd, LOCK_EX)) != 0) {
+             ALOGD("error: flock %s: %s\n", path, strerror(errno));
+             goto fail;
+         }
+-- 
+1.7.9.5
+

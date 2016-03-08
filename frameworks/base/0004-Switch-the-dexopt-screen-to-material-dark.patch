@@ -1,0 +1,25 @@
+From 3fad380622028a0ac2881a7736a6ea011442f6c9 Mon Sep 17 00:00:00 2001
+From: Ziyan <jaraidaniel@gmail.com>
+Date: Tue, 31 Mar 2015 20:23:46 +0200
+Subject: [PATCH 4/5] Switch the dexopt screen to material dark
+
+---
+ .../internal/policy/impl/PhoneWindowManager.java   |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java b/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
+index 551e9d2..09aabb2 100644
+--- a/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
++++ b/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
+@@ -6357,7 +6357,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+                             PackageManager.FEATURE_TELEVISION)) {
+                         theme = com.android.internal.R.style.Theme_Leanback_Dialog_Alert;
+                     } else {
+-                        theme = 0;
++                        theme = com.android.internal.R.style.Theme_Material_Dialog_Alert;
+                     }
+ 
+                     mBootMsgDialog = new ProgressDialog(mContext, theme) {
+-- 
+1.7.9.5
+
