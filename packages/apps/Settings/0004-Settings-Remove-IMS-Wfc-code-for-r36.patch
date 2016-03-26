@@ -1,0 +1,154 @@
+From f3fb1dc782e82fb51b09ceeb168e262e502143d6 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Thu, 24 Mar 2016 22:17:12 +0100
+Subject: [PATCH] Settings: Remove IMS Wfc code for r36
+
+Change-Id: I53a13e4527d0181991b174a9fdbe8796ecb0cc01
+---
+ src/com/android/settings/WifiCallingSettings.java |   19 ++++++++++++++++---
+ src/com/android/settings/WirelessSettings.java    |    6 ++++++
+ 2 files changed, 22 insertions(+), 3 deletions(-)
+
+diff --git a/src/com/android/settings/WifiCallingSettings.java b/src/com/android/settings/WifiCallingSettings.java
+index 740dc9f..ec96c67 100644
+--- a/src/com/android/settings/WifiCallingSettings.java
++++ b/src/com/android/settings/WifiCallingSettings.java
+@@ -125,6 +125,7 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+         @Override
+         public void onReceive(Context context, Intent intent) {
+             String action = intent.getAction();
++            /*
+             if (action.equals(ImsManager.ACTION_IMS_REGISTRATION_ERROR)) {
+                 // If this fragment is active then we are immediately
+                 // showing alert on screen. There is no need to add
+@@ -139,6 +140,7 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+ 
+                 showAlert(intent);
+             }
++            */
+         }
+     };
+ 
+@@ -151,8 +153,10 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+         mButtonWfcMode = (ListPreference) findPreference(BUTTON_WFC_MODE);
+         mButtonWfcMode.setOnPreferenceChangeListener(this);
+ 
++        /*
+         mIntentFilter = new IntentFilter();
+         mIntentFilter.addAction(ImsManager.ACTION_IMS_REGISTRATION_ERROR);
++        */
+     }
+ 
+     @Override
+@@ -161,6 +165,7 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+ 
+         final Context context = getActivity();
+ 
++        /*
+         if (ImsManager.isWfcEnabledByPlatform(context)) {
+             TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+             tm.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+@@ -182,6 +187,7 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+         if (intent.getBooleanExtra(ImsPhone.EXTRA_KEY_ALERT_SHOW, false)) {
+             showAlert(intent);
+         }
++        */
+     }
+ 
+     @Override
+@@ -190,12 +196,14 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+ 
+         final Context context = getActivity();
+ 
++        /*
+         if (ImsManager.isWfcEnabledByPlatform(getActivity())) {
+             TelephonyManager tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+             tm.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
+ 
+             mSwitchBar.removeOnSwitchChangeListener(this);
+         }
++        */
+ 
+         context.unregisterReceiver(mIntentReceiver);
+     }
+@@ -207,10 +215,11 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+     public void onSwitchChanged(Switch switchView, boolean isChecked) {
+         final Context context = getActivity();
+ 
+-        ImsManager.setWfcSetting(context, isChecked);
++        //ImsManager.setWfcSetting(context, isChecked);
+ 
+-        int wfcMode = ImsManager.getWfcMode(context);
+-        updateButtonWfcMode(context, isChecked, wfcMode);
++        //int wfcMode = ImsManager.getWfcMode(context);
++        //updateButtonWfcMode(context, isChecked, wfcMode);
++        updateButtonWfcMode(context, isChecked, 0 /* wfcMode */);
+     }
+ 
+     private void updateButtonWfcMode(Context context, boolean wfcEnabled, int wfcMode) {
+@@ -228,6 +237,7 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+     @Override
+     public boolean onPreferenceChange(Preference preference, Object newValue) {
+         final Context context = getActivity();
++        /*
+         if (preference == mButtonWfcMode) {
+             mButtonWfcMode.setValue((String) newValue);
+             int buttonMode = Integer.valueOf((String) newValue);
+@@ -237,11 +247,13 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+                 mButtonWfcMode.setSummary(getWfcModeSummary(context, buttonMode));
+             }
+         }
++        */
+         return true;
+     }
+ 
+     static int getWfcModeSummary(Context context, int wfcMode) {
+         int resId = com.android.internal.R.string.wifi_calling_off_summary;
++        /*
+         if (ImsManager.isWfcEnabledByUser(context)) {
+             switch (wfcMode) {
+                 case ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY:
+@@ -257,6 +269,7 @@ public class WifiCallingSettings extends SettingsPreferenceFragment
+                     Log.e(TAG, "Unexpected WFC mode value: " + wfcMode);
+             }
+         }
++        */
+         return resId;
+     }
+ }
+diff --git a/src/com/android/settings/WirelessSettings.java b/src/com/android/settings/WirelessSettings.java
+index 9152870..b9fcc7a 100644
+--- a/src/com/android/settings/WirelessSettings.java
++++ b/src/com/android/settings/WirelessSettings.java
+@@ -287,11 +287,15 @@ public class WirelessSettings extends SettingsPreferenceFragment
+             initSmsApplicationSetting();
+         }
+ 
++        /*
+         if (ImsManager.isWfcEnabledByPlatform(activity)) {
+             mButtonWfc = (PreferenceScreen) findPreference(KEY_WFC_SETTINGS);
+         } else {
++        */
+             removePreference(KEY_WFC_SETTINGS);
++        /*
+         }
++        */
+ 
+         // Remove NSD checkbox by default
+         getPreferenceScreen().removePreference(nsd);
+@@ -436,10 +440,12 @@ public class WirelessSettings extends SettingsPreferenceFragment
+         }
+ 
+         final Context context = getActivity();
++        /*
+         if (ImsManager.isWfcEnabledByPlatform(context)) {
+             mButtonWfc.setSummary(WifiCallingSettings.getWfcModeSummary(
+                     context, ImsManager.getWfcMode(context)));
+         }
++        */
+     }
+ 
+     @Override
+-- 
+1.7.9.5
+

@@ -1,0 +1,64 @@
+From fd6ab4daad6cdc51cb89547bfe59de8db06f95c9 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Thu, 24 Mar 2016 21:10:12 +0100
+Subject: [PATCH] telephony: Remove IMS Wfc code for r36
+
+Change-Id: Iaf0c787b5984ba865b8a139949264eb10803d5a9
+---
+ src/com/android/phone/CallFeaturesSetting.java |    3 +++
+ src/com/android/phone/ImsUtil.java             |    8 +++++++-
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/phone/CallFeaturesSetting.java b/src/com/android/phone/CallFeaturesSetting.java
+index c211323..6e45dc9 100644
+--- a/src/com/android/phone/CallFeaturesSetting.java
++++ b/src/com/android/phone/CallFeaturesSetting.java
+@@ -1341,6 +1341,8 @@ public class CallFeaturesSetting extends PreferenceActivity
+ 
+         Preference wifiCallingSettings = findPreference(
+                 getResources().getString(R.string.wifi_calling_settings_key));
++        prefSet.removePreference(wifiCallingSettings);
++        /*
+         if (!ImsManager.isWfcEnabledByPlatform(mPhone.getContext())) {
+             prefSet.removePreference(wifiCallingSettings);
+         } else {
+@@ -1363,6 +1365,7 @@ public class CallFeaturesSetting extends PreferenceActivity
+             }
+             wifiCallingSettings.setSummary(resId);
+         }
++        */
+     }
+ 
+     @Override
+diff --git a/src/com/android/phone/ImsUtil.java b/src/com/android/phone/ImsUtil.java
+index 868a0f1..33ea883 100644
+--- a/src/com/android/phone/ImsUtil.java
++++ b/src/com/android/phone/ImsUtil.java
+@@ -49,8 +49,12 @@ public class ImsUtil {
+      * @return {@code true} if WFC is supported by the platform and has been enabled by the user.
+      */
+     public static boolean isWfcEnabled(Context context) {
++        /*
+         boolean isEnabledByPlatform = ImsManager.isWfcEnabledByPlatform(context);
+         boolean isEnabledByUser = ImsManager.isWfcEnabledByUser(context);
++        */
++        boolean isEnabledByPlatform = false;
++        boolean isEnabledByUser = false;
+         if (DBG) Log.d(LOG_TAG, "isWfcEnabled :: isEnabledByPlatform=" + isEnabledByPlatform);
+         if (DBG) Log.d(LOG_TAG, "isWfcEnabled :: isEnabledByUser=" + isEnabledByUser);
+         return isEnabledByPlatform && isEnabledByUser;
+@@ -61,8 +65,10 @@ public class ImsUtil {
+      * enabled, this will return {@code false}.
+      */
+     public static boolean isWfcModeWifiOnly(Context context) {
+-        boolean isWifiOnlyMode =
++        boolean isWifiOnlyMode = true;
++        /*
+                 ImsManager.getWfcMode(context) == ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY;
++        */
+         if (DBG) Log.d(LOG_TAG, "isWfcModeWifiOnly :: isWifiOnlyMode" + isWifiOnlyMode);
+         return isWfcEnabled(context) && isWifiOnlyMode;
+     }
+-- 
+1.7.9.5
+

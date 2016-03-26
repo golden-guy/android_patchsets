@@ -1,8 +1,8 @@
-From 35f3a12b4ed76d941dc376a0259dc15c6233b41b Mon Sep 17 00:00:00 2001
+From 835864e9e27d11a334be15e5a5e7b5368194078d Mon Sep 17 00:00:00 2001
 From: Stefan Berger <s.berger81@gmail.com>
 Date: Wed, 24 Feb 2016 21:35:54 +0100
-Subject: [PATCH] base: Prevent device from locking screen while in a phone
- call
+Subject: [PATCH] base: Prevent device from locking screen while in a
+ phone call
 
 For some reason the device locks the screen if the screen timeout has been
 exceeded while in a call, despite of the proximity sensor holding a wake lock.
@@ -10,11 +10,11 @@ For now, add another check for isOffhook() to keep the phone awake during a call
 
 Change-Id: I4a9ab4e9838714d94ac596e5223e1b0ee49a19c9
 ---
- .../android/server/power/PowerManagerService.java  |    5 +++++
- 1 file changed, 5 insertions(+)
+ .../android/server/power/PowerManagerService.java  |   18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
 diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
-index d2a0c7f..c20780d 100644
+index d2a0c7f..227b12c 100644
 --- a/services/core/java/com/android/server/power/PowerManagerService.java
 +++ b/services/core/java/com/android/server/power/PowerManagerService.java
 @@ -60,6 +60,7 @@ import android.os.UserHandle;
@@ -34,7 +34,16 @@ index d2a0c7f..c20780d 100644
      // power profile support
      private PowerProfileManager mProfileManager;
      private boolean mProfilesSupported;
-@@ -470,6 +473,7 @@ public final class PowerManagerService extends SystemService
+@@ -458,6 +461,8 @@ public final class PowerManagerService extends SystemService
+     // timeout for button backlight automatic turning off
+     private int mButtonTimeout;
+ 
++    private boolean isPhoneAvailable = false;
++
+     private native void nativeInit();
+ 
+     private static native void nativeAcquireSuspendBlocker(String name);
+@@ -470,6 +475,7 @@ public final class PowerManagerService extends SystemService
      public PowerManagerService(Context context) {
          super(context);
          mContext = context;
@@ -42,14 +51,32 @@ index d2a0c7f..c20780d 100644
          mHandlerThread = new ServiceThread(TAG,
                  Process.THREAD_PRIORITY_DISPLAY, false /*allowIo*/);
          mHandlerThread.start();
-@@ -1699,6 +1703,7 @@ public final class PowerManagerService extends SystemService
+@@ -1699,6 +1705,7 @@ public final class PowerManagerService extends SystemService
      private boolean isBeingKeptAwakeLocked() {
          return mStayOn
                  || mProximityPositive
-+                || telephonyManager.isOffhook()
++                || isPhoneCallActive()
                  || (mWakeLockSummary & WAKE_LOCK_STAY_AWAKE) != 0
                  || (mUserActivitySummary & (USER_ACTIVITY_SCREEN_BRIGHT
                          | USER_ACTIVITY_SCREEN_DIM)) != 0
+@@ -1706,6 +1713,17 @@ public final class PowerManagerService extends SystemService
+     }
+ 
+     /**
++     * Determines whether phone is enabled and a phone call is active.
++     */
++    private boolean isPhoneCallActive() {
++        if (mBootCompleted && telephonyManager != null) {
++            isPhoneAvailable =
++                    telephonyManager.getPhoneType() != TelephonyManager.PHONE_TYPE_NONE;
++        }
++        return isPhoneAvailable ? telephonyManager.isOffhook() : false;
++    }
++
++    /**
+      * Determines whether to post a message to the sandman to update the dream state.
+      */
+     private void updateDreamLocked(int dirty, boolean displayBecameReady) {
 -- 
 1.7.9.5
 

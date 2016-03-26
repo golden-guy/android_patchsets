@@ -1,0 +1,36 @@
+From 26165db9d51e82f8218bdcba5f59d3468d0bcf06 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Fri, 25 Mar 2016 18:26:43 +0100
+Subject: [PATCH] base: Fix double action for wake keys when waking up
+
+Bring mWakeKeyTriggered back, to prevent wake key double
+action on device wakeup (screen off).
+
+Change-Id: I12e515013cdc183d62a1baa5ebea90aadd8b5a1c
+---
+ .../internal/policy/impl/PhoneWindowManager.java   |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java b/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
+index 4985d0e..ac52862 100644
+--- a/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
++++ b/policy/src/com/android/internal/policy/impl/PhoneWindowManager.java
+@@ -5236,6 +5236,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         if (isValidGlobalKey(keyCode)
+                 && mGlobalKeyManager.shouldHandleGlobalKey(keyCode, event)) {
+             if (isWakeKey) {
++                mWakeKeyTriggered = isCustomWakeKey(keyCode);
+                 wakeUp(event.getEventTime(), mAllowTheaterModeWakeFromKey);
+             }
+             return result;
+@@ -5497,6 +5498,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
+         }
+ 
+         if (isWakeKey) {
++            mWakeKeyTriggered = isCustomWakeKey(keyCode);
+             wakeUp(event.getEventTime(), mAllowTheaterModeWakeFromKey);
+         }
+ 
+-- 
+1.7.9.5
+

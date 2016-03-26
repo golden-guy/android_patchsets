@@ -1,0 +1,71 @@
+From 769529ce1ecd17c2adbb993a1f571beebbac7b13 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Thu, 24 Mar 2016 02:29:57 +0100
+Subject: [PATCH] base: Update IMS aidl definitions for r36
+
+Change-Id: I839479dc49e1be630e96b464adb86bf9546417d0
+---
+ .../ims/internal/IImsCallSessionListener.aidl      |    8 --------
+ .../ims/internal/IImsRegistrationListener.aidl     |    7 +------
+ .../java/com/android/ims/internal/IImsUt.aidl      |    4 ++--
+ 3 files changed, 3 insertions(+), 16 deletions(-)
+
+diff --git a/telephony/java/com/android/ims/internal/IImsCallSessionListener.aidl b/telephony/java/com/android/ims/internal/IImsCallSessionListener.aidl
+index 0443c3e..84d1c545 100644
+--- a/telephony/java/com/android/ims/internal/IImsCallSessionListener.aidl
++++ b/telephony/java/com/android/ims/internal/IImsCallSessionListener.aidl
+@@ -115,12 +115,4 @@ interface IImsCallSessionListener {
+      * - {@link com.android.internal.telephony.Phone#TTY_MODE_VCO}
+      */
+     void callSessionTtyModeReceived(in IImsCallSession session, in int mode);
+-
+-    /**
+-     * Notifies of a change to the multiparty state for this {@code ImsCallSession}.
+-     *
+-     * @param session The call session.
+-     * @param isMultiParty {@code true} if the session became multiparty, {@code false} otherwise.
+-     */
+-    void callSessionMultipartyStateChanged(in IImsCallSession session, in boolean isMultiParty);
+ }
+diff --git a/telephony/java/com/android/ims/internal/IImsRegistrationListener.aidl b/telephony/java/com/android/ims/internal/IImsRegistrationListener.aidl
+index c910600..d313dc4 100644
+--- a/telephony/java/com/android/ims/internal/IImsRegistrationListener.aidl
++++ b/telephony/java/com/android/ims/internal/IImsRegistrationListener.aidl
+@@ -30,14 +30,9 @@ interface IImsRegistrationListener {
+     void registrationConnected();
+ 
+     /**
+-     * Notifies the application when the device is trying to connect the IMS network.
+-     */
+-    void registrationProgressing();
+-
+-    /**
+      * Notifies the application when the device is disconnected from the IMS network.
+      */
+-    void registrationDisconnected(in ImsReasonInfo imsReasonInfo);
++    void registrationDisconnected();
+ 
+     /**
+      * Notifies the application when its suspended IMS connection is resumed,
+diff --git a/telephony/java/com/android/ims/internal/IImsUt.aidl b/telephony/java/com/android/ims/internal/IImsUt.aidl
+index c531ea5..1caaab7 100644
+--- a/telephony/java/com/android/ims/internal/IImsUt.aidl
++++ b/telephony/java/com/android/ims/internal/IImsUt.aidl
+@@ -80,12 +80,12 @@ interface IImsUt {
+      * Updates the configuration of the call forward.
+      */
+     int updateCallForward(int action, int condition, String number,
+-            int serviceClass, int timeSeconds);
++            int timeSeconds);
+ 
+     /**
+      * Updates the configuration of the call waiting.
+      */
+-    int updateCallWaiting(boolean enable, int serviceClass);
++    int updateCallWaiting(boolean enable);
+ 
+     /**
+      * Updates the configuration of the CLIR supplementary service.
+-- 
+1.7.9.5
+

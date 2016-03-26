@@ -1,0 +1,151 @@
+From 1cb78a3499b145c75a6cf31f4eb74885a54015f7 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Thu, 24 Mar 2016 08:13:00 +0100
+Subject: [PATCH] telephony: Remove IMS Wfc code for r36
+
+Change-Id: I479e12f3483c4a478f0aff95cfaa47f5a5ba9bd9
+---
+ .../com/android/internal/telephony/PhoneBase.java  |    2 --
+ .../internal/telephony/imsphone/ImsPhone.java      |    9 ++++++---
+ .../telephony/imsphone/ImsPhoneCallTracker.java    |    7 +------
+ .../telephony/imsphone/ImsPhoneConnection.java     |    2 +-
+ 4 files changed, 8 insertions(+), 12 deletions(-)
+
+diff --git a/src/java/com/android/internal/telephony/PhoneBase.java b/src/java/com/android/internal/telephony/PhoneBase.java
+index 3e79570..11f9944 100644
+--- a/src/java/com/android/internal/telephony/PhoneBase.java
++++ b/src/java/com/android/internal/telephony/PhoneBase.java
+@@ -2205,8 +2205,6 @@ public abstract class PhoneBase extends Handler implements Phone {
+         boolean imsUseEnabled =
+                 ((ImsManager.isVolteEnabledByPlatform(mContext) &&
+                 ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext)) ||
+-                (ImsManager.isWfcEnabledByPlatform(mContext) &&
+-                ImsManager.isWfcEnabledByUser(mContext)) &&
+                 ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext));
+         return imsUseEnabled;
+     }
+diff --git a/src/java/com/android/internal/telephony/imsphone/ImsPhone.java b/src/java/com/android/internal/telephony/imsphone/ImsPhone.java
+index ac181ee..b4a47c4 100644
+--- a/src/java/com/android/internal/telephony/imsphone/ImsPhone.java
++++ b/src/java/com/android/internal/telephony/imsphone/ImsPhone.java
+@@ -483,6 +483,7 @@ public class ImsPhone extends ImsPhoneBase {
+ 
+     public static void checkWfcWifiOnlyModeBeforeDial(ImsPhone imsPhone, Context context)
+             throws CallStateException {
++        /*
+         if (imsPhone == null ||
+                 !imsPhone.isVowifiEnabled()) {
+             boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(context) &&
+@@ -495,6 +496,7 @@ public class ImsPhone extends ImsPhoneBase {
+                         "WFC Wi-Fi Only Mode: IMS not registered");
+             }
+         }
++        */
+     }
+ 
+     @Override
+@@ -727,7 +729,6 @@ public class ImsPhone extends ImsPhoneBase {
+                 ut.updateCallForward(getActionFromCFAction(commandInterfaceCFAction),
+                         getConditionFromCFReason(commandInterfaceCFReason),
+                         dialingNumber,
+-                        serviceClass,
+                         timerSeconds,
+                         onComplete);
+              } catch (ImsException e) {
+@@ -764,7 +765,7 @@ public class ImsPhone extends ImsPhoneBase {
+ 
+         try {
+             ImsUtInterface ut = mCT.getUtInterface();
+-            ut.updateCallWaiting(enable, serviceClass, resp);
++            ut.updateCallWaiting(enable, resp);
+         } catch (ImsException e) {
+             sendErrorResponse(onComplete, e);
+         }
+@@ -1406,16 +1407,18 @@ public class ImsPhone extends ImsPhoneBase {
+                 }
+ 
+                 // UX requirement is to disable WFC in case of "permanent" registration failures.
+-                ImsManager.setWfcSetting(mContext, false);
++                //ImsManager.setWfcSetting(mContext, false);
+ 
+                 // If WfcSettings are active then alert will be shown
+                 // otherwise notification will be added.
++                /*
+                 Intent intent = new Intent(ImsManager.ACTION_IMS_REGISTRATION_ERROR);
+                 intent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
+                 intent.putExtra(EXTRA_KEY_ALERT_MESSAGE, messageAlert);
+                 intent.putExtra(EXTRA_KEY_NOTIFICATION_MESSAGE, messageNotification);
+                 mContext.sendOrderedBroadcast(intent, null, mResultReceiver,
+                         null, Activity.RESULT_OK, null, null);
++                */
+ 
+                 // We can only match a single error code
+                 // so should break the loop after a successful match.
+diff --git a/src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java b/src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java
+index 8f28921..ac61df6 100644
+--- a/src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java
++++ b/src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java
+@@ -1204,7 +1204,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
+             mPhone.onTtyModeReceived(mode);
+         }
+ 
+-        @Override
+         public void onCallHandover(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
+             ImsReasonInfo reasonInfo) {
+             if (DBG) {
+@@ -1213,7 +1212,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
+             }
+         }
+ 
+-        @Override
+         public void onCallHandoverFailed(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
+             ImsReasonInfo reasonInfo) {
+             if (DBG) {
+@@ -1230,7 +1228,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
+          * @param isMultiParty {@code true} if the call became multiparty, {@code false}
+          *      otherwise.
+          */
+-        @Override
+         public void onMultipartyStateChanged(ImsCall imsCall, boolean isMultiParty) {
+             if (DBG) log("onMultipartyStateChanged to " + (isMultiParty ? "Y" : "N"));
+ 
+@@ -1309,14 +1306,13 @@ public final class ImsPhoneCallTracker extends CallTracker {
+      */
+     private ImsConnectionStateListener mImsConnectionStateListener =
+         new ImsConnectionStateListener() {
+-        @Override
++
+         public void onImsConnected() {
+             if (DBG) log("onImsConnected");
+             mPhone.setServiceState(ServiceState.STATE_IN_SERVICE);
+             mPhone.setImsRegistered(true);
+         }
+ 
+-        @Override
+         public void onImsDisconnected(ImsReasonInfo imsReasonInfo) {
+             if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
+             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+@@ -1324,7 +1320,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
+             mPhone.processDisconnectReason(imsReasonInfo);
+         }
+ 
+-        @Override
+         public void onImsProgressing() {
+             if (DBG) log("onImsProgressing");
+         }
+diff --git a/src/java/com/android/internal/telephony/imsphone/ImsPhoneConnection.java b/src/java/com/android/internal/telephony/imsphone/ImsPhoneConnection.java
+index b592485..ddcf0dd 100755
+--- a/src/java/com/android/internal/telephony/imsphone/ImsPhoneConnection.java
++++ b/src/java/com/android/internal/telephony/imsphone/ImsPhoneConnection.java
+@@ -548,7 +548,7 @@ public class ImsPhoneConnection extends Connection {
+         if (mImsCall == null) {
+             return false;
+         }
+-        return mImsCall.isConferenceHost();
++        return true;
+     }
+ 
+     /*package*/ ImsCall getImsCall() {
+-- 
+1.7.9.5
+
