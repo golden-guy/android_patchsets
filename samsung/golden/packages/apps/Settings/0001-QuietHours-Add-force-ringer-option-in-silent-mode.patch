@@ -1,0 +1,239 @@
+From 219c5cd410ae5035f30953c199b055901f631099 Mon Sep 17 00:00:00 2001
+From: Stefan Berger <s.berger81@gmail.com>
+Date: Sun, 27 Nov 2016 20:52:20 +0100
+Subject: [PATCH] QuietHours: Add force ringer option in silent mode
+
+If enabled, force ringer to normal mode when silent mode is
+active during quiet hours. Unless mute type has been set to
+'mute all', this will fire up the ringer for selected numbers
+(e.g. contacts/favorites). Otherwise, there will be no audible
+ring for bypass contacts.
+
+Change-Id: Ief6bad9da1025ad4f8cbabf208b5d30c1ad5a5a0
+---
+ res/values-de/custom_strings.xml                   | 20 ++++++++
+ res/values/custom_strings.xml                      |  3 ++
+ res/xml/quiet_hours_settings.xml                   |  7 +++
+ .../slim/service/QuietHoursController.java         | 56 ++++++++++++++++++++++
+ 4 files changed, 86 insertions(+)
+
+diff --git a/res/values-de/custom_strings.xml b/res/values-de/custom_strings.xml
+index 5d55dc1..420d9ff 100644
+--- a/res/values-de/custom_strings.xml
++++ b/res/values-de/custom_strings.xml
+@@ -183,6 +183,14 @@
+     <string name="quiet_hours_ringer_title">Klingelton stumm schalten</string>
+     <string name="quiet_hours_ringer_on">Es wird kein Klingelton abgespielt</string>
+     <string name="quiet_hours_ringer_off">Klingelton verhält sich wie gewohnt</string>
++    <string name="quiet_hours_ringer">Klingelton aktivieren</string>
++    <string name="quiet_hours_ringer_allow_all">Alle Nummern</string>
++    <string name="quiet_hours_ringer_allow_contacts">Nur Kontakte</string>
++    <string name="quiet_hours_ringer_allow_starred">Nur Favoriten</string>
++    <string name="quiet_hours_ringer_mute_all">Stumm schalten</string>
++    <string name="quiet_hours_force_ringer">Klingelton erzwingen</string>
++    <string name="quiet_hours_force_ringer_on">Gerät klingelt auch im Lautlos-Modus</string>
++    <string name="quiet_hours_force_ringer_off">Klingelton verhält sich wie gewohnt</string>
+     <string name="quiet_hours_mute">Benachrichtigungen stumm schalten</string>
+     <string name="quiet_hours_mute_on">Es werden keine Benachrichtigungstöne abgespielt</string>
+     <string name="quiet_hours_mute_off">Benachrichtigungstöne verhalten sich wie gewohnt</string>
+@@ -222,6 +230,18 @@
+     <string name="quiet_hours_alarm_and">" und "</string>
+     <string name="quiet_hours_alarm_dialog_title">RUHEMODUS UMGANGEN</string>
+     <string name="quiet_hours_alarm_message">" hat die Anforderungen erfüllt, um den Ruhemodus zu umgehen!"</string>
++    <string name="quiet_hours_enable_title">Ruhemodus aktiv</string>
++    <string name="quiet_hours_notification">Zum Einstellen berühren.</string>
++    <string name="quiet_hours_enable_notification_title">Benachrichtigungen</string>
++    <string name="quiet_hours_enable_notification_summary">Benachrichtigung im Ruhemodus anzeigen</string>
++    <string name="quiet_hours_notification_disable">Deaktivieren</string>
++    <string name="quiet_hours_notification_pause">Pause</string>
++    <string name="quiet_hours_paused_title">Ruhemodus angehalten</string>
++    <string name="quiet_hours_notification_resume">Fortsetzen</string>
++    <string name="quiet_hours_snoozed_title">Ruhemodus für <xliff:g id="time">%1$d</xliff:g> Minuten unterbrochen</string>
++    <string name="quiet_hours_notification_snooze">Unterbrechen</string>
++    <string name="quiet_hours_snooze_time">Ruhemodus unterbrechen für</string>
++    <string name="quiet_hours_notification_stop">Stop</string>
+ 
+     <!-- time range preference -->
+     <string name="start_time_title">Anfang</string>
+diff --git a/res/values/custom_strings.xml b/res/values/custom_strings.xml
+index ea6fc8a..b5dab0b 100644
+--- a/res/values/custom_strings.xml
++++ b/res/values/custom_strings.xml
+@@ -197,6 +197,9 @@
+     <string name="quiet_hours_ringer_allow_contacts">Contacts only</string>
+     <string name="quiet_hours_ringer_allow_starred">Favorite contacts only</string>
+     <string name="quiet_hours_ringer_mute_all">Mute all</string>
++    <string name="quiet_hours_force_ringer">Force ringer</string>
++    <string name="quiet_hours_force_ringer_on">Device will ring in silent mode</string>
++    <string name="quiet_hours_force_ringer_off">Device will ring like normal</string>
+     <string name="quiet_hours_mute">Mute notifications</string>
+     <string name="quiet_hours_mute_on">No sounds will be played</string>
+     <string name="quiet_hours_mute_off">Sounds will play like normal</string>
+diff --git a/res/xml/quiet_hours_settings.xml b/res/xml/quiet_hours_settings.xml
+index 9fe71da..9de594b 100644
+--- a/res/xml/quiet_hours_settings.xml
++++ b/res/xml/quiet_hours_settings.xml
+@@ -68,6 +68,13 @@
+             android:entryValues="@array/quiet_hours_ringer_values"
+             android:persistent="false" />
+ 
++        <CheckBoxPreference
++            android:key="quiet_hours_force_ringer"
++            android:title="@string/quiet_hours_force_ringer"
++            android:summaryOn="@string/quiet_hours_force_ringer_on"
++            android:summaryOff="@string/quiet_hours_force_ringer_off"
++            android:dependency="quiet_hours_enabled" />
++
+         <org.omnirom.omnigears.preference.SystemCheckBoxPreference
+             android:key="quiet_hours_mute"
+             android:title="@string/quiet_hours_mute"
+diff --git a/src/com/android/settings/slim/service/QuietHoursController.java b/src/com/android/settings/slim/service/QuietHoursController.java
+index bcd3937..af8aaf2 100644
+--- a/src/com/android/settings/slim/service/QuietHoursController.java
++++ b/src/com/android/settings/slim/service/QuietHoursController.java
+@@ -28,6 +28,7 @@ import android.content.SharedPreferences;
+ import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
+ import android.content.res.Resources;
+ import android.database.ContentObserver;
++import android.media.AudioManager;
+ import android.media.RingtoneManager;
+ import android.os.Handler;
+ import android.net.Uri;
+@@ -57,6 +58,7 @@ public class QuietHoursController {
+     private static final String KEY_REQUIRED_CALLS = "required_calls";
+     private static final String KEY_SMS_BYPASS_CODE = "sms_bypass_code";
+     private static final String KEY_QUIET_HOURS_NOTIFICATION = "quiet_hours_enable_notification";
++    private static final String KEY_QUIET_HOURS_FORCE_RINGER = "quiet_hours_force_ringer";
+     private static final String KEY_SNOOZE_TIME = "snooze_time";
+ 
+     public static final String QUIET_HOURS_START_COMMAND =
+@@ -92,6 +94,10 @@ public class QuietHoursController {
+     private int mQuietHoursStart;
+     private int mQuietHoursEnd;
+ 
++    private int mRingerMode;
++    private boolean mSilentEnabled;
++    private AudioManager mAudioManager;
++
+     private boolean mForceStarted;
+     private boolean mPaused;
+ 
+@@ -130,6 +136,7 @@ public class QuietHoursController {
+                 if (DEBUG) {
+                     Log.i(TAG, "start snooze for " + mSnoozeTime);
+                 }
++                QuietHoursController.getInstance(context).enableRingerOnSilentMode(false);
+                 Settings.System.putIntForUser(context.getContentResolver(),
+                         Settings.System.QUIET_HOURS_PAUSED, 1, UserHandle.USER_CURRENT);
+ 
+@@ -176,10 +183,14 @@ public class QuietHoursController {
+                 if (key.equals(KEY_QUIET_HOURS_NOTIFICATION)) {
+                     updateNotification();
+                 }
++                if (key.equals(KEY_QUIET_HOURS_FORCE_RINGER)) {
++                    updateForceRinger();
++                }
+             }
+         };
+         mSharedPrefs.registerOnSharedPreferenceChangeListener(mSharedPrefsObserver);
+ 
++        mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
+         mNotificationManager = (NotificationManager)
+                 mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+@@ -231,6 +242,10 @@ public class QuietHoursController {
+         return mSharedPrefs.getBoolean(KEY_QUIET_HOURS_NOTIFICATION, false);
+     }
+ 
++    protected boolean returnUserForceRinger() {
++        return mSharedPrefs.getBoolean(KEY_QUIET_HOURS_FORCE_RINGER, false);
++    }
++
+     // Code sender can deliver to start an alert
+     protected int returnSnoozeTime() {
+         return Integer.parseInt(mSharedPrefs.getString(
+@@ -389,12 +404,39 @@ public class QuietHoursController {
+         }
+     }
+ 
++    public void enableRingerOnSilentMode(boolean started) {
++        if (mAudioManager != null) {
++            if (DEBUG) {
++                Log.i(TAG, "enableRingerOnSilentMode: " + started);
++            }
++            if (started) {
++                mSilentEnabled = false;
++                if (returnUserForceRinger()) {
++                    if (mAudioManager.isSilentMode()) {
++                        mSilentEnabled = true;
++                        mRingerMode = mAudioManager.getRingerMode();
++                        mAudioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
++                    }
++                }
++            } else {
++                if (mSilentEnabled) {
++                    if (mAudioManager.getRingerMode() ==
++                            AudioManager.RINGER_MODE_NORMAL) {
++                        mAudioManager.setRingerMode(mRingerMode);
++                    }
++                    mSilentEnabled = false;
++                }
++            }
++        }
++    }
++
+     public void stopQuietHours() {
+         if (isInQuietHours()){
+             if (DEBUG) {
+                 Log.i(TAG, "stopQuietHours");
+             }
+             setInQuietHours(false);
++            enableRingerOnSilentMode(false);
+ 
+             if (mPaused){
+                 mSnoozed = false;
+@@ -420,6 +462,7 @@ public class QuietHoursController {
+                 Log.i(TAG, "startQuietHours");
+             }
+             setInQuietHours(true);
++            enableRingerOnSilentMode(true);
+ 
+             if (mPaused){
+                 mSnoozed = false;
+@@ -456,6 +499,15 @@ public class QuietHoursController {
+         }
+     }
+ 
++    public void updateForceRinger() {
++        if (isInQuietHours()){
++            if (DEBUG) {
++                Log.i(TAG, "updateForceRinger");
++            }
++            enableRingerOnSilentMode(returnUserForceRinger());
++        }
++    }
++
+     private void destroyQuietHour() {
+         mNotificationManager.cancel(NOTIFICATION_ID);
+     }
+@@ -466,6 +518,8 @@ public class QuietHoursController {
+                 Log.i(TAG, "pauseQuietHours");
+             }
+             mSnoozed = false;
++            enableRingerOnSilentMode(false);
++
+             if (mResumeSnoozeIntent != null){
+                 mAlarmManager.cancel(mResumeSnoozeIntent);
+                 mResumeSnoozeIntent = null;
+@@ -491,6 +545,8 @@ public class QuietHoursController {
+             }
+             mSnoozed = false;
+             mResumeSnoozeIntent = null;
++            enableRingerOnSilentMode(true);
++
+             Settings.System.putIntForUser(mContext.getContentResolver(),
+                     Settings.System.QUIET_HOURS_PAUSED, 0, UserHandle.USER_CURRENT);
+         }
+-- 
+1.9.1
+
